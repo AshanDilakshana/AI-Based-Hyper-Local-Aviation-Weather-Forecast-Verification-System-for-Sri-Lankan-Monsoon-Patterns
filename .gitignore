@@ -1,0 +1,17 @@
+node_modules/
+.env
+dist/
+build/
+*.log
+
+# ML / Keras
+*.h5
+*.keras
+
+# Python serialized
+*.pkl
+
+# Excel files
+*.xls
+*.xlsx
+*.csv
