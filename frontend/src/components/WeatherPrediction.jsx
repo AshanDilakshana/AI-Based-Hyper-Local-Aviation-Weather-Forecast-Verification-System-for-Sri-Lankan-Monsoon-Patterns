@@ -6,6 +6,10 @@ export default function WeatherPrediction() {
     temperature: "",
     humidity: "",
     pressure: "",
+    dew_point: "",
+    wind_speed: "",
+    wind_direction: "",
+    visibility: "",
   });
 
   const [prediction, setPrediction] = useState(null);
@@ -24,6 +28,10 @@ export default function WeatherPrediction() {
       temperature: Number(formData.temperature),
       humidity: Number(formData.humidity),
       pressure: Number(formData.pressure),
+      dew_point: Number(formData.dew_point),
+      wind_speed: Number(formData.wind_speed),
+      wind_direction: Number(formData.wind_direction),
+      visibility: Number(formData.visibility),
     });
 
     setPrediction(res.data);
@@ -35,32 +43,13 @@ export default function WeatherPrediction() {
       <p>T+3 Hour Forecast - Northeast Monsoon</p>
 
       <form onSubmit={handlePredict}>
-        <input
-          type="number"
-          name="temperature"
-          placeholder="Temperature (°C)"
-          value={formData.temperature}
-          onChange={handleChange}
-          required
-        />
-
-        <input
-          type="number"
-          name="humidity"
-          placeholder="Humidity (%)"
-          value={formData.humidity}
-          onChange={handleChange}
-          required
-        />
-
-        <input
-          type="number"
-          name="pressure"
-          placeholder="Pressure (hPa)"
-          value={formData.pressure}
-          onChange={handleChange}
-          required
-        />
+        <input type="number" name="temperature" placeholder="Temperature (°C)" value={formData.temperature} onChange={handleChange} required />
+        <input type="number" name="humidity" placeholder="Humidity (%)" value={formData.humidity} onChange={handleChange} required />
+        <input type="number" name="pressure" placeholder="Pressure (hPa)" value={formData.pressure} onChange={handleChange} required />
+        <input type="number" name="dew_point" placeholder="Dew Point (°C)" value={formData.dew_point} onChange={handleChange} required />
+        <input type="number" name="wind_speed" placeholder="Wind Speed (Kts)" value={formData.wind_speed} onChange={handleChange} required />
+        <input type="number" name="wind_direction" placeholder="Wind Direction (°)" value={formData.wind_direction} onChange={handleChange} required />
+        <input type="number" name="visibility" placeholder="Visibility" value={formData.visibility} onChange={handleChange} required />
 
         <button type="submit">Predict Next 3 Hours</button>
       </form>

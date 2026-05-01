@@ -8,7 +8,6 @@ import os
 app = Flask(__name__)
 CORS(app)
 
-# 🔥 Correct path handling
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_DIR = os.path.dirname(BASE_DIR)
 
@@ -21,14 +20,14 @@ features = joblib.load(os.path.join(PROJECT_DIR, "model", "feature_columns.pkl")
 def predict():
     data = request.json
 
-    temperature = data["temperature"]
-    humidity = data["humidity"]
-    pressure = data["pressure"]
-
     df = pd.DataFrame([{
-        "temperature": temperature,
-        "humidity": humidity,
-        "pressure": pressure
+        "temperature": float(data["temperature"]),
+        "humidity": float(data["humidity"]),
+        "pressure": float(data["pressure"]),
+        "dew_point": float(data["dew_point"]),
+        "wind_speed": float(data["wind_speed"]),
+        "wind_direction": float(data["wind_direction"]),
+        "visibility": float(data["visibility"])
     }])
 
     now = datetime.now()
@@ -37,14 +36,29 @@ def predict():
     df["day"] = now.day
     df["month"] = now.month
 
-    # temporary lag (demo)
+    # temporary lag values
     df["temp_lag1"] = df["temperature"]
     df["humidity_lag1"] = df["humidity"]
     df["pressure_lag1"] = df["pressure"]
 
+    df["dew_point_lag1"] = df["dew_point"]
+    df["wind_speed_lag1"] = df["wind_speed"]
+    df["wind_direction_lag1"] = df["wind_direction"]
+    df["visibility_lag1"] = df["visibility"]
+
+    # temporary rolling values
     df["temp_roll3"] = df["temperature"]
     df["humidity_roll3"] = df["humidity"]
     df["pressure_roll3"] = df["pressure"]
+
+    df["dew_point_roll3"] = df["dew_point"]
+    df["wind_speed_roll3"] = df["wind_speed"]
+    df["visibility_roll3"] = df["visibility"]
+
+    # add missing encoded columns like clouds/weather dummies
+    for col in features:
+        if col not in df.columns:
+            df[col] = 0
 
     df = df[features]
 
@@ -52,9 +66,9 @@ def predict():
     prediction = model.predict(df_scaled)
 
     return jsonify({
-        "temperature": float(prediction[0][0]),
-        "humidity": float(prediction[0][1]),
-        "pressure": float(prediction[0][2])
+        "temperature": round(float(prediction[0][0]), 2),
+        "humidity": round(float(prediction[0][1]), 2),
+        "pressure": round(float(prediction[0][2]), 2)
     })
 
 
