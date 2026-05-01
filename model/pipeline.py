@@ -1,16 +1,22 @@
 import os
 import datetime
 
-# Step 1: Preprocessing
-print("🔄 Running preprocessing...")
-os.system("python model/preprocess_data.py")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Step 2: Feature Engineering
-print("🔄 Running feature engineering...")
-os.system("python model/feature_engineering.py")
+def run_pipeline():
+    print("🚀 Pipeline started...")
 
-# Step 3: Model Training
-print("🔄 Training model...")
-os.system("python model/train_model.py")
+    print("🔄 Preprocessing...")
+    os.system(f"python {BASE_DIR}/preprocess_data.py")
 
-print("✅ Pipeline completed at :", datetime.datetime.now())
+    print("🔄 Feature Engineering...")
+    os.system(f"python {BASE_DIR}/feature_engineering.py")
+
+    print("🔄 Training model...")
+    os.system(f"python {BASE_DIR}/train_model.py")
+
+    print("✅ Pipeline completed at:", datetime.datetime.now())
+
+
+if __name__ == "__main__":
+    run_pipeline()
