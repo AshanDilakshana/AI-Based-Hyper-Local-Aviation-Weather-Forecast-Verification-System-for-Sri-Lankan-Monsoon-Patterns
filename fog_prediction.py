@@ -1,5 +1,6 @@
 import pandas as pd
 from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
 
 # Load Excel dataset
 df = pd.read_excel("data/BIA_METAR_DATA_(2019_2024).xlsx")
@@ -68,7 +69,7 @@ y = df['fog_risk']
 print("\nFeature matrix shape:", X.shape) 
 print("Target shape:", y.shape)
 
-# Split datasett
+# Split dataset
 X_train, X_test, y_train, y_test = train_test_split( 
     X, y, 
     test_size=0.2, 
