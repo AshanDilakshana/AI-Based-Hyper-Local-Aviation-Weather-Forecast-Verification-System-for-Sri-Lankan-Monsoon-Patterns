@@ -1,0 +1,88 @@
+body {
+  margin: 0;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(135deg, #4facfe, #00f2fe);
+}
+
+.container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+/* Card */
+.card {
+  background: white;
+  padding: 30px;
+  border-radius: 16px;
+  width: 420px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+  text-align: center;
+}
+
+/* Title */
+.card h2 {
+  margin-bottom: 5px;
+}
+
+.subtitle {
+  color: gray;
+  margin-bottom: 20px;
+}
+
+/* Form */
+.form {
+  display: flex;
+  flex-direction: column;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+/* Inputs */
+input {
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  outline: none;
+  transition: 0.3s;
+}
+
+input:focus {
+  border-color: #4facfe;
+  box-shadow: 0 0 5px rgba(79,172,254,0.5);
+}
+
+/* Button */
+.btn {
+  margin-top: 15px;
+  padding: 12px;
+  border: none;
+  border-radius: 10px;
+  background: #4facfe;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.btn:hover {
+  background: #007bff;
+}
+
+/* Result Box */
+.result {
+  margin-top: 20px;
+  padding: 15px;
+  background: #f4f8ff;
+  border-radius: 10px;
+}
+
+.result span {
+  font-weight: bold;
+  color: #007bff;
+}

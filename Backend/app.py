@@ -15,6 +15,8 @@ model = joblib.load(os.path.join(PROJECT_DIR, "model", "weather_model.pkl"))
 scaler = joblib.load(os.path.join(PROJECT_DIR, "model", "scaler.pkl"))
 features = joblib.load(os.path.join(PROJECT_DIR, "model", "feature_columns.pkl"))
 
+history_path = os.path.join(PROJECT_DIR, "data", "clean_northeast_monsoon.csv")
+
 
 @app.route("/predict", methods=["POST"])
 def predict():
@@ -31,31 +33,38 @@ def predict():
     }])
 
     now = datetime.now()
-
     df["hour"] = now.hour
     df["day"] = now.day
     df["month"] = now.month
 
-    # temporary lag values
-    df["temp_lag1"] = df["temperature"]
-    df["humidity_lag1"] = df["humidity"]
-    df["pressure_lag1"] = df["pressure"]
+    # Load real historical METAR data
+    history = pd.read_csv(history_path)
+    history["datetime"] = pd.to_datetime(history["datetime"])
+    history = history.sort_values("datetime")
 
-    df["dew_point_lag1"] = df["dew_point"]
-    df["wind_speed_lag1"] = df["wind_speed"]
-    df["wind_direction_lag1"] = df["wind_direction"]
-    df["visibility_lag1"] = df["visibility"]
+    last_row = history.iloc[-1]
+    last_3 = history.tail(3)
 
-    # temporary rolling values
-    df["temp_roll3"] = df["temperature"]
-    df["humidity_roll3"] = df["humidity"]
-    df["pressure_roll3"] = df["pressure"]
+    # Real lag values
+    df["temp_lag1"] = last_row["temperature"]
+    df["humidity_lag1"] = last_row["humidity"]
+    df["pressure_lag1"] = last_row["pressure"]
 
-    df["dew_point_roll3"] = df["dew_point"]
-    df["wind_speed_roll3"] = df["wind_speed"]
-    df["visibility_roll3"] = df["visibility"]
+    df["dew_point_lag1"] = last_row["dew_point"]
+    df["wind_speed_lag1"] = last_row["wind_speed"]
+    df["wind_direction_lag1"] = last_row["wind_direction"]
+    df["visibility_lag1"] = last_row["visibility"]
 
-    # add missing encoded columns like clouds/weather dummies
+    # Real rolling values
+    df["temp_roll3"] = last_3["temperature"].mean()
+    df["humidity_roll3"] = last_3["humidity"].mean()
+    df["pressure_roll3"] = last_3["pressure"].mean()
+
+    df["dew_point_roll3"] = last_3["dew_point"].mean()
+    df["wind_speed_roll3"] = last_3["wind_speed"].mean()
+    df["visibility_roll3"] = last_3["visibility"].mean()
+
+    # Add missing encoded columns like clouds/weather dummy columns
     for col in features:
         if col not in df.columns:
             df[col] = 0
