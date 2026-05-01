@@ -1,5 +1,5 @@
 import pandas as pd
-from backend.ml_pipeline.pipeline import WeatherDataPipeline
+from preprocessing_and_feature_engineering.pipeline import WeatherDataPipeline
 import warnings
 warnings.filterwarnings('ignore')
 
