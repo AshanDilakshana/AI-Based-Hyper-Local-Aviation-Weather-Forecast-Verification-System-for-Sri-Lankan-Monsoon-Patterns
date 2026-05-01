@@ -3,14 +3,18 @@ from flask_cors import CORS
 import joblib
 import pandas as pd
 from datetime import datetime
+import os
 
 app = Flask(__name__)
 CORS(app)
 
-# Load model once
-model = joblib.load("model/weather_model.pkl")
-scaler = joblib.load("model/scaler.pkl")
-features = joblib.load("model/feature_columns.pkl")
+# 🔥 Correct path handling
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_DIR = os.path.dirname(BASE_DIR)
+
+model = joblib.load(os.path.join(PROJECT_DIR, "model", "weather_model.pkl"))
+scaler = joblib.load(os.path.join(PROJECT_DIR, "model", "scaler.pkl"))
+features = joblib.load(os.path.join(PROJECT_DIR, "model", "feature_columns.pkl"))
 
 
 @app.route("/predict", methods=["POST"])
@@ -33,6 +37,7 @@ def predict():
     df["day"] = now.day
     df["month"] = now.month
 
+    # temporary lag (demo)
     df["temp_lag1"] = df["temperature"]
     df["humidity_lag1"] = df["humidity"]
     df["pressure_lag1"] = df["pressure"]
