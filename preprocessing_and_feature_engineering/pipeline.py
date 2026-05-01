@@ -1,6 +1,6 @@
 import pandas as pd
-from backend.ml_pipeline.data_cleaner import DataCleaner
-from backend.ml_pipeline.feature_engineer import FeatureEngineer
+from preprocessing_and_feature_engineering.data_cleaner import DataCleaner
+from preprocessing_and_feature_engineering.feature_engineer import FeatureEngineer
 
 class WeatherDataPipeline:
     """
