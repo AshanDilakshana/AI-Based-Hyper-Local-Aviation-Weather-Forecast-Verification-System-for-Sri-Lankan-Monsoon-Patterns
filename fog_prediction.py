@@ -2,6 +2,7 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report, accuracy_score
+import joblib
 
 # Load Excel dataset
 df = pd.read_excel("data/BIA_METAR_DATA_(2019_2024).xlsx")
@@ -89,3 +90,17 @@ model.fit(X_train, y_train)
 
 print("\nModel Training Completed")
 
+# Predictions
+y_pred = model.predict(X_test)
+
+# Accuracy 
+accuracy = accuracy_score(y_test, y_pred)
+print("\nModel Accuracy:", accuracy)
+
+# Full report 
+print("\nClassification Report:") 
+print(classification_report(y_test, y_pred))
+
+# Save trained model 
+joblib.dump(model, "models/fog_model.pkl")
+print("\nModel saved successfully")
