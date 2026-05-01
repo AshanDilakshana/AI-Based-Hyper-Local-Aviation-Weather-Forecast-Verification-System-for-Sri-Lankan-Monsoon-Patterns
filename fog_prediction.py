@@ -1,6 +1,7 @@
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import classification_report, accuracy_score
 
 # Load Excel dataset
 df = pd.read_excel("data/BIA_METAR_DATA_(2019_2024).xlsx")
@@ -79,5 +80,12 @@ X_train, X_test, y_train, y_test = train_test_split(
 print("\nTraining set shape:", X_train.shape)
 print("Testing set shape:", X_test.shape)
 
+# train model
+model = RandomForestClassifier( 
+    n_estimators=100,
+      random_state=42
+        )
+model.fit(X_train, y_train)
 
+print("\nModel Training Completed")
 
