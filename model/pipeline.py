@@ -13,4 +13,4 @@ os.system("python model/feature_engineering.py")
 print("🔄 Training model...")
 os.system("python model/train_model.py")
 
-print("✅ Pipeline completed at:", datetime.datetime.now())
+print("✅ Pipeline completed at :", datetime.datetime.now())
