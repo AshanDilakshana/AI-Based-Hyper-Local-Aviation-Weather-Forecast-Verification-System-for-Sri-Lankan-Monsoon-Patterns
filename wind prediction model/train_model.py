@@ -6,6 +6,8 @@ import os
 
 def main():
     print("1. Loading processed data...")
+
+    
     # Path to the processed dataset we generated earlier
     data_path = '../backend/data/processed_monsoon_data.csv'
     
@@ -24,6 +26,7 @@ def main():
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
     print("3. Training XGBoost Regressor Model...")
+
     # Initialize the model with hyper-parameters suitable for weather data
     model = xgb.XGBRegressor(
         n_estimators=1000,
@@ -50,6 +53,8 @@ def main():
     print(f"(This means on average, the model's prediction is off by only {mae:.2f} knots)")
 
     print("\n5. Saving Trained Model...")
+
+
     # Save the model file inside this current folder
     model_save_path = 'xgboost_wind_model.json'
     model.save_model(model_save_path)
