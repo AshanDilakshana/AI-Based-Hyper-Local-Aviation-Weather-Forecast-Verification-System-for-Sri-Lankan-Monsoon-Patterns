@@ -1,15 +1,15 @@
 import pandas as pd
 import xgboost as xgb
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_absolute_error, mean_squared_error
+from sklearn.model_selection import train_test_split, RandomizedSearchCV
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+import numpy as np
 import os
 
 def main():
     print("1. Loading processed data...")
-
-    
-    # Path to the processed dataset we generated earlier
-    data_path = '../backend/data/processed_monsoon_data.csv'
+    # Path to the processed dataset (Dynamic absolute path)
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    data_path = os.path.join(current_dir, '../backend/data/processed_monsoon_data.csv')
     
     if not os.path.exists(data_path):
         print(f"Error: Could not find {data_path}. Please run the pipeline first.")
@@ -25,39 +25,75 @@ def main():
     print("2. Splitting data into Training and Testing sets (80/20)...")
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-    print("3. Training XGBoost Regressor Model...")
+    print("3. Running Hyperparameter Tuning (RandomizedSearchCV)...")
+    print("   (This might take a minute or two as it searches for the best mathematical settings)")
+    
+    # We define a grid of possible settings for XGBoost
+    param_grid = {
+        'n_estimators': [100, 300, 500, 1000],
+        'max_depth': [3, 5, 7, 9],
+        'learning_rate': [0.01, 0.05, 0.1, 0.2],
+        'subsample': [0.7, 0.8, 1.0],
+        'colsample_bytree': [0.7, 0.8, 1.0]
+    }
 
-    # Initialize the model with hyper-parameters suitable for weather data
-    model = xgb.XGBRegressor(
-        n_estimators=1000,
-        learning_rate=0.05,
-        max_depth=6,
-        subsample=0.8,
-        objective='reg:squarederror',
-        random_state=42
+    base_model = xgb.XGBRegressor(objective='reg:squarederror', random_state=42)
+    
+    # Tests 10 random combinations of the above settings
+    search = RandomizedSearchCV(
+        estimator=base_model,
+        param_distributions=param_grid,
+        n_iter=10,
+        scoring='neg_mean_absolute_error',
+        cv=3,
+        verbose=1,
+        random_state=42,
+        n_jobs=-1
     )
 
-    # Train the model
-    model.fit(X_train, y_train)
+    search.fit(X_train, y_train)
 
-    print("4. Evaluating Model Performance...")
-    predictions = model.predict(X_test)
+    best_model = search.best_estimator_
+    print(f"\n✅ Best Parameters Found: {search.best_params_}")
+
+    print("\n4. Evaluating Model Performance...")
     
-    import numpy as np
-    mae = mean_absolute_error(y_test, predictions)
-    rmse = np.sqrt(mean_squared_error(y_test, predictions))
+    # Predict on Training Data (To see how well it learned)
+    train_predictions = best_model.predict(X_train)
+    train_mae = mean_absolute_error(y_train, train_predictions)
+    train_rmse = np.sqrt(mean_squared_error(y_train, train_predictions))
+    train_r2 = r2_score(y_train, train_predictions)
 
-    print("\n--- Model Accuracy ---")
-    print(f"Mean Absolute Error (MAE): {mae:.2f} Knots")
-    print(f"Root Mean Squared Error (RMSE): {rmse:.2f} Knots")
-    print(f"(This means on average, the model's prediction is off by only {mae:.2f} knots)")
+    # Predict on Testing Data (To see how well it performs on unseen data)
+    test_predictions = best_model.predict(X_test)
+    test_mae = mean_absolute_error(y_test, test_predictions)
+    test_rmse = np.sqrt(mean_squared_error(y_test, test_predictions))
+    test_r2 = r2_score(y_test, test_predictions)
 
-    print("\n5. Saving Trained Model...")
+    print("\n" + "="*45)
+    print("           MODEL ACCURACY REPORT           ")
+    print("="*45)
+    print("--- TRAINING SET (SEEN DATA) ---")
+    print(f"Accuracy (R² Score):            {train_r2 * 100:.2f}%")
+    print(f"Mean Absolute Error (MAE):      {train_mae:.2f} Knots")
+    print(f"Root Mean Squared Error (RMSE): {train_rmse:.2f} Knots")
+    
+    print("\n--- TESTING SET (UNSEEN DATA) ---")
+    print(f"Accuracy (R² Score):            {test_r2 * 100:.2f}%")
+    print(f"Mean Absolute Error (MAE):      {test_mae:.2f} Knots")
+    print(f"Root Mean Squared Error (RMSE): {test_rmse:.2f} Knots")
+    print("="*45)
 
+    # Check for overfitting (If train error is much lower than test error)
+    if (test_mae - train_mae) > 0.5:
+        print("\n⚠️ Note: The model might be slightly overfitting.")
+        print("   (It memorized the training data instead of learning the patterns).")
+    else:
+        print("\n✅ Note: The model is well-balanced! No significant overfitting detected.")
 
-    # Save the model file inside this current folder
-    model_save_path = 'xgboost_wind_model.json'
-    model.save_model(model_save_path)
+    print("\n5. Saving Best Trained Model...")
+    model_save_path = os.path.join(current_dir, 'xgboost_wind_model.json')
+    best_model.save_model(model_save_path)
     print(f"✅ Model successfully saved to: {model_save_path}")
 
 if __name__ == '__main__':
