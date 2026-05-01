@@ -1,6 +1,6 @@
 import pandas as pd
 import xgboost as xgb
-from sklearn.model_selection import train_test_split, RandomizedSearchCV
+from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 import numpy as np
 import os
@@ -25,29 +25,28 @@ def main():
     print("2. Splitting data into Training and Testing sets (80/20)...")
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-    print("3. Running Hyperparameter Tuning (RandomizedSearchCV)...")
-    print("   (This might take a minute or two as it searches for the best mathematical settings)")
+    print("3. Running Hyperparameter Tuning (GridSearchCV)...")
+    print("   (Checking EVERY combination. This will take a few minutes...)")
     
-    # We define a grid of possible settings for XGBoost
+    # We define a focused grid for Exhaustive Search
+    # 3x3x2x2x2 = 72 combinations * 3 Folds = 216 total training runs!
     param_grid = {
-        'n_estimators': [100, 300, 500, 1000],
-        'max_depth': [3, 5, 7, 9],
-        'learning_rate': [0.01, 0.05, 0.1, 0.2],
-        'subsample': [0.7, 0.8, 1.0],
-        'colsample_bytree': [0.7, 0.8, 1.0]
+        'n_estimators': [300, 500, 1000],
+        'max_depth': [5, 7, 9],
+        'learning_rate': [0.01, 0.05],
+        'subsample': [0.8, 1.0],
+        'colsample_bytree': [0.8, 1.0]
     }
 
     base_model = xgb.XGBRegressor(objective='reg:squarederror', random_state=42)
     
-    # Tests 10 random combinations of the above settings
-    search = RandomizedSearchCV(
+    # GridSearchCV tests EVERY SINGLE combination in the param_grid
+    search = GridSearchCV(
         estimator=base_model,
-        param_distributions=param_grid,
-        n_iter=10,
+        param_grid=param_grid,
         scoring='neg_mean_absolute_error',
         cv=3,
         verbose=1,
-        random_state=42,
         n_jobs=-1
     )
 

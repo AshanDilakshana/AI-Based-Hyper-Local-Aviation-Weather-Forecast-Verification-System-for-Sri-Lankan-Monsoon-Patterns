@@ -31,6 +31,13 @@ class FeatureEngineer:
         if all(c in df_feat.columns for c in ['Year', 'Month', 'Date', 'Time(UTC)']):
             # Time is usually in HHMM format as integer (e.g., 10 -> 0010)
             time_str = df_feat['Time(UTC)'].astype(str).str.zfill(4)
+            
+            # --- NEW: Time of Day Features ---
+            # Extract the hour (0-23)
+            df_feat['Hour'] = pd.to_numeric(time_str.str[:2], errors='coerce').fillna(0)
+            df_feat['Hour_Sin'] = np.sin(2 * np.pi * df_feat['Hour'] / 24.0)
+            df_feat['Hour_Cos'] = np.cos(2 * np.pi * df_feat['Hour'] / 24.0)
+
             try:
                 df_feat['Datetime'] = pd.to_datetime(
                     df_feat['Year'].astype(str) + '-' +

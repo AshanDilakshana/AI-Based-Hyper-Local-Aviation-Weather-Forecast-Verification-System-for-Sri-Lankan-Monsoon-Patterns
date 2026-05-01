@@ -11,10 +11,12 @@ class WeatherDataPipeline:
         self.cleaner = DataCleaner()
         self.engineer = FeatureEngineer()
         
-        # The ultimate features we found via our Mutual Information analysis
+        # The ultimate features we found via our Mutual Information analysis + Time of Day
         self.required_features = [
             'Wind Dir_Sin', 
             'Wind Dir_Cos', 
+            'Hour_Sin',
+            'Hour_Cos',
             'Wind speed(Kts)_lag_3h', 
             'Dew_Point_Depression', 
             'Dry Temp(0C)', 
