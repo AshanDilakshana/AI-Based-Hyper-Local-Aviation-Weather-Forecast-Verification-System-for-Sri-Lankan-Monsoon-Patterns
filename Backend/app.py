@@ -37,7 +37,6 @@ def predict():
     df["day"] = now.day
     df["month"] = now.month
 
-    # Load real historical METAR data
     history = pd.read_csv(history_path)
     history["datetime"] = pd.to_datetime(history["datetime"])
     history = history.sort_values("datetime")
@@ -45,7 +44,6 @@ def predict():
     last_row = history.iloc[-1]
     last_3 = history.tail(3)
 
-    # Real lag values
     df["temp_lag1"] = last_row["temperature"]
     df["humidity_lag1"] = last_row["humidity"]
     df["pressure_lag1"] = last_row["pressure"]
@@ -55,7 +53,6 @@ def predict():
     df["wind_direction_lag1"] = last_row["wind_direction"]
     df["visibility_lag1"] = last_row["visibility"]
 
-    # Real rolling values
     df["temp_roll3"] = last_3["temperature"].mean()
     df["humidity_roll3"] = last_3["humidity"].mean()
     df["pressure_roll3"] = last_3["pressure"].mean()
@@ -64,12 +61,15 @@ def predict():
     df["wind_speed_roll3"] = last_3["wind_speed"].mean()
     df["visibility_roll3"] = last_3["visibility"].mean()
 
-    # Add missing encoded columns like clouds/weather dummy columns
-    for col in features:
-        if col not in df.columns:
-            df[col] = 0
+    # Add missing encoded columns efficiently
+    missing_cols = [col for col in features if col not in df.columns]
+
+    if missing_cols:
+        df_missing = pd.DataFrame(0, index=df.index, columns=missing_cols)
+        df = pd.concat([df, df_missing], axis=1)
 
     df = df[features]
+    df = df.copy()
 
     df_scaled = scaler.transform(df)
     prediction = model.predict(df_scaled)
