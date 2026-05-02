@@ -65,3 +65,5 @@ joblib.dump(list(X.columns), os.path.join(PROJECT_DIR, "model", "feature_columns
 
 print("✅ Model trained & saved successfully!")
 print("Features used:", list(X.columns))
+
+
