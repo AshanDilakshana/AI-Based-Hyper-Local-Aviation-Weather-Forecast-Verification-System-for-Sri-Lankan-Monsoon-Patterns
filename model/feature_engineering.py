@@ -17,30 +17,27 @@ df["hour"] = df["datetime"].dt.hour
 df["day"] = df["datetime"].dt.day
 df["month"] = df["datetime"].dt.month
 
-# Lag features - main variables
-df["temp_lag1"] = df["temperature"].shift(1)
-df["humidity_lag1"] = df["humidity"].shift(1)
-df["pressure_lag1"] = df["pressure"].shift(1)
+# Lag features
+for lag in [1, 3, 6]:
+    df[f"temp_lag{lag}"] = df["temperature"].shift(lag)
+    df[f"humidity_lag{lag}"] = df["humidity"].shift(lag)
+    df[f"pressure_lag{lag}"] = df["pressure"].shift(lag)
+    df[f"dew_point_lag{lag}"] = df["dew_point"].shift(lag)
+    df[f"wind_speed_lag{lag}"] = df["wind_speed"].shift(lag)
+    df[f"wind_direction_lag{lag}"] = df["wind_direction"].shift(lag)
+    df[f"visibility_lag{lag}"] = df["visibility"].shift(lag)
 
-# Lag features - extra factors
-df["dew_point_lag1"] = df["dew_point"].shift(1)
-df["wind_speed_lag1"] = df["wind_speed"].shift(1)
-df["wind_direction_lag1"] = df["wind_direction"].shift(1)
-df["visibility_lag1"] = df["visibility"].shift(1)
-
-# Rolling average features - main variables
-df["temp_roll3"] = df["temperature"].rolling(window=3).mean()
-df["humidity_roll3"] = df["humidity"].rolling(window=3).mean()
-df["pressure_roll3"] = df["pressure"].rolling(window=3).mean()
-
-# Rolling average features - extra factors
-df["dew_point_roll3"] = df["dew_point"].rolling(window=3).mean()
-df["wind_speed_roll3"] = df["wind_speed"].rolling(window=3).mean()
-df["visibility_roll3"] = df["visibility"].rolling(window=3).mean()
+# Rolling average features
+for window in [3, 6]:
+    df[f"temp_roll{window}"] = df["temperature"].rolling(window=window).mean()
+    df[f"humidity_roll{window}"] = df["humidity"].rolling(window=window).mean()
+    df[f"pressure_roll{window}"] = df["pressure"].rolling(window=window).mean()
+    df[f"dew_point_roll{window}"] = df["dew_point"].rolling(window=window).mean()
+    df[f"wind_speed_roll{window}"] = df["wind_speed"].rolling(window=window).mean()
+    df[f"visibility_roll{window}"] = df["visibility"].rolling(window=window).mean()
 
 # T+3 future targets
 df["target_temperature"] = df["temperature"].shift(-3)
-df["target_humidity"] = df["humidity"].shift(-3)
 df["target_pressure"] = df["pressure"].shift(-3)
 
 df = df.dropna()

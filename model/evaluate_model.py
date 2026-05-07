@@ -2,89 +2,100 @@ import pandas as pd
 import numpy as np
 import joblib
 import os
-import random
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+
+from sklearn.metrics import mean_squared_error, r2_score
+from tensorflow.keras.models import load_model
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_DIR = os.path.dirname(BASE_DIR)
 
-# Load data
 data_path = os.path.join(PROJECT_DIR, "data", "featured_northeast_monsoon.csv")
 df = pd.read_csv(data_path)
 
-# Load model
-model = joblib.load(os.path.join(PROJECT_DIR, "model", "weather_model.pkl"))
-scaler = joblib.load(os.path.join(PROJECT_DIR, "model", "scaler.pkl"))
-features = joblib.load(os.path.join(PROJECT_DIR, "model", "feature_columns.pkl"))
+y_real = df[[
+    "target_temperature",
+    "target_pressure"
+]]
 
-# Prepare data (🔥 IMPORTANT - y define here)
-X = df[features]
-y = df[["target_temperature", "target_humidity", "target_pressure"]]
+# ================= RANDOM FOREST =================
 
-# Scale
-X_scaled = scaler.transform(X)
+rf_model = joblib.load(os.path.join(BASE_DIR, "weather_model.pkl"))
+rf_scaler = joblib.load(os.path.join(BASE_DIR, "scaler.pkl"))
+rf_features = joblib.load(os.path.join(BASE_DIR, "feature_columns.pkl"))
 
-# Predict
-y_pred = model.predict(X_scaled)
+rf_features = [f for f in rf_features if f in df.columns]
 
-print("X shape:", X.shape)
-print("y shape:", y.shape)
-print("y_pred shape:", y_pred.shape)
+X_rf = df[rf_features]
+X_rf_scaled = rf_scaler.transform(X_rf)
+rf_pred = rf_model.predict(X_rf_scaled)
 
-# =========================
-# 🔥 REAL vs PREDICTION TABLE
-# =========================
-print("\n🔍 Selecting 10 Random Samples for Verification...\n")
+rf_rmse = np.sqrt(mean_squared_error(y_real, rf_pred))
+rf_r2 = r2_score(y_real, rf_pred)
 
-sample_size = min(10, len(y))
-indices = random.sample(range(len(y)), sample_size)
+# ================= LSTM =================
 
-y_actual = y.iloc[indices].values
-y_pred_sample = y_pred[indices]
+lstm_model = load_model(os.path.join(BASE_DIR, "lstm_weather_model.keras"))
+lstm_x_scaler = joblib.load(os.path.join(BASE_DIR, "lstm_x_scaler.pkl"))
+lstm_y_scaler = joblib.load(os.path.join(BASE_DIR, "lstm_y_scaler.pkl"))
+lstm_features = joblib.load(os.path.join(BASE_DIR, "lstm_feature_columns.pkl"))
 
-print("="*100)
-print(f"{'MODEL VERIFICATION: REAL DATA vs AI PREDICTION':^100}")
-print("="*100)
+lstm_features = [f for f in lstm_features if f in df.columns]
 
-print(f"{'Sample #':<10} | {'Temp (Real)':<12} | {'Temp (Pred)':<12} | {'Error':<8} | "
-      f"{'Humidity (Real)':<15} | {'Humidity (Pred)':<15} | {'Error':<8} | "
-      f"{'Pressure (Real)':<15} | {'Pressure (Pred)':<15} | {'Error':<8}")
+X_lstm = df[lstm_features]
+X_lstm_scaled = lstm_x_scaler.transform(X_lstm)
 
-print("-"*100)
+time_steps_path = os.path.join(BASE_DIR, "lstm_time_steps.pkl")
 
-for i in range(sample_size):
-    t_real = y_actual[i][0]
-    t_pred = y_pred_sample[i][0]
-    t_err = abs(t_real - t_pred)
+if os.path.exists(time_steps_path):
+    time_steps = joblib.load(time_steps_path)
+else:
+    time_steps = 6
 
-    h_real = y_actual[i][1]
-    h_pred = y_pred_sample[i][1]
-    h_err = abs(h_real - h_pred)
+X_seq = []
 
-    p_real = y_actual[i][2]
-    p_pred = y_pred_sample[i][2]
-    p_err = abs(p_real - p_pred)
+for i in range(time_steps, len(X_lstm_scaled)):
+    X_seq.append(X_lstm_scaled[i-time_steps:i])
 
-    print(f"Test #{i+1:<4} | "
-          f"{t_real:<12.2f} | {t_pred:<12.2f} | {t_err:<8.2f} | "
-          f"{h_real:<15.2f} | {h_pred:<15.2f} | {h_err:<8.2f} | "
-          f"{p_real:<15.2f} | {p_pred:<15.2f} | {p_err:<8.2f}")
+X_seq = np.array(X_seq)
 
-print("="*100)
-print("💡 Smaller error = better prediction accuracy")
+y_lstm_real = y_real.iloc[time_steps:].values
 
-# =========================
-# 🔥 METRICS
-# =========================
-try:
-    rmse = np.sqrt(mean_squared_error(y, y_pred))
-    r2 = r2_score(y, y_pred)
-    accuracy = r2 * 100
+lstm_pred_scaled = lstm_model.predict(X_seq)
+lstm_pred = lstm_y_scaler.inverse_transform(lstm_pred_scaled)
 
-    print("\n📊 MODEL PERFORMANCE")
-    print("Overall RMSE:", rmse)
-    print("R2 Score:", r2)
-    print("Accuracy:", round(accuracy, 2), "%")
+lstm_rmse = np.sqrt(mean_squared_error(y_lstm_real, lstm_pred))
+lstm_r2 = r2_score(y_lstm_real, lstm_pred)
 
-except Exception as e:
-    print("❌ Error in evaluation:", str(e))
+# ================= AUTOENCODER =================
+
+auto_model = load_model(os.path.join(BASE_DIR, "autoencoder_weather_model.keras"))
+auto_x_scaler = joblib.load(os.path.join(BASE_DIR, "autoencoder_x_scaler.pkl"))
+auto_y_scaler = joblib.load(os.path.join(BASE_DIR, "autoencoder_y_scaler.pkl"))
+auto_features = joblib.load(os.path.join(BASE_DIR, "autoencoder_feature_columns.pkl"))
+
+auto_features = [f for f in auto_features if f in df.columns]
+
+X_auto = df[auto_features]
+X_auto_scaled = auto_x_scaler.transform(X_auto)
+
+auto_pred_scaled = auto_model.predict(X_auto_scaled)
+auto_pred = auto_y_scaler.inverse_transform(auto_pred_scaled)
+
+auto_rmse = np.sqrt(mean_squared_error(y_real, auto_pred))
+auto_r2 = r2_score(y_real, auto_pred)
+
+# ================= FINAL COMPARISON =================
+
+print("\n" + "=" * 80)
+print(" FINAL MODEL COMPARISON ")
+print("=" * 80)
+
+print(f"{'Model':<20} {'RMSE':<15} {'R2 Score':<15} {'Accuracy':<15}")
+print("-" * 80)
+
+print(f"{'Random Forest':<20} {round(rf_rmse, 3):<15} {round(rf_r2, 3):<15} {round(rf_r2 * 100, 2):<15}")
+print(f"{'LSTM':<20} {round(lstm_rmse, 3):<15} {round(lstm_r2, 3):<15} {round(lstm_r2 * 100, 2):<15}")
+print(f"{'Autoencoder':<20} {round(auto_rmse, 3):<15} {round(auto_r2, 3):<15} {round(auto_r2 * 100, 2):<15}")
+
+print("=" * 80)
+print("LSTM Time Steps Used:", time_steps)
