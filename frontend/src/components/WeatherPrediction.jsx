@@ -51,68 +51,13 @@ export default function WeatherPrediction() {
         </div>
 
         <form className="weather-form" onSubmit={handlePredict}>
-          <input
-            type="number"
-            name="temperature"
-            placeholder="Temperature (°C)"
-            value={formData.temperature}
-            onChange={handleChange}
-            required
-          />
-
-          <input
-            type="number"
-            name="humidity"
-            placeholder="Humidity (%)"
-            value={formData.humidity}
-            onChange={handleChange}
-            required
-          />
-
-          <input
-            type="number"
-            name="pressure"
-            placeholder="Pressure (hPa)"
-            value={formData.pressure}
-            onChange={handleChange}
-            required
-          />
-
-          <input
-            type="number"
-            name="dew_point"
-            placeholder="Dew Point (°C)"
-            value={formData.dew_point}
-            onChange={handleChange}
-            required
-          />
-
-          <input
-            type="number"
-            name="wind_speed"
-            placeholder="Wind Speed (Kts)"
-            value={formData.wind_speed}
-            onChange={handleChange}
-            required
-          />
-
-          <input
-            type="number"
-            name="wind_direction"
-            placeholder="Wind Direction (°)"
-            value={formData.wind_direction}
-            onChange={handleChange}
-            required
-          />
-
-          <input
-            type="number"
-            name="visibility"
-            placeholder="Visibility (km)"
-            value={formData.visibility}
-            onChange={handleChange}
-            required
-          />
+          <input type="number" name="temperature" placeholder="Temperature (°C)" value={formData.temperature} onChange={handleChange} required />
+          <input type="number" name="humidity" placeholder="Humidity (%)" value={formData.humidity} onChange={handleChange} required />
+          <input type="number" name="pressure" placeholder="Pressure (hPa)" value={formData.pressure} onChange={handleChange} required />
+          <input type="number" name="dew_point" placeholder="Dew Point (°C)" value={formData.dew_point} onChange={handleChange} required />
+          <input type="number" name="wind_speed" placeholder="Wind Speed (Kts)" value={formData.wind_speed} onChange={handleChange} required />
+          <input type="number" name="wind_direction" placeholder="Wind Direction (°)" value={formData.wind_direction} onChange={handleChange} required />
+          <input type="number" name="visibility" placeholder="Visibility (km)" value={formData.visibility} onChange={handleChange} required />
 
           <button type="submit" className="predict-btn">
             Predict Next 3 Hours
@@ -135,25 +80,13 @@ export default function WeatherPrediction() {
               <tbody>
                 <tr>
                   <td>Temp (°C)</td>
-                  <td className="ai-value">
-                    {prediction.temperature.toFixed(2)}
-                  </td>
-                  <td className="success">✓</td>
-                </tr>
-
-                <tr>
-                  <td>Humidity (%)</td>
-                  <td className="ai-value">
-                    {prediction.humidity.toFixed(2)}
-                  </td>
+                  <td className="ai-value">{prediction.temperature.toFixed(2)}</td>
                   <td className="success">✓</td>
                 </tr>
 
                 <tr>
                   <td>Press (hPa)</td>
-                  <td className="ai-value">
-                    {prediction.pressure.toFixed(2)}
-                  </td>
+                  <td className="ai-value">{prediction.pressure.toFixed(2)}</td>
                   <td className="success">✓</td>
                 </tr>
               </tbody>

@@ -41,43 +41,49 @@ def predict():
     history["datetime"] = pd.to_datetime(history["datetime"])
     history = history.sort_values("datetime")
 
-    last_row = history.iloc[-1]
+    last_1 = history.tail(1)
     last_3 = history.tail(3)
+    last_6 = history.tail(6)
 
-    df["temp_lag1"] = last_row["temperature"]
-    df["humidity_lag1"] = last_row["humidity"]
-    df["pressure_lag1"] = last_row["pressure"]
+    last_row = last_1.iloc[-1]
 
-    df["dew_point_lag1"] = last_row["dew_point"]
-    df["wind_speed_lag1"] = last_row["wind_speed"]
-    df["wind_direction_lag1"] = last_row["wind_direction"]
-    df["visibility_lag1"] = last_row["visibility"]
+    # Lag features
+    for lag, rows in [(1, last_1), (3, history.tail(3)), (6, history.tail(6))]:
+        lag_row = rows.iloc[0]
 
-    df["temp_roll3"] = last_3["temperature"].mean()
-    df["humidity_roll3"] = last_3["humidity"].mean()
-    df["pressure_roll3"] = last_3["pressure"].mean()
+        df[f"temp_lag{lag}"] = lag_row["temperature"]
+        df[f"humidity_lag{lag}"] = lag_row["humidity"]
+        df[f"pressure_lag{lag}"] = lag_row["pressure"]
 
-    df["dew_point_roll3"] = last_3["dew_point"].mean()
-    df["wind_speed_roll3"] = last_3["wind_speed"].mean()
-    df["visibility_roll3"] = last_3["visibility"].mean()
+        df[f"dew_point_lag{lag}"] = lag_row["dew_point"]
+        df[f"wind_speed_lag{lag}"] = lag_row["wind_speed"]
+        df[f"wind_direction_lag{lag}"] = lag_row["wind_direction"]
+        df[f"visibility_lag{lag}"] = lag_row["visibility"]
 
-    # Add missing encoded columns efficiently
+    # Rolling features
+    for window, rows in [(3, last_3), (6, last_6)]:
+        df[f"temp_roll{window}"] = rows["temperature"].mean()
+        df[f"humidity_roll{window}"] = rows["humidity"].mean()
+        df[f"pressure_roll{window}"] = rows["pressure"].mean()
+
+        df[f"dew_point_roll{window}"] = rows["dew_point"].mean()
+        df[f"wind_speed_roll{window}"] = rows["wind_speed"].mean()
+        df[f"visibility_roll{window}"] = rows["visibility"].mean()
+
     missing_cols = [col for col in features if col not in df.columns]
 
     if missing_cols:
         df_missing = pd.DataFrame(0, index=df.index, columns=missing_cols)
         df = pd.concat([df, df_missing], axis=1)
 
-    df = df[features]
-    df = df.copy()
+    df = df[features].copy()
 
     df_scaled = scaler.transform(df)
     prediction = model.predict(df_scaled)
 
     return jsonify({
         "temperature": round(float(prediction[0][0]), 2),
-        "humidity": round(float(prediction[0][1]), 2),
-        "pressure": round(float(prediction[0][2]), 2)
+        "pressure": round(float(prediction[0][1]), 2)
     })
 
 
