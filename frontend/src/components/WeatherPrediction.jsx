@@ -4,6 +4,7 @@ import "./WeatherPrediction.css";
 
 export default function WeatherPrediction() {
   const [formData, setFormData] = useState({
+    time_utc: "",
     temperature: "",
     humidity: "",
     pressure: "",
@@ -25,73 +26,193 @@ export default function WeatherPrediction() {
   const handlePredict = async (e) => {
     e.preventDefault();
 
-    const res = await axios.post("http://127.0.0.1:5000/predict", {
-      temperature: Number(formData.temperature),
-      humidity: Number(formData.humidity),
-      pressure: Number(formData.pressure),
-      dew_point: Number(formData.dew_point),
-      wind_speed: Number(formData.wind_speed),
-      wind_direction: Number(formData.wind_direction),
-      visibility: Number(formData.visibility),
-    });
+    try {
+      const res = await axios.post("http://127.0.0.1:5000/predict", {
+        time_utc: formData.time_utc,
+        temperature: Number(formData.temperature),
+        humidity: Number(formData.humidity),
+        pressure: Number(formData.pressure),
+        dew_point: Number(formData.dew_point),
+        wind_speed: Number(formData.wind_speed),
+        wind_direction: Number(formData.wind_direction),
+        visibility: Number(formData.visibility),
+      });
 
-    setPrediction(res.data);
+      setPrediction(res.data);
+    } catch (error) {
+      console.error(error);
+
+      alert(
+        error.response?.data?.error ||
+        "Prediction failed. Check backend connection."
+      );
+    }
   };
 
   return (
-    <div className="weather-page">
-      <div className="weather-card">
-        <div className="weather-header">
-          <div>
-            <h2>AI Aviation Weather Prediction</h2>
-            <p>T+3 Hour Forecast - Northeast Monsoon</p>
-          </div>
-
-          <button className="verify-btn">T-1h Verification</button>
+    <div className="aviation-page">
+      <div className="top-bar">
+        <div>
+          <h2>Aviation Weather Forecast Center</h2>
+          <p>Bandaranaike International Airport (BIA)</p>
         </div>
 
-        <form className="weather-form" onSubmit={handlePredict}>
-          <input type="number" name="temperature" placeholder="Temperature (°C)" value={formData.temperature} onChange={handleChange} required />
-          <input type="number" name="humidity" placeholder="Humidity (%)" value={formData.humidity} onChange={handleChange} required />
-          <input type="number" name="pressure" placeholder="Pressure (hPa)" value={formData.pressure} onChange={handleChange} required />
-          <input type="number" name="dew_point" placeholder="Dew Point (°C)" value={formData.dew_point} onChange={handleChange} required />
-          <input type="number" name="wind_speed" placeholder="Wind Speed (Kts)" value={formData.wind_speed} onChange={handleChange} required />
-          <input type="number" name="wind_direction" placeholder="Wind Direction (°)" value={formData.wind_direction} onChange={handleChange} required />
-          <input type="number" name="visibility" placeholder="Visibility (km)" value={formData.visibility} onChange={handleChange} required />
+        <span className="utc-badge">UTC System</span>
+      </div>
 
-          <button type="submit" className="predict-btn">
-            Predict Next 3 Hours
+      <div className="main-grid">
+
+        {/* LEFT INPUT PANEL */}
+        <form className="feed-card" onSubmit={handlePredict}>
+          <h3>Live Weather Feed</h3>
+
+          <label>Time (UTC)</label>
+          <input
+            type="text"
+            name="time_utc"
+            placeholder="0310"
+            value={formData.time_utc}
+            onChange={handleChange}
+            required
+          />
+
+          <label>Dry Temperature (°C)</label>
+          <input
+            type="number"
+            step="0.1"
+            name="temperature"
+            value={formData.temperature}
+            onChange={handleChange}
+            required
+          />
+
+          <label>Dew Point (°C)</label>
+          <input
+            type="number"
+            step="0.1"
+            name="dew_point"
+            value={formData.dew_point}
+            onChange={handleChange}
+            required
+          />
+
+          <label>Relative Humidity (%)</label>
+          <input
+            type="number"
+            name="humidity"
+            value={formData.humidity}
+            onChange={handleChange}
+            required
+          />
+
+          <label>Wind Direction (°)</label>
+          <input
+            type="number"
+            name="wind_direction"
+            value={formData.wind_direction}
+            onChange={handleChange}
+            required
+          />
+
+          <label>Barometric Pressure QNH (hPa)</label>
+          <input
+            type="number"
+            step="0.1"
+            name="pressure"
+            value={formData.pressure}
+            onChange={handleChange}
+            required
+          />
+
+          <label>Wind Speed (Kts)</label>
+          <input
+            type="number"
+            step="0.1"
+            name="wind_speed"
+            value={formData.wind_speed}
+            onChange={handleChange}
+            required
+          />
+
+          <label>Visibility (m)</label>
+          <input
+            type="number"
+            name="visibility"
+            placeholder="9999"
+            value={formData.visibility}
+            onChange={handleChange}
+            required
+          />
+
+          <button type="submit">
+            Generate Forecast
           </button>
         </form>
 
-        {prediction && (
-          <div className="prediction-box">
-            <h3>Predicted Weather</h3>
+        {/* RESULT AREA */}
+        {!prediction ? (
+          <div className="ready-card">
+            <h2>System Ready</h2>
 
-            <table>
-              <thead>
-                <tr>
-                  <th>PARAMETER</th>
-                  <th>AI MODEL</th>
-                  <th>STATUS</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                <tr>
-                  <td>Temp (°C)</td>
-                  <td className="ai-value">{prediction.temperature.toFixed(2)}</td>
-                  <td className="success">✓</td>
-                </tr>
-
-                <tr>
-                  <td>Press (hPa)</td>
-                  <td className="ai-value">{prediction.pressure.toFixed(2)}</td>
-                  <td className="success">✓</td>
-                </tr>
-              </tbody>
-            </table>
+            <p>
+              Enter live meteorological data to generate
+              T+3 hour aviation weather forecast.
+            </p>
           </div>
+        ) : (
+          <>
+            {/* TEMPERATURE CARD */}
+            <div className="result-card">
+              <div className="result-header">
+                <h3>Predicted Temperature</h3>
+                <span>SAFE</span>
+              </div>
+
+              <h1>{prediction.temperature.toFixed(2)}</h1>
+
+              <p className="unit">°C</p>
+
+              <div className="mini-box">
+                <p>Forecast Type</p>
+                <b>T+3 Hour</b>
+              </div>
+
+              <div className="mini-box">
+                <p>Forecast UTC Time</p>
+                <b>{prediction.forecast_time_utc}</b>
+              </div>
+
+              <p className="note">
+                Temperature forecast generated using AI model.
+              </p>
+            </div>
+
+            {/* PRESSURE CARD */}
+            <div className="result-card">
+              <div className="result-header">
+                <h3>Predicted Pressure</h3>
+                <span>SAFE</span>
+              </div>
+
+              <h1>{prediction.pressure.toFixed(2)}</h1>
+
+              <p className="unit">hPa</p>
+
+              <div className="mini-box">
+                <p>Forecast Type</p>
+                <b>T+3 Hour</b>
+              </div>
+
+              <div className="mini-box">
+                <p>Forecast UTC Time</p>
+                <b>{prediction.forecast_time_utc}</b>
+              </div>
+
+              <p className="note">
+                Pressure forecast generated for next 3 hours.
+              </p>
+            </div>
+          </>
         )}
       </div>
     </div>

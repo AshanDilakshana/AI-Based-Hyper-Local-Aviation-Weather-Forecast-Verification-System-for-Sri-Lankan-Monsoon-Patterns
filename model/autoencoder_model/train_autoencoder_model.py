@@ -11,14 +11,23 @@ from tensorflow.keras.layers import Input, Dense, Dropout
 from tensorflow.keras.callbacks import EarlyStopping
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_DIR = os.path.dirname(BASE_DIR)
+
+# train_autoencoder_model.py තියෙන්නේ model/autoencoder_model/ ඇතුළේ
+# ඒ නිසා project root එකට යන්න folders 2ක් up යනවා
+PROJECT_DIR = os.path.dirname(os.path.dirname(BASE_DIR))
 
 input_path = os.path.join(PROJECT_DIR, "data", "featured_northeast_monsoon.csv")
+
+print("Dataset Path:", input_path)
+
+if not os.path.exists(input_path):
+    raise FileNotFoundError(f"Dataset not found: {input_path}")
 
 df = pd.read_csv(input_path)
 
 drop_cols = [
     "datetime",
+    "future_time",
     "target_temperature",
     "target_humidity",
     "target_pressure"
@@ -47,8 +56,6 @@ y_test = y_scaled[split_index:]
 
 input_dim = X_train.shape[1]
 
-# ---------------- AUTOENCODER MODEL ----------------
-
 input_layer = Input(shape=(input_dim,))
 
 encoded = Dense(64, activation="relu")(input_layer)
@@ -60,7 +67,6 @@ decoded = Dense(32, activation="relu")(encoded)
 decoded = Dropout(0.2)(decoded)
 decoded = Dense(64, activation="relu")(decoded)
 
-# prediction output: temperature and pressure
 output_layer = Dense(2)(decoded)
 
 model = Model(inputs=input_layer, outputs=output_layer)
@@ -92,17 +98,17 @@ y_pred_scaled = model.predict(X_test)
 y_pred = y_scaler.inverse_transform(y_pred_scaled)
 y_test_original = y_scaler.inverse_transform(y_test)
 
-print("Temperature MAE:",
-      mean_absolute_error(y_test_original[:, 0], y_pred[:, 0]))
+temp_mae = mean_absolute_error(y_test_original[:, 0], y_pred[:, 0])
+pressure_mae = mean_absolute_error(y_test_original[:, 1], y_pred[:, 1])
+overall_rmse = np.sqrt(mean_squared_error(y_test_original, y_pred))
+overall_r2 = r2_score(y_test_original, y_pred)
 
-print("Pressure MAE:",
-      mean_absolute_error(y_test_original[:, 1], y_pred[:, 1]))
-
-print("Overall RMSE:",
-      np.sqrt(mean_squared_error(y_test_original, y_pred)))
-
-print("Overall R2 Score:",
-      r2_score(y_test_original, y_pred))
+print("\n📊 AUTOENCODER MODEL PERFORMANCE")
+print("Temperature MAE:", temp_mae)
+print("Pressure MAE:", pressure_mae)
+print("Overall RMSE:", overall_rmse)
+print("Overall R2 Score:", overall_r2)
+print("Accuracy:", round(overall_r2 * 100, 2), "%")
 
 model.save(os.path.join(BASE_DIR, "autoencoder_weather_model.keras"))
 

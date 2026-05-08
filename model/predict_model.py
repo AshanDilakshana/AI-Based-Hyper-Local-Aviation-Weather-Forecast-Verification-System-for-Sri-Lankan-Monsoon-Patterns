@@ -1,17 +1,14 @@
 import pandas as pd
+import numpy as np
 import joblib
 import os
 from datetime import datetime
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-model_path = os.path.join(BASE_DIR, "weather_model.pkl")
-scaler_path = os.path.join(BASE_DIR, "scaler.pkl")
-features_path = os.path.join(BASE_DIR, "feature_columns.pkl")
-
-model = joblib.load(model_path)
-scaler = joblib.load(scaler_path)
-features = joblib.load(features_path)
+model = joblib.load(os.path.join(BASE_DIR, "weather_model.pkl"))
+scaler = joblib.load(os.path.join(BASE_DIR, "scaler.pkl"))
+features = joblib.load(os.path.join(BASE_DIR, "feature_columns.pkl"))
 
 current_data = {
     "temperature": 20,
@@ -25,13 +22,23 @@ current_data = {
 
 df = pd.DataFrame([current_data])
 
-now = datetime.now()
+now = datetime.utcnow()
 
 df["hour"] = now.hour
 df["day"] = now.day
 df["month"] = now.month
+df["dayofweek"] = now.weekday()
 
-# Lag features
+df["hour_sin"] = np.sin(2 * np.pi * df["hour"] / 24)
+df["hour_cos"] = np.cos(2 * np.pi * df["hour"] / 24)
+df["month_sin"] = np.sin(2 * np.pi * df["month"] / 12)
+df["month_cos"] = np.cos(2 * np.pi * df["month"] / 12)
+
+df["wind_dir_sin"] = np.sin(2 * np.pi * df["wind_direction"] / 360)
+df["wind_dir_cos"] = np.cos(2 * np.pi * df["wind_direction"] / 360)
+
+df["dew_temp_spread"] = df["temperature"] - df["dew_point"]
+
 for lag in [1, 3, 6]:
     df[f"temp_lag{lag}"] = df["temperature"]
     df[f"humidity_lag{lag}"] = df["humidity"]
@@ -41,7 +48,6 @@ for lag in [1, 3, 6]:
     df[f"wind_direction_lag{lag}"] = df["wind_direction"]
     df[f"visibility_lag{lag}"] = df["visibility"]
 
-# Rolling features
 for window in [3, 6]:
     df[f"temp_roll{window}"] = df["temperature"]
     df[f"humidity_roll{window}"] = df["humidity"]
@@ -50,7 +56,6 @@ for window in [3, 6]:
     df[f"wind_speed_roll{window}"] = df["wind_speed"]
     df[f"visibility_roll{window}"] = df["visibility"]
 
-# Add any missing feature columns
 for col in features:
     if col not in df.columns:
         df[col] = 0
@@ -58,7 +63,6 @@ for col in features:
 df = df[features]
 
 df_scaled = scaler.transform(df)
-
 prediction = model.predict(df_scaled)
 
 print("\n🌤️ T+3 Hour Prediction")

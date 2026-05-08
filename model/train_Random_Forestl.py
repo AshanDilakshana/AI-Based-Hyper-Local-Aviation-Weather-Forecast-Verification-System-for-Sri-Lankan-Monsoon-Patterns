@@ -15,8 +15,10 @@ PROJECT_DIR = os.path.dirname(BASE_DIR)
 input_path = os.path.join(PROJECT_DIR, "data", "featured_northeast_monsoon.csv")
 df = pd.read_csv(input_path)
 
+# Columns not used as model inputs
 drop_cols = [
     "datetime",
+    "future_time",
     "target_temperature",
     "target_humidity",
     "target_pressure"
@@ -30,7 +32,10 @@ y = df[[
 ]]
 
 X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, shuffle=False
+    X,
+    y,
+    test_size=0.2,
+    shuffle=False
 )
 
 scaler = StandardScaler()
@@ -71,12 +76,17 @@ print(grid_search.best_params_)
 
 y_pred = best_model.predict(X_test_scaled)
 
+temp_mae = mean_absolute_error(y_test["target_temperature"], y_pred[:, 0])
+pressure_mae = mean_absolute_error(y_test["target_pressure"], y_pred[:, 1])
+overall_rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+overall_r2 = r2_score(y_test, y_pred)
+
 print("\n📊 TUNED RANDOM FOREST PERFORMANCE")
-print("Temperature MAE:", mean_absolute_error(y_test["target_temperature"], y_pred[:, 0]))
-print("Pressure MAE:", mean_absolute_error(y_test["target_pressure"], y_pred[:, 1]))
-print("Overall RMSE:", np.sqrt(mean_squared_error(y_test, y_pred)))
-print("Overall R2 Score:", r2_score(y_test, y_pred))
-print("Accuracy:", round(r2_score(y_test, y_pred) * 100, 2), "%")
+print("Temperature MAE:", temp_mae)
+print("Pressure MAE:", pressure_mae)
+print("Overall RMSE:", overall_rmse)
+print("Overall R2 Score:", overall_r2)
+print("Accuracy:", round(overall_r2 * 100, 2), "%")
 
 joblib.dump(best_model, os.path.join(BASE_DIR, "weather_model.pkl"))
 joblib.dump(scaler, os.path.join(BASE_DIR, "scaler.pkl"))

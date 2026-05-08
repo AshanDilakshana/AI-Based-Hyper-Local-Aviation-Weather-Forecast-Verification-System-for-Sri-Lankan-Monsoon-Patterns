@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import joblib
 import pandas as pd
+import numpy as np
 from datetime import datetime
 import os
 
@@ -14,8 +15,6 @@ PROJECT_DIR = os.path.dirname(BASE_DIR)
 model = joblib.load(os.path.join(PROJECT_DIR, "model", "weather_model.pkl"))
 scaler = joblib.load(os.path.join(PROJECT_DIR, "model", "scaler.pkl"))
 features = joblib.load(os.path.join(PROJECT_DIR, "model", "feature_columns.pkl"))
-
-history_path = os.path.join(PROJECT_DIR, "data", "clean_northeast_monsoon.csv")
 
 
 @app.route("/predict", methods=["POST"])
@@ -32,49 +31,62 @@ def predict():
         "visibility": float(data["visibility"])
     }])
 
-    now = datetime.now()
+    # Use entered UTC time from frontend
+    time_str = str(data.get("time_utc", "")).zfill(4)
+
+    if len(time_str) != 4 or not time_str.isdigit():
+        return jsonify({"error": "Invalid time_utc format. Use HHMM format, example: 0310"}), 400
+
+    hour = int(time_str[:2])
+    minute = int(time_str[2:])
+
+    if hour > 23 or minute > 59:
+        return jsonify({"error": "Invalid UTC time value"}), 400
+
+    now = datetime.utcnow().replace(
+        hour=hour,
+        minute=minute,
+        second=0,
+        microsecond=0
+    )
+
     df["hour"] = now.hour
     df["day"] = now.day
     df["month"] = now.month
+    df["dayofweek"] = now.weekday()
 
-    history = pd.read_csv(history_path)
-    history["datetime"] = pd.to_datetime(history["datetime"])
-    history = history.sort_values("datetime")
+    df["hour_sin"] = np.sin(2 * np.pi * df["hour"] / 24)
+    df["hour_cos"] = np.cos(2 * np.pi * df["hour"] / 24)
 
-    last_1 = history.tail(1)
-    last_3 = history.tail(3)
-    last_6 = history.tail(6)
+    df["month_sin"] = np.sin(2 * np.pi * df["month"] / 12)
+    df["month_cos"] = np.cos(2 * np.pi * df["month"] / 12)
 
-    last_row = last_1.iloc[-1]
+    df["wind_dir_sin"] = np.sin(2 * np.pi * df["wind_direction"] / 360)
+    df["wind_dir_cos"] = np.cos(2 * np.pi * df["wind_direction"] / 360)
 
-    # Lag features
-    for lag, rows in [(1, last_1), (3, history.tail(3)), (6, history.tail(6))]:
-        lag_row = rows.iloc[0]
+    df["dew_temp_spread"] = df["temperature"] - df["dew_point"]
 
-        df[f"temp_lag{lag}"] = lag_row["temperature"]
-        df[f"humidity_lag{lag}"] = lag_row["humidity"]
-        df[f"pressure_lag{lag}"] = lag_row["pressure"]
+    # For live single input, use current values as lag/rolling approximation
+    for lag in [1, 3, 6]:
+        df[f"temp_lag{lag}"] = df["temperature"]
+        df[f"humidity_lag{lag}"] = df["humidity"]
+        df[f"pressure_lag{lag}"] = df["pressure"]
+        df[f"dew_point_lag{lag}"] = df["dew_point"]
+        df[f"wind_speed_lag{lag}"] = df["wind_speed"]
+        df[f"wind_direction_lag{lag}"] = df["wind_direction"]
+        df[f"visibility_lag{lag}"] = df["visibility"]
 
-        df[f"dew_point_lag{lag}"] = lag_row["dew_point"]
-        df[f"wind_speed_lag{lag}"] = lag_row["wind_speed"]
-        df[f"wind_direction_lag{lag}"] = lag_row["wind_direction"]
-        df[f"visibility_lag{lag}"] = lag_row["visibility"]
+    for window in [3, 6]:
+        df[f"temp_roll{window}"] = df["temperature"]
+        df[f"humidity_roll{window}"] = df["humidity"]
+        df[f"pressure_roll{window}"] = df["pressure"]
+        df[f"dew_point_roll{window}"] = df["dew_point"]
+        df[f"wind_speed_roll{window}"] = df["wind_speed"]
+        df[f"visibility_roll{window}"] = df["visibility"]
 
-    # Rolling features
-    for window, rows in [(3, last_3), (6, last_6)]:
-        df[f"temp_roll{window}"] = rows["temperature"].mean()
-        df[f"humidity_roll{window}"] = rows["humidity"].mean()
-        df[f"pressure_roll{window}"] = rows["pressure"].mean()
-
-        df[f"dew_point_roll{window}"] = rows["dew_point"].mean()
-        df[f"wind_speed_roll{window}"] = rows["wind_speed"].mean()
-        df[f"visibility_roll{window}"] = rows["visibility"].mean()
-
-    missing_cols = [col for col in features if col not in df.columns]
-
-    if missing_cols:
-        df_missing = pd.DataFrame(0, index=df.index, columns=missing_cols)
-        df = pd.concat([df, df_missing], axis=1)
+    for col in features:
+        if col not in df.columns:
+            df[col] = 0
 
     df = df[features].copy()
 
@@ -83,7 +95,10 @@ def predict():
 
     return jsonify({
         "temperature": round(float(prediction[0][0]), 2),
-        "pressure": round(float(prediction[0][1]), 2)
+        "pressure": round(float(prediction[0][1]), 2),
+        "forecast": "T+3 Hour Forecast",
+        "input_time_utc": time_str,
+        "forecast_time_utc": f"{(hour + 3) % 24:02d}{minute:02d}"
     })
 
 
