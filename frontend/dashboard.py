@@ -16,6 +16,7 @@ st.markdown("""
     .cloud-val { color: #2e66ff; font-size: 2rem; font-weight: 500; }
     </style>
     """, unsafe_allow_html=True)
+    
 
 col_in, col_out = st.columns([1, 2])
 
