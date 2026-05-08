@@ -9,7 +9,8 @@ def preprocess_and_engineer_features(input_path, output_path):
         return
 
     print("Loading METAR data...")
-    df = pd.read_csv(input_path)
+    # Using read_excel because the input is a .xlsx file
+    df = pd.read_excel(input_path)
     
     # 2. Map exact column names from the CSV
     # Your dataset uses 'RH(%)' and 'QNH (hPa)'
@@ -45,7 +46,8 @@ def preprocess_and_engineer_features(input_path, output_path):
 
 if __name__ == "__main__":
     # Ensure the path matches your actual filename in the data folder
-    RAW_DATA = './data/BIA_METAR_DATA_(2019_2024).xlsx'
-    PROCESSED_DATA = '../data/processed_features.csv'
+    # Paths updated to be relative to the project root
+    RAW_DATA = 'data/BIA_METAR_DATA_(2019_2024).xlsx'
+    PROCESSED_DATA = 'data/processed_features.csv'
     
     preprocess_and_engineer_features(RAW_DATA, PROCESSED_DATA)
