@@ -2,3 +2,4 @@
 *.png
 data/processed_features.csv
 models/XGBoost/importance_xgb.csv
+*.csv
