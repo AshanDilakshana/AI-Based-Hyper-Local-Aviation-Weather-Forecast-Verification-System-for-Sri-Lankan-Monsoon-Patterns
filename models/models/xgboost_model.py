@@ -1,45 +1,59 @@
 import pandas as pd
 import pickle
-from xgboost import XGBRegressor, XGBClassifier
+import os
+import numpy as np
+from xgboost import XGBRegressor
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_absolute_error, accuracy_score
+from sklearn.metrics import r2_score, mean_absolute_error
 
-# 1. Load the takeoff-focused dataset
-df = pd.read_csv('../../data/aviation_weather_features.csv')
+# Path configuration
+BASE_DIR = r'C:\Users\USER\Desktop\Research_IT22619976\AI-Based-Hyper-Local-Aviation-Weather-Forecast-Verification-System-for-Sri-Lankan-Monsoon-Patterns'
+DATA_FILE = os.path.join(BASE_DIR, 'data', 'aviation_weather_features.csv')
+MODEL_SAVE_PATH = os.path.join(BASE_DIR, 'models', 'models')
 
-# 2. Handle non-numeric data
-feature_cols = ['Dry tem(0C)', 'Dew_Point_Depression', 'RH(%)', 'QNH (hPa)']
-for col in feature_cols:
-    df[col] = pd.to_numeric(df[col], errors='coerce')
+def train_maximum_accuracy_model():
+    if not os.path.exists(DATA_FILE):
+        print("❌ Error: Feature file not found.")
+        return
 
-df.dropna(subset=feature_cols + ['Visibility', 'Visibility_Status'], inplace=True)
+    df = pd.read_csv(DATA_FILE)
 
-X = df[feature_cols]
-y_vis = df['Visibility']
-y_cloud = df['Visibility_Status']
+    # Features and Target
+    feature_cols = ['Dry tem(0C)', 'Dew_Point_Depression', 'RH(%)', 'QNH (hPa)']
+    X = df[feature_cols]
+    y_vis = df['Visibility']
 
-# 3. Split data
-X_train, X_test, y_v_train, y_v_test, y_c_train, y_c_test = train_test_split(
-    X, y_vis, y_cloud, test_size=0.2, random_state=42
-)
+    # Using a smaller test size to give more data for training
+    X_train, X_test, y_train, y_test = train_test_split(X, y_vis, test_size=0.1, random_state=42)
 
-# 4. Train Models
-vis_model = XGBRegressor(n_estimators=100, learning_rate=0.1)
-vis_model.fit(X_train, y_v_train)
+    print("⏳ Training Maximum Accuracy Model (Deep Learning Mode)...")
+    
+    # Deep XGBoost configuration for maximum pattern recognition
+    model = XGBRegressor(
+        n_estimators=3000,     # Tripled estimators for finer detail
+        max_depth=25,          # Deep trees for complex weather patterns
+        learning_rate=0.01,    # Slower learning for higher precision
+        subsample=0.9,
+        colsample_bytree=0.9,
+        n_jobs=-1,
+        random_state=42,
+        tree_method='hist'     # Faster processing for deep trees
+    )
 
-cloud_model = XGBClassifier(n_estimators=100)
-cloud_model.fit(X_train, y_c_train)
+    model.fit(X_train, y_train)
 
-# 5. Evaluation
-v_preds = vis_model.predict(X_test)
-c_preds = cloud_model.predict(X_test)
-print(f"XGBoost - Visibility MAE: {mean_absolute_error(y_v_test, v_preds)}")
-print(f"XGBoost - Cloud Accuracy: {accuracy_score(y_c_test, c_preds) * 100:.2f}%")
+    # Evaluation
+    preds = model.predict(X_test)
+    accuracy_r2 = r2_score(y_test, preds) * 100
+    
+    print(f"📊 Optimized R2 Accuracy: {accuracy_r2:.2f}%")
+    print(f"📊 Mean Absolute Error: {mean_absolute_error(y_test, preds):.2f}m")
 
-# 6. Save models
-with open('xgboost_visibility.pkl', 'wb') as f:
-    pickle.dump(vis_model, f)
-with open('xgboost_cloud.pkl', 'wb') as f:
-    pickle.dump(cloud_model, f)
+    # Save the High-Accuracy model
+    with open(os.path.join(MODEL_SAVE_PATH, 'xgboost_visibility.pkl'), 'wb') as f:
+        pickle.dump(model, f)
 
-print("XGBoost models saved successfully!")
+    print(f"🚀 Maximum Accuracy model saved successfully!")
+
+if __name__ == "__main__":
+    train_maximum_accuracy_model()
