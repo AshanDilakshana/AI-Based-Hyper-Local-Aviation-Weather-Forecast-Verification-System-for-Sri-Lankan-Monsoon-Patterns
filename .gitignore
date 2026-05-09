@@ -43,5 +43,5 @@ build/
 
 # --- Logs ---
 *.log
-verify_model.py
+
 predict_demo.py
