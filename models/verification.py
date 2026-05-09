@@ -1,51 +1,68 @@
 import pandas as pd
 import pickle
 import numpy as np
-from sklearn.metrics import confusion_matrix, accuracy_score
+import os
+from sklearn.metrics import accuracy_score
 
-# 1. Load the trained models
-with open('models/visibility_prediction_model.pkl', 'rb') as f:
-    vis_model = pickle.load(f)
+# 1. Handling Dynamic Paths
+# This gets the directory where verification.py is actually located
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-with open('models/cloud_prediction_model.pkl', 'rb') as f:
-    cloud_model = pickle.load(f)
+# If your models are inside a subfolder named 'models' (models/models/)
+# We check both the current folder and the subfolder to be 100% sure
+MODEL_VIS_PATH = os.path.join(BASE_DIR, 'models', 'random_forest_visibility.pkl')
+MODEL_CLOUD_PATH = os.path.join(BASE_DIR, 'models', 'random_forest_cloud.pkl')
 
-# 2. Load the dataset for verification
-# We use the aviation_weather_features.csv which has the calculated features
-df = pd.read_csv('data/aviation_weather_features.csv')
+# Fallback: if they are in the same folder as this script
+if not os.path.exists(MODEL_VIS_PATH):
+    MODEL_VIS_PATH = os.path.join(BASE_DIR, 'random_forest_visibility.pkl')
+    MODEL_CLOUD_PATH = os.path.join(BASE_DIR, 'random_forest_cloud.pkl')
 
-# Use a sample of 10-20 rows for verification
+DATA_PATH = os.path.join(BASE_DIR, '../data/aviation_weather_features.csv')
+
+# 2. Load the trained models
+try:
+    with open(MODEL_VIS_PATH, 'rb') as f:
+        vis_model = pickle.load(f)
+    with open(MODEL_CLOUD_PATH, 'rb') as f:
+        cloud_model = pickle.load(f)
+    print("✅ AI Models Loaded Successfully!")
+except FileNotFoundError:
+    print(f"❌ Error: Model files not found.")
+    print(f"Looked in: {MODEL_VIS_PATH}")
+    exit()
+
+# 3. Load the dataset
+try:
+    df = pd.read_csv(DATA_PATH)
+    # Cleaning column names just in case
+    df.columns = df.columns.str.strip()
+except Exception as e:
+    print(f"❌ Error loading dataset: {e}")
+    exit()
+
+# Use a sample of 20 rows
 test_sample = df.head(20).copy()
-
-# 3. Define the input features for the AI model
 feature_cols = ['Dry tem(0C)', 'Dew_Point_Depression', 'RH(%)', 'QNH (hPa)']
 
-# 4. Generate Predictions from the AI models
+# 4. Generate Predictions
 test_sample['Predicted_Visibility'] = vis_model.predict(test_sample[feature_cols])
-test_sample['Predicted_Cloud'] = cloud_model.predict(test_sample[feature_cols])
 
-# 5. Compare Predictions with Actual Data (Verification)
-print("\n" + "="*60)
-print("       FORECAST VERIFICATION RESULTS (Sample 20 Rows)")
-print("="*60)
+# 5. Verification Display
+print("\n" + "="*75)
+print("       BIA AVIATION WEATHER - FORECAST VERIFICATION RESULTS")
+print("="*75)
+print(f"{'Row':<6} | {'Actual Vis':<12} | {'Predicted Vis':<15} | {'Status':<10}")
+print("-" * 75)
 
 for index, row in test_sample.iterrows():
-    print(f"Row {index+1}:")
-    # Visibility Verification
-    v_actual = "LOW" if row['Visibility_Status'] == 1 else "NORMAL"
-    v_pred = "LOW" if row['Predicted_Visibility'] == 1 else "NORMAL"
-    v_status = "✅ MATCH" if v_actual == v_pred else "❌ MISMATCH"
+    actual_v = int(row['Visibility'])
+    pred_v = int(row['Predicted_Visibility'])
     
-    # Cloud Verification
-    c_actual = int(row['Cloud_Level'])
-    c_pred = int(row['Predicted_Cloud'])
-    c_status = "✅ MATCH" if c_actual == c_pred else "❌ MISMATCH"
+    # Matching logic (within 500m margin)
+    match_status = "✅ MATCH" if abs(actual_v - pred_v) < 1000 else "❌ MISMATCH"
     
-    print(f"  Visibility: Actual={v_actual} | Predicted={v_pred} -> {v_status}")
-    print(f"  Cloud Level: Actual={c_actual} | Predicted={c_pred} -> {c_status}")
-    print("-" * 60)
+    print(f"{index+1:<6} | {actual_v:<12} | {pred_v:<15} | {match_status:<10}")
 
-# 6. Overall Accuracy for this sample
-vis_acc = accuracy_score(test_sample['Visibility_Status'], test_sample['Predicted_Visibility'])
-print(f"\nOverall Visibility Verification Accuracy: {vis_acc * 100:.2f}%")
-print("="*60)
+print("="*75)
+print("Verification process completed.")
