@@ -25,16 +25,25 @@ if st.sidebar.button("Generate Takeoff Forecast"):
         result = response.json()
         vis_val = result['visibility_prediction']
 
-        st.subheader("Predicted Aviation Safety Status")
+        st.subheader("Aviation Weather Verification Result")
         
+        # Displaying Visibility and Status clearly for the panel
         if vis_val >= 5000:
-            st.success("### STATUS: VFR - Visual Flight Rules")
-            st.info("**CONDITION:** SKC (Sky Clear) - No clouds detected. Visibility is optimal for manual takeoff.")
-            st.write("✅ Safe for standard takeoff procedures.")
+            st.success("### ✅ Prediction: HIGH VISIBILITY")
+            st.info(f"**Aviation Status:** VFR - Visual Flight Rules (Safe for Normal Takeoff)")
+            st.markdown(f"""
+            * **Visibility Level:** Clear (Above 5,000m)
+            * **Cloud Condition:** NSC (No Significant Clouds) - No operational risk.
+            * **Pilot Guidance:** Visual navigation is sufficient.
+            """)
         else:
-            st.error("### STATUS: IFR - Instrument Flight Rules")
-            st.warning("**CONDITION:** BKN/OVC (Broken/Overcast) - Low ceiling and cloud cover detected. Use automated systems.")
-            st.write("⚠️ Caution: Restricted visibility conditions.")
+            st.error("### ⚠️ Prediction: LOW VISIBILITY")
+            st.warning(f"**Aviation Status:** IFR - Instrument Flight Rules (Caution Required)")
+            st.markdown(f"""
+            * **Visibility Level:** Restricted (Below 5,000m)
+            * **Cloud Condition:** BKN/OVC (Broken or Overcast) - Low visibility risk.
+            * **Pilot Guidance:** Must use cockpit instruments for navigation.
+            """)
 
         st.markdown("---")
         st.write(f"**Model Accuracy (XGBoost):** {result['accuracy']}%")
@@ -43,4 +52,4 @@ if st.sidebar.button("Generate Takeoff Forecast"):
         st.error("Error connecting to Backend. Ensure app.py is running on Port 5000.")
 
 else:
-    st.info("Enter weather data and click 'Generate Takeoff Forecast'.")
+    st.info("Enter meteorological data and click 'Generate Takeoff Forecast' to verify safety.")
