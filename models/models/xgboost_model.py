@@ -3,95 +3,72 @@ import pickle
 import os
 import numpy as np
 from xgboost import XGBRegressor, XGBClassifier
-from sklearn.model_selection import train_test_split, GridSearchCV
-from sklearn.preprocessing import LabelEncoder
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, mean_absolute_error
 
-# Path configuration
-BASE_DIR = r'C:\Users\USER\Desktop\Research_IT22619976\AI-Based-Hyper-Local-Aviation-Weather-Forecast-Verification-System-for-Sri-Lankan-Monsoon-Patterns'
-DATA_FILE = os.path.join(BASE_DIR, 'data', 'BIA_METAR_DATA_(2019_2024).xlsx')
-MODEL_SAVE_PATH = os.path.join(BASE_DIR, 'models', 'models')
+# 1. Path Configuration
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# Loading from the processed CSV
+DATA_FILE = os.path.join(BASE_DIR, '../../data/aviation_weather_features.csv')
+MODEL_SAVE_PATH = BASE_DIR 
 
-def train_takeoff_model_optimized():
+def train_xgboost_fast():
     if not os.path.exists(DATA_FILE):
-        print(f"❌ Error: Excel file not found at {DATA_FILE}")
+        print(f"❌ Error: Data file not found at {DATA_FILE}")
         return
 
-    print(f"📂 Loading and Cleaning Excel data...")
+    print(f"📂 Loading Data for XGBoost...")
     
     try:
-        # Load XLSX
-        df = pd.read_excel(DATA_FILE, sheet_name='Sheet1')
-        
-        # 1. Cleaning Column Names
+        df = pd.read_csv(DATA_FILE)
         df.columns = df.columns.str.strip()
 
-        # 2. Data Type Conversion (අකුරු තියෙන තැන් වලට NaN දාලා අංක බවට හරවමු)
-        cols_to_fix = ['Dry tem(0C)', 'Dew point(0C)', 'RH(%)', 'QNH (hPa)', 'Visibility']
-        for col in cols_to_fix:
-            df[col] = pd.to_numeric(df[col], errors='coerce')
-
-        # 3. Drop rows with missing values (වැරදි දත්ත පේළි අයින් කිරීම)
-        df = df.dropna(subset=cols_to_fix)
-
-        # 4. Feature Engineering (Take-off එකට අදාළව)
-        df['Dew_Point_Depression'] = df['Dry tem(0C)'] - df['Dew point(0C)']
-        
+        # Feature selection
         feature_cols = ['Dry tem(0C)', 'Dew_Point_Depression', 'RH(%)', 'QNH (hPa)']
         X = df[feature_cols]
         y_vis = df['Visibility']
-        
-        # Cloud Status Encode කිරීම
-        le = LabelEncoder()
-        df['Clouds'] = df['Clouds'].astype(str).fillna('NSC')
-        y_cloud = le.fit_transform(df['Clouds'])
+        y_cloud = df['Cloud_Status']
 
-        # 5. Split Data
+        # 2. Split Data
         X_train, X_test, y_vis_train, y_vis_test, y_cloud_train, y_cloud_test = train_test_split(
-            X, y_vis, y_cloud, test_size=0.1, random_state=42
+            X, y_vis, y_cloud, test_size=0.2, random_state=42
         )
 
-        print(f"⏳ Training with {len(X_train)} valid records using GridSearchCV...")
-
-        # 6. Grid Search for Visibility 
-        model_vis = XGBRegressor(tree_method='hist', random_state=42)
-        param_grid = {
-            "n_estimators": [800, 1000, 1200],
-            "max_depth": [18, 22, 25],
-            "learning_rate": [0.01, 0.05],
-            "subsample": [0.8, 0.9],
-            "colsample_bytree": [0.8, 0.9]
-        }
-
-        grid_search = GridSearchCV(
-            estimator=model_vis,
-            param_grid=param_grid,
-            scoring="r2",
-            cv=3,
-            verbose=1,
-            n_jobs=-1
-        )
-
-        grid_search.fit(X_train, y_vis_train)
+        # 3. Fast Training (Using fixed parameters like other models)
+        print("⏳ Training XGBoost models (Fast Mode)...")
         
-        # 7. Training Cloud Classification
-        cloud_model = XGBClassifier(n_estimators=1000, max_depth=15, random_state=42)
-        cloud_model.fit(X_train, y_cloud_train)
-
-        # 8. Save Models
-        if not os.path.exists(MODEL_SAVE_PATH): os.makedirs(MODEL_SAVE_PATH)
+        # Visibility Model
+        model_vis = XGBRegressor(n_estimators=100, max_depth=6, learning_rate=0.1, random_state=42)
+        model_vis.fit(X_train, y_vis_train)
         
+        # Cloud Model
+        model_cloud = XGBClassifier(n_estimators=100, max_depth=6, random_state=42)
+        model_cloud.fit(X_train, y_cloud_train)
+
+        # 4. Accuracy & Performance Metrics
+        vis_preds = model_vis.predict(X_test)
+        cloud_preds = model_cloud.predict(X_test)
+
+        cloud_acc = accuracy_score(y_cloud_test, cloud_preds) * 100
+        vis_mae = mean_absolute_error(y_vis_test, vis_preds)
+
+        print("\n" + "="*40)
+        print("📊 XGBOOST RESULTS (FAST MODE)")
+        print("="*40)
+        print(f"✅ Cloud Accuracy: {cloud_acc:.2f}%")
+        print(f"✅ Visibility MAE: {vis_mae:.2f} m")
+        print("="*40)
+
+        # 5. Save Models
         with open(os.path.join(MODEL_SAVE_PATH, 'xgboost_visibility.pkl'), 'wb') as f:
-            pickle.dump(grid_search.best_estimator_, f)
+            pickle.dump(model_vis, f)
         with open(os.path.join(MODEL_SAVE_PATH, 'xgboost_cloud.pkl'), 'wb') as f:
-            pickle.dump(cloud_model, f)
-        with open(os.path.join(MODEL_SAVE_PATH, 'label_encoder.pkl'), 'wb') as f:
-            pickle.dump(le, f)
+            pickle.dump(model_cloud, f)
 
-        print(f"✅ Success! Take-off models optimized and saved.")
-        print(f"📊 Best Parameters: {grid_search.best_params_}")
+        print(f"🚀 Models saved successfully.")
 
     except Exception as e:
         print(f"❌ An error occurred: {e}")
 
 if __name__ == "__main__":
-    train_takeoff_model_optimized()
+    train_xgboost_fast()
