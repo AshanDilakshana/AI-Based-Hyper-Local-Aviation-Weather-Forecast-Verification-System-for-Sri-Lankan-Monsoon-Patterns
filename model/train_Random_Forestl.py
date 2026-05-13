@@ -15,7 +15,6 @@ PROJECT_DIR = os.path.dirname(BASE_DIR)
 input_path = os.path.join(PROJECT_DIR, "data", "featured_northeast_monsoon.csv")
 df = pd.read_csv(input_path)
 
-# Columns not used as model inputs
 drop_cols = [
     "datetime",
     "future_time",
@@ -30,6 +29,14 @@ y = df[[
     "target_temperature",
     "target_pressure"
 ]]
+
+X = X.select_dtypes(include=[np.number])
+
+X = X.replace([np.inf, -np.inf], np.nan)
+X = X.fillna(X.mean())
+
+y = y.replace([np.inf, -np.inf], np.nan)
+y = y.fillna(y.mean())
 
 X_train, X_test, y_train, y_test = train_test_split(
     X,
@@ -51,10 +58,10 @@ model = MultiOutputRegressor(rf)
 
 param_grid = {
     "estimator__n_estimators": [800, 1000, 1200],
-    "estimator__max_depth": [18, 22, 25, None],
-    "estimator__min_samples_split": [2, 3, 4],
-    "estimator__min_samples_leaf": [1, 2],
-    "estimator__max_features": [0.8, 0.9, None],
+    "estimator__max_depth": [20, 25, 30, 35, None],
+    "estimator__min_samples_split": [2, 3, 4, 5],
+    "estimator__min_samples_leaf": [1, 2, 3],
+    "estimator__max_features": [0.7, 0.8, 0.9],
     "estimator__bootstrap": [True]
 }
 
@@ -76,15 +83,12 @@ print(grid_search.best_params_)
 
 y_pred = best_model.predict(X_test_scaled)
 
-temp_mae = mean_absolute_error(y_test["target_temperature"], y_pred[:, 0])
-pressure_mae = mean_absolute_error(y_test["target_pressure"], y_pred[:, 1])
-overall_rmse = np.sqrt(mean_squared_error(y_test, y_pred))
 overall_r2 = r2_score(y_test, y_pred)
 
 print("\n📊 TUNED RANDOM FOREST PERFORMANCE")
-print("Temperature MAE:", temp_mae)
-print("Pressure MAE:", pressure_mae)
-print("Overall RMSE:", overall_rmse)
+print("Temperature MAE:", mean_absolute_error(y_test["target_temperature"], y_pred[:, 0]))
+print("Pressure MAE:", mean_absolute_error(y_test["target_pressure"], y_pred[:, 1]))
+print("Overall RMSE:", np.sqrt(mean_squared_error(y_test, y_pred)))
 print("Overall R2 Score:", overall_r2)
 print("Accuracy:", round(overall_r2 * 100, 2), "%")
 

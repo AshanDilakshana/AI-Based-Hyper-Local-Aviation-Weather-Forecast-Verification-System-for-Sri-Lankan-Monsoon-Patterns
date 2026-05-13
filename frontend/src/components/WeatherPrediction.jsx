@@ -164,7 +164,7 @@ export default function WeatherPrediction() {
             {/* TEMPERATURE CARD */}
             <div className="result-card">
               <div className="result-header">
-                <h3>Predicted Temperature</h3>
+                <h3>Predicted Dry Temperature</h3>
                 <span>SAFE</span>
               </div>
 

@@ -27,16 +27,28 @@ if not os.path.exists(input_path):
 
 df = pd.read_csv(input_path)
 
-drop_cols = [
-    "datetime",
-    "future_time",
-    "target_temperature",
-    "target_humidity",
-    "target_pressure"
+df = df.replace([np.inf, -np.inf], np.nan)
+df = df.fillna(df.mean(numeric_only=True))
+
+selected_features = [
+    "temperature",
+    "humidity",
+    "pressure",
+    "dew_point",
+    "wind_speed",
+    "wind_direction",
+    "visibility",
+    "hour",
+    "day",
+    "month"
 ]
 
-X = df.drop(columns=drop_cols, errors="ignore")
-y = df[["target_temperature", "target_pressure"]]
+X = df[selected_features]
+
+y = df[[
+    "target_temperature",
+    "target_pressure"
+]]
 
 split_index = int(len(X) * 0.8)
 
@@ -74,9 +86,8 @@ model = Sequential([
     Input(shape=(X_train.shape[1], X_train.shape[2])),
 
     LSTM(32, return_sequences=False),
-    Dropout(0.15),
+    Dropout(0.1),
 
-    Dense(32, activation="relu"),
     Dense(16, activation="relu"),
     Dense(2)
 ])
@@ -89,21 +100,21 @@ model.compile(
 
 early_stop = EarlyStopping(
     monitor="val_loss",
-    patience=20,
+    patience=1000,
     restore_best_weights=True
 )
 
 reduce_lr = ReduceLROnPlateau(
     monitor="val_loss",
-    factor=0.5,
-    patience=7,
+    factor=0.8,
+    patience=10,
     min_lr=0.00001
 )
 
 history = model.fit(
     X_train,
     y_train,
-    epochs=200,
+    epochs=5000,
     batch_size=16,
     validation_split=0.2,
     callbacks=[early_stop, reduce_lr],
@@ -120,7 +131,7 @@ pressure_mae = mean_absolute_error(y_test_original[:, 1], y_pred[:, 1])
 overall_rmse = np.sqrt(mean_squared_error(y_test_original, y_pred))
 overall_r2 = r2_score(y_test_original, y_pred)
 
-print("\n📊 IMPROVED LSTM MODEL PERFORMANCE")
+print("\n📊 SIMPLE LSTM MODEL PERFORMANCE")
 print("Temperature MAE:", temp_mae)
 print("Pressure MAE:", pressure_mae)
 print("Overall RMSE:", overall_rmse)
@@ -131,10 +142,10 @@ model.save(os.path.join(BASE_DIR, "lstm_weather_model.keras"))
 
 joblib.dump(x_scaler, os.path.join(BASE_DIR, "lstm_x_scaler.pkl"))
 joblib.dump(y_scaler, os.path.join(BASE_DIR, "lstm_y_scaler.pkl"))
-joblib.dump(list(X.columns), os.path.join(BASE_DIR, "lstm_feature_columns.pkl"))
+joblib.dump(selected_features, os.path.join(BASE_DIR, "lstm_feature_columns.pkl"))
 joblib.dump(time_steps, os.path.join(BASE_DIR, "lstm_time_steps.pkl"))
 
-print("\n✅ Improved LSTM Model trained & saved successfully!")
+print("\n✅ Simple LSTM Model trained & saved successfully!")
 print("Saved in:", BASE_DIR)
 print("Time steps used:", time_steps)
-print("Features used:", list(X.columns))
+print("Features used:", selected_features)

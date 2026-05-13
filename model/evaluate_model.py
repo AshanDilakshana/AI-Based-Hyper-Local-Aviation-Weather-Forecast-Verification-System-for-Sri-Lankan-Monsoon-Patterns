@@ -3,7 +3,6 @@ import numpy as np
 import joblib
 import os
 
-from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from tensorflow.keras.models import load_model
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -15,102 +14,76 @@ if not os.path.exists(data_path):
     raise FileNotFoundError(f"Dataset not found: {data_path}")
 
 df = pd.read_csv(data_path)
-y_real = df[["target_temperature", "target_pressure"]]
 
-rf_dir = BASE_DIR
-lstm_dir = os.path.join(BASE_DIR, "Lstm_model")
-auto_dir = os.path.join(BASE_DIR, "autoencoder_model")
+# ================= RANDOM FOREST FILES =================
+rf_model_path = os.path.join(BASE_DIR, "weather_model.pkl")
+rf_scaler_path = os.path.join(BASE_DIR, "scaler.pkl")
+rf_features_path = os.path.join(BASE_DIR, "feature_columns.pkl")
 
-
-def check_file(path):
+for path in [rf_model_path, rf_scaler_path, rf_features_path]:
     if not os.path.exists(path):
         raise FileNotFoundError(f"Missing file: {path}")
 
+rf_model = joblib.load(rf_model_path)
+rf_scaler = joblib.load(rf_scaler_path)
+rf_features = joblib.load(rf_features_path)
 
-def metrics(name, y_true, y_pred):
-    mae = mean_absolute_error(y_true, y_pred)
-    rmse = np.sqrt(mean_squared_error(y_true, y_pred))
-    r2 = r2_score(y_true, y_pred)
+# ================= SAMPLE 10 ROWS =================
+test_sample = df.head(10).copy()
 
-    print(f"{name:<20} {round(mae, 3):<12} {round(rmse, 3):<12} {round(r2, 3):<12} {round(r2 * 100, 2):<12}")
-
-
-# ================= RANDOM FOREST =================
-check_file(os.path.join(rf_dir, "weather_model.pkl"))
-check_file(os.path.join(rf_dir, "scaler.pkl"))
-check_file(os.path.join(rf_dir, "feature_columns.pkl"))
-
-rf_model = joblib.load(os.path.join(rf_dir, "weather_model.pkl"))
-rf_scaler = joblib.load(os.path.join(rf_dir, "scaler.pkl"))
-rf_features = joblib.load(os.path.join(rf_dir, "feature_columns.pkl"))
-
-missing_rf = [col for col in rf_features if col not in df.columns]
+missing_rf = [col for col in rf_features if col not in test_sample.columns]
 if missing_rf:
-    raise ValueError(f"RF missing columns in dataset: {missing_rf}")
+    raise ValueError(f"Missing columns in dataset: {missing_rf}")
 
-X_rf = df[rf_features]
-rf_pred = rf_model.predict(rf_scaler.transform(X_rf))
+X_sample = test_sample[rf_features]
+X_sample_scaled = rf_scaler.transform(X_sample)
 
+# ================= PREDICTION =================
+rf_pred = rf_model.predict(X_sample_scaled)
 
-# ================= LSTM =================
-check_file(os.path.join(lstm_dir, "lstm_weather_model.keras"))
-check_file(os.path.join(lstm_dir, "lstm_x_scaler.pkl"))
-check_file(os.path.join(lstm_dir, "lstm_y_scaler.pkl"))
-check_file(os.path.join(lstm_dir, "lstm_feature_columns.pkl"))
-check_file(os.path.join(lstm_dir, "lstm_time_steps.pkl"))
+test_sample["Predicted_Temperature"] = rf_pred[:, 0]
+test_sample["Predicted_Pressure"] = rf_pred[:, 1]
 
-lstm_model = load_model(os.path.join(lstm_dir, "lstm_weather_model.keras"))
-lstm_x_scaler = joblib.load(os.path.join(lstm_dir, "lstm_x_scaler.pkl"))
-lstm_y_scaler = joblib.load(os.path.join(lstm_dir, "lstm_y_scaler.pkl"))
-lstm_features = joblib.load(os.path.join(lstm_dir, "lstm_feature_columns.pkl"))
-time_steps = joblib.load(os.path.join(lstm_dir, "lstm_time_steps.pkl"))
+# ================= VERIFICATION DISPLAY =================
+print("\n" + "=" * 130)
+print("      BIA AVIATION WEATHER - TEMPERATURE & PRESSURE VERIFICATION RESULTS")
+print("=" * 130)
 
-missing_lstm = [col for col in lstm_features if col not in df.columns]
-if missing_lstm:
-    raise ValueError(f"LSTM missing columns in dataset: {missing_lstm}")
+print(
+    f"{'Row':<5} | "
+    f"{'Actual Temp':<12} | {'Pred Temp':<12} | {'Temp Error':<12} | {'Temp Status':<12} | "
+    f"{'Actual Pressure':<16} | {'Pred Pressure':<16} | {'Pressure Error':<16} | {'Pressure Status':<15}"
+)
 
-X_lstm_scaled = lstm_x_scaler.transform(df[lstm_features])
+print("-" * 130)
 
-X_seq = []
-for i in range(time_steps, len(X_lstm_scaled)):
-    X_seq.append(X_lstm_scaled[i - time_steps:i])
+for index, row in test_sample.iterrows():
 
-X_seq = np.array(X_seq)
-y_lstm_real = y_real.iloc[time_steps:].values
+    actual_temp = float(row["target_temperature"])
+    pred_temp = float(row["Predicted_Temperature"])
 
-lstm_pred_scaled = lstm_model.predict(X_seq)
-lstm_pred = lstm_y_scaler.inverse_transform(lstm_pred_scaled)
+    actual_pressure = float(row["target_pressure"])
+    pred_pressure = float(row["Predicted_Pressure"])
 
+    # ================= ERROR =================
+    temp_error = abs(actual_temp - pred_temp)
+    pressure_error = abs(actual_pressure - pred_pressure)
 
-# ================= AUTOENCODER =================
-check_file(os.path.join(auto_dir, "autoencoder_weather_model.keras"))
-check_file(os.path.join(auto_dir, "autoencoder_x_scaler.pkl"))
-check_file(os.path.join(auto_dir, "autoencoder_y_scaler.pkl"))
-check_file(os.path.join(auto_dir, "autoencoder_feature_columns.pkl"))
+    # ================= MATCH STATUS =================
+    temp_status = "MATCH" if temp_error <= 2 else "MISMATCH"
+    pressure_status = "MATCH" if pressure_error <= 3 else "MISMATCH"
 
-auto_model = load_model(os.path.join(auto_dir, "autoencoder_weather_model.keras"))
-auto_x_scaler = joblib.load(os.path.join(auto_dir, "autoencoder_x_scaler.pkl"))
-auto_y_scaler = joblib.load(os.path.join(auto_dir, "autoencoder_y_scaler.pkl"))
-auto_features = joblib.load(os.path.join(auto_dir, "autoencoder_feature_columns.pkl"))
+    print(
+        f"{index + 1:<5} | "
+        f"{actual_temp:<12.2f} | "
+        f"{pred_temp:<12.2f} | "
+        f"{temp_error:<12.2f} | "
+        f"{temp_status:<12} | "
+        f"{actual_pressure:<16.2f} | "
+        f"{pred_pressure:<16.2f} | "
+        f"{pressure_error:<16.2f} | "
+        f"{pressure_status:<15}"
+    )
 
-missing_auto = [col for col in auto_features if col not in df.columns]
-if missing_auto:
-    raise ValueError(f"Autoencoder missing columns in dataset: {missing_auto}")
-
-auto_pred_scaled = auto_model.predict(auto_x_scaler.transform(df[auto_features]))
-auto_pred = auto_y_scaler.inverse_transform(auto_pred_scaled)
-
-
-# ================= FINAL REPORT =================
-print("\n" + "=" * 85)
-print(" FULL DATASET MODEL ACCURACY + ERROR CHECK ")
-print("=" * 85)
-print(f"{'Model':<20} {'MAE':<12} {'RMSE':<12} {'R2 Score':<12} {'Accuracy':<12}")
-print("-" * 85)
-
-metrics("Random Forest", y_real, rf_pred)
-metrics("LSTM", y_lstm_real, lstm_pred)
-metrics("Autoencoder", y_real, auto_pred)
-
-print("=" * 85)
-print("LSTM Time Steps Used:", time_steps)
+print("=" * 130)
+print("Verification process completed.")
