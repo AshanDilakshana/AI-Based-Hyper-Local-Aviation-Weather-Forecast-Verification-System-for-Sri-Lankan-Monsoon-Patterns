@@ -73,15 +73,14 @@ Developed using React.js for:
 | Model | Accuracy (R² Score) | Mean Absolute Error (MAE) |
 |---|---|---|
 | Random Forest | 68% | 1.24 |
-| LSTM | 25% | 1.39 |
-| Autoencoder | 45% | 1.51 |
+| Autoencoder | 45% | 1.48 |
+| LSTM | 25% | 1.92 |
 
-> Note: Random Forest achieved the best performance for aviation weather parameter prediction.
----
+> Note: Random Forest achieved the best prediction accuracy among the evaluated machine learning models.
+
 
 # 🛠️ Technologies Used
 
-## Data Science & AI
 - Python
 - Pandas
 - NumPy
@@ -113,5 +112,6 @@ Developed using React.js for:
 # 👩‍💻 Author
 
 Imash Sankadeepa
+
 Undergraduate Research Project  
 AI-Based Aviation Weather Forecast Verification System
