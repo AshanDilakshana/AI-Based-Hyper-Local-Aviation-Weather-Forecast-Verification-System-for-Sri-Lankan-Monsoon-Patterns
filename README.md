@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # AI-Based Hyper-Local Aviation Weather Forecast Verification System for Sri Lankan Monsoon Patterns
 
 A Machine Learning-based aviation weather forecast verification system developed for Bandaranaike International Airport (BIA), Sri Lanka.  
@@ -115,3 +116,7 @@ Imash Sankadeepa
 
 Undergraduate Research Project  
 AI-Based Aviation Weather Forecast Verification System
+=======
+# AI-Based-Hyper-Local-Aviation-Weather-Forecast-Verification-System-for-Sri-Lankan-Monsoon-Patterns
+A Machine Learning-based decision support system for runway-specific wind pattern prediction and pilot guidance during the Southwest Monsoon.
+>>>>>>> 118f9baace13c017f8c151f5bcd080f76a20d724
