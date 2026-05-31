@@ -1,0 +1,31 @@
+[33m4236d17[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mPressure-Humidity-Temperature-Prediction-Model[m[33m)[m HEAD@{0}: commit: read
+[33mf005d9a[m HEAD@{1}: reset: moving to f005d9ab4a91ef145e4c4dd86f2ab0a6f0402954
+[33m84382b7[m[33m ([m[1;32mbackup-my-files[m[33m)[m HEAD@{2}: commit: read
+[33mf005d9a[m HEAD@{3}: commit: change some files
+[33m16977f0[m HEAD@{4}: commit: chnage models for time matters
+[33mdc958fe[m HEAD@{5}: commit: update backend and frontend bcz huminidy remove for my part
+[33m2eec24c[m HEAD@{6}: commit: chnage the some py files for model evaluvate
+[33m8b76e6e[m HEAD@{7}: commit: train the autoencoder model
+[33m1c0ffa5[m HEAD@{8}: commit: train the Lstm model
+[33m58796e9[m HEAD@{9}: commit: train the Random_forest_model
+[33m076cf33[m HEAD@{10}: commit: chnage Frontend
+[33m02a1c7b[m HEAD@{11}: commit: chnage some files with Train_model
+[33m405b830[m HEAD@{12}: commit: create Evalute_model
+[33m0a3db04[m HEAD@{13}: commit: chnage app.py files
+[33m7d01ad8[m HEAD@{14}: checkout: moving from Backend to Pressure-Humidity-Temperature-Prediction-Model
+[33m86eada1[m[33m ([m[1;32mBackend[m[33m)[m HEAD@{15}: checkout: moving from Pressure-Humidity-Temperature-Prediction-Model to Backend
+[33m7d01ad8[m HEAD@{16}: commit: update pipeline
+[33m448e827[m HEAD@{17}: commit: change frontend and backend app.py
+[33m68d133c[m HEAD@{18}: commit: change some files
+[33m9bd7ef2[m HEAD@{19}: commit: change app.py
+[33m0136ce7[m HEAD@{20}: commit: chnage pipeline file
+[33m5a02303[m HEAD@{21}: commit: create pipeline.py for pipeline
+[33m396adee[m HEAD@{22}: commit: backend setup files
+[33mb690357[m HEAD@{23}: commit: frontend setup files
+[33m1d26895[m HEAD@{24}: commit: set up the backend
+[33m4ae6f60[m HEAD@{25}: commit: upload the train_model
+[33me9d0984[m HEAD@{26}: commit: upload the predict model
+[33ma7b2b5d[m HEAD@{27}: commit: upload the feature_engineering.py
+[33m4fef8ed[m HEAD@{28}: commit: reupload the prepossing.py
+[33mb8793a8[m HEAD@{29}: checkout: moving from main to Pressure-Humidity-Temperature-Prediction-Model
+[33mbcd1772[m[33m ([m[1;32mmain[m[33m)[m HEAD@{30}: clone: from https://github.com/AshanDilakshana/AI-Based-Hyper-Local-Aviation-Weather-Forecast-Verification-System-for-Sri-Lankan-Monsoon-Patterns.git
