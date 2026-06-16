@@ -20,7 +20,10 @@ class WeatherDataPipeline:
             'Wind speed(Kts)_lag_3h', 
             'Dew_Point_Depression', 
             'Dry Temp(0C)', 
-            'RH(%)'
+            'RH(%)',
+            'QNH(hPa)',
+            'QNH_change_3h',
+            'Wind_Speed_Rolling_Mean_6h'
         ]
         self.target = 'Wind speed(Kts)'
 

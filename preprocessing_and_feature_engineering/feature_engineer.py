@@ -57,14 +57,33 @@ class FeatureEngineer:
                     df_shifted.columns = ['Wind speed(Kts)_lag_3h']
                     
                     df_feat = df_feat.join(df_shifted, how='left')
+
+                    # Add 6-hour rolling average for Wind Speed
+                    df_feat['Wind_Speed_Rolling_Mean_6h'] = df_feat['Wind speed(Kts)'].rolling('6h', min_periods=1).mean()
                 
+                # Create 3-hour lag feature for QNH
+                if 'QNH(hPa)' in df_feat.columns:
+                    df_qnh_shifted = df_feat[['QNH(hPa)']].copy()
+                    df_qnh_shifted.index = df_qnh_shifted.index + pd.Timedelta(hours=3)
+                    df_qnh_shifted.columns = ['QNH_lag_3h']
+                    df_feat = df_feat.join(df_qnh_shifted, how='left')
+                    df_feat['QNH_change_3h'] = df_feat['QNH(hPa)'] - df_feat['QNH_lag_3h']
+
                 df_feat.reset_index(inplace=True)
             except Exception as e:
                 print(f"Warning: Datetime parsing failed during feature engineering: {e}")
                 if 'Wind speed(Kts)' in df_feat.columns:
                     df_feat['Wind speed(Kts)_lag_3h'] = df_feat['Wind speed(Kts)'].shift(6)
+                    df_feat['Wind_Speed_Rolling_Mean_6h'] = df_feat['Wind speed(Kts)'].rolling(12, min_periods=1).mean()
+                if 'QNH(hPa)' in df_feat.columns:
+                    df_feat['QNH_lag_3h'] = df_feat['QNH(hPa)'].shift(6)
+                    df_feat['QNH_change_3h'] = df_feat['QNH(hPa)'] - df_feat['QNH_lag_3h']
         else:
              if 'Wind speed(Kts)' in df_feat.columns:
                     df_feat['Wind speed(Kts)_lag_3h'] = df_feat['Wind speed(Kts)'].shift(6)
+                    df_feat['Wind_Speed_Rolling_Mean_6h'] = df_feat['Wind speed(Kts)'].rolling(12, min_periods=1).mean()
+             if 'QNH(hPa)' in df_feat.columns:
+                    df_feat['QNH_lag_3h'] = df_feat['QNH(hPa)'].shift(6)
+                    df_feat['QNH_change_3h'] = df_feat['QNH(hPa)'] - df_feat['QNH_lag_3h']
 
         return df_feat
