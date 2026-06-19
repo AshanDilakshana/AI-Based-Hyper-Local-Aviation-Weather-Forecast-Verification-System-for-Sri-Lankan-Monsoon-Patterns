@@ -45,3 +45,4 @@ build/
 *.log
 
 predict_demo.py
+*.json
