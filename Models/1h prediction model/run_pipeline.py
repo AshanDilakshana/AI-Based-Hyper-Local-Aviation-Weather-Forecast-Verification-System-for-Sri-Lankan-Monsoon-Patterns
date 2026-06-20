@@ -1,12 +1,19 @@
 import pandas as pd
-from preprocessing_and_feature_engineering.pipeline import WeatherDataPipeline
+import sys
+import os
 import warnings
+
+current_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.abspath(os.path.join(current_dir, '../../')))
+
+from preprocessing_and_feature_engineering.pipeline import WeatherDataPipeline
+
 warnings.filterwarnings('ignore')
 
 def main():
     print("1. Loading raw dataset 'BIA_METAR_DATA_(2019_2024).xlsx'...")
     try:
-        df = pd.read_excel('BIA_METAR_DATA_(2019_2024).xlsx')
+        df = pd.read_excel(os.path.join(current_dir, '../../BIA_METAR_DATA_(2019_2024).xlsx'))
     except Exception as e:
         print(f"Error loading file: {e}")
         return
@@ -23,7 +30,7 @@ def main():
     processed_df['Target_Wind_Speed(Kts)'] = y
 
     # Save to the data folder
-    save_path = 'backend/data/processed_monsoon_data.csv'
+    save_path = os.path.join(current_dir, '../../backend/data/processed_monsoon_data.csv')
     processed_df.to_csv(save_path, index=False)
 
     print(f"\n✅ Success! The processed data has been saved to: {save_path}")

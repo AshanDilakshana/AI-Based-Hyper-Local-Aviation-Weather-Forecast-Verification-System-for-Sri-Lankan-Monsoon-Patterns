@@ -9,7 +9,7 @@ def main():
     print("1. Loading processed data...")
     # Path to the processed dataset (Dynamic absolute path)
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    data_path = os.path.join(current_dir, '../backend/data/processed_monsoon_data.csv')
+    data_path = os.path.join(current_dir, '../../backend/data/processed_monsoon_data.csv')
     
     if not os.path.exists(data_path):
         print(f"Error: Could not find {data_path}. Please run the pipeline first.")

@@ -2,18 +2,20 @@ import pandas as pd
 import xgboost as xgb
 from sklearn.model_selection import train_test_split
 import random
+import os
 
 def main():
     print("1. Loading AI Model...")
     model = xgb.XGBRegressor()
+    current_dir = os.path.dirname(os.path.abspath(__file__))
     try:
-        model.load_model('wind prediction model/xgboost_wind_model.json')
+        model.load_model(os.path.join(current_dir, 'xgboost_wind_model.json'))
     except Exception as e:
         print(f"Error loading model: {e}")
         return
 
     print("2. Loading Processed Data...")
-    df = pd.read_csv('backend/data/processed_monsoon_data.csv')
+    df = pd.read_csv(os.path.join(current_dir, '../../backend/data/processed_monsoon_data.csv'))
     
     target_col = 'Target_Wind_Speed(Kts)'
     X = df.drop(columns=[target_col])
