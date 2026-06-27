@@ -8,7 +8,7 @@ import os
 def main():
     print("1. Loading processed 3H data...")
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    data_path = os.path.join(current_dir, '../backend/data/processed_monsoon_data_3h.csv')
+    data_path = os.path.join(current_dir, '../../backend/data/processed_monsoon_data_3h.csv')
     
     if not os.path.exists(data_path):
         print(f"Error: Could not find {data_path}. Please run run_pipeline_3h.py first.")

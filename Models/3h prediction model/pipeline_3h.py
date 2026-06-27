@@ -3,7 +3,7 @@ import sys
 import os
 
 # Ensure backend modules can be imported
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 
 from preprocessing_and_feature_engineering.data_cleaner import DataCleaner
 from preprocessing_and_feature_engineering.feature_engineer import FeatureEngineer
