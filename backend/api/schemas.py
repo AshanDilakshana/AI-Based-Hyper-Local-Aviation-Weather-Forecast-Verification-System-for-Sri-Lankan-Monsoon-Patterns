@@ -6,8 +6,9 @@ class WindPredictionRequest(BaseModel):
     dew_point: float = Field(..., description="Current dew point in Celsius")
     humidity: float = Field(..., description="Current relative humidity percentage")
     wind_dir: float = Field(..., description="Current wind direction in degrees (0-360)")
-    past_wind_speed: float = Field(..., description="Wind speed from exactly 3 hours ago in knots")
-    runway_heading: Optional[int] = Field(40, description="Runway heading. Default is Runway 04 (040 degrees)")
+    runway_heading: int = Field(40, description="Runway heading for BIA (Default: 04 -> 40 degrees)")
+    time_utc: Optional[str] = Field(None, description="Time in UTC (HHMM)")
+    qnh_hpa: Optional[float] = Field(None, description="QNH in hPa - Required for 3H model")
 
 class WindPredictionResponse(BaseModel):
     predicted_wind_speed_kts: float
