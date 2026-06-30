@@ -67,11 +67,11 @@ export default function ForecastingPanel({ liveData, apiBase, onForecastComplete
             <span className="data-value">{result.predicted_wind_speed_kts} Kts</span>
           </div>
           <div className="data-row">
-            <span className="data-label">Crosswind (RWY 04)</span>
+            <span className="data-label">Crosswind</span>
             <span className="data-value">{result.crosswind_kts} Kts</span>
           </div>
           <div className="data-row">
-            <span className="data-label">Headwind (RWY 04)</span>
+            <span className="data-label">Headwind</span>
             <span className="data-value">{result.headwind_kts} Kts</span>
           </div>
           
