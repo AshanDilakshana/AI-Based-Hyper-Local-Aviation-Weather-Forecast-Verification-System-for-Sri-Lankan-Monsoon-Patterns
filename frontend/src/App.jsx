@@ -51,6 +51,7 @@ function App() {
             <AircraftVisualizer 
               windDir={liveData?.wind_dir || 0} 
               crosswind={forecast.crosswind_kts}
+              headwind={forecast.headwind_kts}
               status={forecast.status}
               runwayHeading={40} // Default RWY 04
             />
