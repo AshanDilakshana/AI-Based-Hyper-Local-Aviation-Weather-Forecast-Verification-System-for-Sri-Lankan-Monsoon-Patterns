@@ -40,18 +40,29 @@ def clean_int(val):
     except (ValueError, TypeError):
         return None
 
+import time
+
 @router.get("/current")
 def get_current_mock_weather():
     """
-    Simulates a live data API by returning a random row from the historical dataset.
+    Simulates a live data API by returning a row from the historical dataset.
+    Updates only once every 30 minutes to mimic real METAR publishing intervals.
     """
     global df
     if df is None:
         raise HTTPException(status_code=500, detail="Mock data source not available.")
     
-    # Pick a random row
+    # Use the current Unix time divided by 30 minutes (1800 seconds) as the seed.
+    # This guarantees the same row is selected for a full 30-minute window.
+    current_30min_interval = int(time.time() / 1800)
+    
+    # Temporarily set seed to pick the row
+    random.seed(current_30min_interval)
     random_index = random.randint(0, len(df) - 1)
     row = df.iloc[random_index]
+    
+    # Reset the seed immediately so we don't break other random functions globally
+    random.seed()
     
     return {
         "timestamp_simulated": "now",

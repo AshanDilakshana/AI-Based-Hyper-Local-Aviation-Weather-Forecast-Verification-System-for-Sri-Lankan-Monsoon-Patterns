@@ -25,7 +25,7 @@ class WeatherDataPipeline:
             'QNH_change_3h',
             'Wind_Speed_Rolling_Mean_6h'
         ]
-        self.target = 'Wind speed(Kts)'
+        self.target = 'Target_Wind_Speed_1h_Ahead'
 
     def process_training_data(self, df: pd.DataFrame) -> tuple:
         """
@@ -41,6 +41,10 @@ class WeatherDataPipeline:
         # Filter for Monsoon months (May to September)
         if 'Month' in df_features.columns:
             df_features = df_features[df_features['Month'].isin([5, 6, 7, 8, 9])]
+            
+        # Shift target by 2 rows for 1-Hour ahead prediction (2 * 30 mins)
+        if 'Wind speed(Kts)' in df_features.columns:
+            df_features[self.target] = df_features['Wind speed(Kts)'].shift(-2)
             
         required_cols = self.required_features + [self.target]
         available_cols = [c for c in required_cols if c in df_features.columns]
