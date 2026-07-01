@@ -1,33 +1,78 @@
 import streamlit as st
 import requests
+import pickle
+import os
 
-# Professional page setup
 st.set_page_config(page_title="BIA Takeoff Safety Dashboard", layout="wide")
-
 st.title("🛫 BIA Control - Takeoff Weather Verification")
 st.markdown("---")
 
-# 1. Sidebar Inputs - Meteorological Data Only
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+ENCODER_PATH = os.path.join(BASE_DIR, '../models/saved_models/weather_encoder.pkl')
+
+weather_options = ['NONE', 'RA', 'TS', 'SHRA', 'BR', 'DZ', 'HZ']
+try:
+    with open(ENCODER_PATH, 'rb') as f:
+        le_weather = pickle.load(f)
+    weather_options = list(le_weather.classes_)
+except:
+    pass
+
 st.sidebar.header("Current Weather Observations")
 
 dry_temp = st.sidebar.number_input("Dry Temperature (°C)", value=31.0, format="%.2f")
 dew_temp = st.sidebar.number_input("Dew Point (°C)", value=24.0, format="%.2f")
 rh_pct = st.sidebar.number_input("Relative Humidity (%)", value=66.0)
 pressure = st.sidebar.number_input("Pressure (QNH hPa)", value=1007.40, format="%.2f")
+wind_speed = st.sidebar.number_input("Wind Speed (Kts)", value=12.0, format="%.2f")
+
+# Slider inputs match the structured dataset requirements perfectly
+month = st.sidebar.slider("Month of the Year", min_value=1, max_value=12, value=6)
+hour = st.sidebar.slider("Hour of the Day (UTC)", min_value=0, max_value=23, value=12)
+wind_dir = st.sidebar.number_input("Wind Direction (Degrees)", value=180.0, format="%.2f")
+selected_weather = st.sidebar.selectbox("Current METAR Weather Condition", options=weather_options)
 
 st.sidebar.markdown("---")
 
+def explain_cloud(cloud_code):
+    cloud_code = str(cloud_code).upper()
+    if 'CB' in cloud_code:
+        return "Cumulonimbus cloud was reported, which may indicate thunderstorm activity."
+    elif cloud_code.startswith('SKC') or cloud_code.startswith('NSC'):
+        return "No significant cloud was reported."
+    elif cloud_code.startswith('FEW'):
+        return "Few clouds were reported."
+    elif cloud_code.startswith('SCT'):
+        return "Scattered clouds were reported."
+    elif cloud_code.startswith('BKN'):
+        return "Broken cloud cover was reported."
+    elif cloud_code.startswith('OVC'):
+        return "Overcast sky conditions were reported."
+    else:
+        return "Cloud condition predicted from METAR weather data."
+
+def explain_visibility(visibility):
+    if int(visibility) == 9999:
+        return "Visibility is 10 kilometers or more."
+    return f"Predicted horizontal visibility is {int(float(visibility))} metres."
+
 if st.sidebar.button("Generate Takeoff Forecast"):
-    # Data payload for prediction
+    weather_encoded = weather_options.index(selected_weather) if selected_weather in weather_options else 0
+    
+    # Payload keys perfectly match backend requirements now
     payload = {
-        "temp": dry_temp,
-        "dew": dew_temp,
-        "rh": rh_pct,
-        "qnh": pressure
+        "temp": dry_temp, 
+        "dew": dew_temp, 
+        "rh": rh_pct, 
+        "qnh": pressure, 
+        "wind": wind_speed,
+        "month": month, 
+        "hour": hour,          # User choice mapped into structured feature matrix
+        "wind_dir": wind_dir, 
+        "weather_encoded": weather_encoded
     }
     
     try:
-        # Requesting results from Flask backend
         response = requests.post("http://127.0.0.1:5000/predict", json=payload)
         result = response.json()
         
@@ -38,32 +83,17 @@ if st.sidebar.button("Generate Takeoff Forecast"):
             cloud_status = result['cloud_status']
 
             st.subheader("Verification Result")
+            st.markdown("---")
             
-            # Dictionary for detailed Cloud Meanings (as you liked before)
-            cloud_info = {
-                'NSC': {'desc': 'NSC (No Significant Clouds)', 'meaning': 'Clear sky. Safe for takeoff.'},
-                'FEW': {'desc': 'FEW (Few Clouds)', 'meaning': '1/8 to 2/8 coverage. Minimal impact on flight.'},
-                'SCT': {'desc': 'SCT (Scattered Clouds)', 'meaning': '3/8 to 4/8 coverage. Safe for Visual flight.'},
-                'BKN': {'desc': 'BKN (Broken Clouds)', 'meaning': '5/8 to 7/8 coverage. Significant cloud ceiling detected.'},
-                'OVC': {'desc': 'OVC (Overcast)', 'meaning': 'Full sky coverage. Visibility highly restricted.'}
-            }
-            
-            info = cloud_info.get(cloud_status, {'desc': cloud_status, 'meaning': 'N/A'})
+            st.markdown("#### 👁️ Visibility Details")
+            st.write(f"Predicted Visibility: **{vis_val} m**")
+            st.write(f"*Meaning:* {explain_visibility(vis_val)}")
 
-            # 2. VFR/IFR Logic Display
-            if vis_val >= 5000 and cloud_status not in ['BKN', 'OVC']:
-                st.success("### ✅ Status: SAFE (VFR)")
-                st.info("**VFR (Visual Flight Rules):** Conditions are clear. Pilot can take off using visual references.")
-            else:
-                st.error("### ❌ Status: RESTRICTED (IFR)")
-                st.warning("**IFR (Instrument Flight Rules):** Low visibility or thick clouds. Pilot must rely on instruments.")
+            st.markdown("---")
 
-            # 3. Detailed Cloud Information Display (Back by popular demand)
-            st.markdown("#### Cloud Details")
-            st.write(f"**Condition:** {info['desc']}")
-            st.write(f"**Aviation Meaning:** {info['meaning']}")
-            
-            # Note: Numerical visibility value remains hidden as requested.
+            st.markdown("#### ☁️ Cloud Details")
+            st.write(f"Predicted Cloud Condition: **{cloud_status}**")
+            st.write(f"*Meaning:* {explain_cloud(cloud_status)}")
 
     except Exception as e:
         st.error("Error: Backend is not running. Please start app.py first.")
