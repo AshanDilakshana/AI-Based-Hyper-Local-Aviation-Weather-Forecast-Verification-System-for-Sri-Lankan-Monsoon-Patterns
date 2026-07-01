@@ -1,60 +1,46 @@
 import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
+from sklearn.metrics import accuracy_score, r2_score
 import pickle
 import os
-from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, mean_absolute_error
 
-# Paths
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_PATH = os.path.join(BASE_DIR, '../../data/aviation_weather_features.csv')
+script_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(os.path.dirname(script_dir))
+csv_file = os.path.join(project_root, 'data', 'aviation_weather_features.csv')
 
-def train_decision_tree():
-    if not os.path.exists(DATA_PATH):
-        print(f"❌ Error: Data file not found at {DATA_PATH}")
-        return
+print(f"📂 Decision Tree Script: Loading clean dataset from {csv_file}")
+df = pd.read_csv(csv_file, low_memory=False)
 
-    df = pd.read_csv(DATA_PATH)
-    
-    # 1. Feature Selection
-    feature_cols = ['Dry tem(0C)', 'Dew_Point_Depression', 'RH(%)', 'QNH (hPa)']
-    
-    # Cleaning data: Removing rows with missing values in our features and targets
-    df.dropna(subset=feature_cols + ['Visibility', 'Cloud_Status'], inplace=True)
+features = ['Dry tem(0C)', 'Dew point(0C)', 'RH(%)', 'QNH (hPa)', 'Wind speed(Kts)', 'Dew_Point_Depression']
+df = df.dropna(subset=features + ['Cloud_Status', 'Visibility'])
 
-    X = df[feature_cols]
-    y_vis = df['Visibility']
-    y_cloud = df['Cloud_Status']
+X = df[features]
+y_cloud = df['Cloud_Status'].astype(int)
+y_visibility = df['Visibility']
 
-    # 2. Split Data
-    X_train, X_test, y_v_train, y_v_test, y_c_train, y_c_test = train_test_split(
-        X, y_vis, y_cloud, test_size=0.2, random_state=42
-    )
+save_path = os.path.join(os.path.dirname(script_dir), 'saved_models')
+os.makedirs(save_path, exist_ok=True)
 
-    # 3. Training Decision Tree
-    print("⏳ Training Decision Tree models...")
-    dt_vis = DecisionTreeRegressor(random_state=42)
-    dt_cloud = DecisionTreeClassifier(random_state=42)
+# Train Baseline Decision Tree Cloud Model
+print("☁️ Training Baseline Decision Tree Cloud Model...")
+X_train_c, X_test_c, y_train_c, y_test_c = train_test_split(X, y_cloud, test_size=0.2, random_state=42)
+dt_cloud = DecisionTreeClassifier(max_depth=6, random_state=42)
+dt_cloud.fit(X_train_c, y_train_c)
+print(f"📉 Decision Tree Cloud Accuracy: {accuracy_score(y_test_c, dt_cloud.predict(X_test_c)) * 100:.2f}%")
 
-    dt_vis.fit(X_train, y_v_train)
-    dt_cloud.fit(X_train, y_c_train)
+with open(os.path.join(save_path, 'decision_tree_cloud.pkl'), 'wb') as f:
+    pickle.dump(dt_cloud, f)
 
-    # 4. Accuracy Calculation
-    cloud_acc = accuracy_score(y_c_test, dt_cloud.predict(X_test)) * 100
-    vis_mae = mean_absolute_error(y_v_test, dt_vis.predict(X_test))
+# Train Baseline Decision Tree Visibility Model
+print("👁️ Training Baseline Decision Tree Visibility Model...")
+X_train_v, X_test_v, y_train_v, y_test_v = train_test_split(X, y_visibility, test_size=0.2, random_state=42)
+dt_vis = DecisionTreeRegressor(max_depth=6, random_state=42)
+dt_vis.fit(X_train_v, y_train_v)
+print(f"📉 Decision Tree Visibility R2 Score: {r2_score(y_test_v, dt_vis.predict(X_test_v)) * 100:.2f}%")
 
-    print("\n" + "="*40)
-    print("📊 DECISION TREE RESULTS")
-    print("="*40)
-    print(f"✅ Cloud Accuracy: {cloud_acc:.2f}%")
-    print(f"✅ Visibility MAE: {vis_mae:.2f}m")
-    print("="*40)
+with open(os.path.join(save_path, 'decision_tree_visibility.pkl'), 'wb') as f:
+    pickle.dump(dt_vis, f)
 
-    # Save models
-    with open(os.path.join(BASE_DIR, 'decision_tree_visibility.pkl'), 'wb') as f:
-        pickle.dump(dt_vis, f)
-    with open(os.path.join(BASE_DIR, 'decision_tree_cloud.pkl'), 'wb') as f:
-        pickle.dump(dt_cloud, f)
-
-if __name__ == "__main__":
-    train_decision_tree()
+print("✅ Decision Tree Models Saved Successfully!")
