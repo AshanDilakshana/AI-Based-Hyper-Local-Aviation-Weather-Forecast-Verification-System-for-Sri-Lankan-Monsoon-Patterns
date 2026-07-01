@@ -44,3 +44,13 @@ class PredictionRecord(Base):
     crosswind_kts = Column(Float)
     
     status = Column(String) # SAFE, WARNING, DANGER
+
+class SystemLogs(Base):
+    __tablename__ = "system_logs"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    timestamp_utc = Column(DateTime, default=datetime.utcnow, index=True)
+    level = Column(String, default="INFO") # INFO, ERROR, WARNING, SUCCESS
+    component = Column(String) # e.g., MLOps, API
+    message = Column(String)
+    details = Column(String, nullable=True) # Optional JSON string for extra data like MAE comparison

@@ -15,19 +15,41 @@ router = APIRouter(
 MODEL_1H_PATH = os.path.join(os.path.dirname(__file__), '../../../Models/1h prediction model/xgboost_wind_model.json')
 MODEL_3H_PATH = os.path.join(os.path.dirname(__file__), '../../../Models/3h prediction model/xgboost_wind_model_3h.json')
 
-try:
-    model_1h = xgb.XGBRegressor()
-    model_1h.load_model(MODEL_1H_PATH)
-except Exception as e:
-    print(f"Warning: Could not load 1H wind model. Error: {e}")
-    model_1h = None
+model_1h = None
+model_3h = None
 
-try:
-    model_3h = xgb.XGBRegressor()
-    model_3h.load_model(MODEL_3H_PATH)
-except Exception as e:
-    print(f"Warning: Could not load 3H wind model. Error: {e}")
-    model_3h = None
+def load_models():
+    global model_1h, model_3h
+    
+    try:
+        model_1h = xgb.XGBRegressor()
+        model_1h.load_model(MODEL_1H_PATH)
+    except Exception as e:
+        print(f"Warning: Could not load 1H wind model. Trying backup. Error: {e}")
+        try:
+            backup_path = MODEL_1H_PATH.replace('.json', '_backup.json')
+            model_1h = xgb.XGBRegressor()
+            model_1h.load_model(backup_path)
+            print("Loaded 1H BACKUP model.")
+        except Exception:
+            print("CRITICAL: Failed to load 1H model and backup.")
+            model_1h = None
+
+    try:
+        model_3h = xgb.XGBRegressor()
+        model_3h.load_model(MODEL_3H_PATH)
+    except Exception as e:
+        print(f"Warning: Could not load 3H wind model. Trying backup. Error: {e}")
+        try:
+            backup_path = MODEL_3H_PATH.replace('.json', '_backup.json')
+            model_3h = xgb.XGBRegressor()
+            model_3h.load_model(backup_path)
+            print("Loaded 3H BACKUP model.")
+        except Exception:
+            print("CRITICAL: Failed to load 3H model and backup.")
+            model_3h = None
+
+load_models()
 
 def calculate_aviation_winds(wind_speed: float, wind_dir: float, runway_heading: int):
     """Calculates Headwind and Crosswind for a specific runway."""
@@ -155,10 +177,16 @@ def predict_wind_3h(request: WindPredictionRequest):
         message=message
     )
 
-@router.post("/ingest")
-def ingest_data():
-    return {"message": "Data ingestion endpoint placeholder for Wind data."}
+from backend.mlops_retrainer import run_all_retrainings
 
-@router.post("/retrain")
-def retrain_model():
-    return {"message": "Retraining pipeline endpoint placeholder for Wind model."}
+@router.post("/models/retrain")
+def manual_retrain_models():
+    """
+    Manually triggers the MLOps retraining pipeline.
+    """
+    try:
+        results = run_all_retrainings()
+        load_models() # Hot-reload models into memory
+        return {"message": "Retraining complete", "results": results}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
