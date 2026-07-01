@@ -19,14 +19,26 @@ except Exception as e:
     print(f"Warning: Could not load mock Excel data: {e}")
 
 def clean_float(val):
-    if pd.isna(val) or math.isnan(val):
+    if pd.isna(val):
         return None
-    return float(val)
+    try:
+        f_val = float(val)
+        if math.isnan(f_val):
+            return None
+        return f_val
+    except (ValueError, TypeError):
+        return None
 
 def clean_int(val):
-    if pd.isna(val) or math.isnan(val):
+    if pd.isna(val):
         return None
-    return int(val)
+    try:
+        f_val = float(val)
+        if math.isnan(f_val):
+            return None
+        return int(f_val)
+    except (ValueError, TypeError):
+        return None
 
 @router.get("/current")
 def get_current_mock_weather():
