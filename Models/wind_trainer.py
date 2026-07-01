@@ -79,3 +79,48 @@ def train_xgboost_model(data_path: str, target_col: str, output_dir: str, model_
     model_save_path = os.path.join(output_dir, model_filename)
     best_model.save_model(model_save_path)
     print(f"✅ Model successfully saved to: {model_save_path}")
+
+def train_for_mlops(df: pd.DataFrame, target_col: str):
+    """
+    Trains a model using GridSearchCV and returns the model object and test metrics.
+    No file is saved here. MLOps handles saving.
+    """
+    X = df.drop(columns=[target_col])
+    y = df[target_col]
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+    param_grid = {
+        'n_estimators': [100, 300],
+        'max_depth': [5, 7],
+        'learning_rate': [0.05, 0.1],
+        'subsample': [0.8],
+        'colsample_bytree': [0.8]
+    }
+    base_model = xgb.XGBRegressor(objective='reg:squarederror', random_state=42)
+    search = GridSearchCV(base_model, param_grid, scoring='neg_mean_absolute_error', cv=3, n_jobs=-1)
+    search.fit(X_train, y_train)
+    
+    best_model = search.best_estimator_
+    
+    test_predictions = best_model.predict(X_test)
+    test_mae = mean_absolute_error(y_test, test_predictions)
+    
+    return best_model, test_mae, X_test, y_test
+
+def evaluate_old_model(model_path: str, X_test: pd.DataFrame, y_test: pd.Series):
+    """
+    Evaluates an existing model on the provided test set.
+    """
+    if not os.path.exists(model_path):
+        return None # Old model doesn't exist yet
+    
+    old_model = xgb.XGBRegressor()
+    old_model.load_model(model_path)
+    
+    # Ensure feature alignment
+    features = old_model.feature_names_in_
+    X_test_aligned = X_test[features]
+    
+    predictions = old_model.predict(X_test_aligned)
+    mae = mean_absolute_error(y_test, predictions)
+    return mae
