@@ -6,62 +6,71 @@ import os
 
 app = Flask(__name__)
 
-# 1. Setup paths to find the trained models
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-# Looking into models/models/ folder for the .pkl files
-MODEL_PATH = os.path.join(BASE_DIR, '../models/models')
+MODEL_PATH = os.path.join(BASE_DIR, '../models/saved_models')
 
-# 2. Load the trained Random Forest models
-# We use global variables so they are accessible in the predict route
 try:
-    with open(os.path.join(MODEL_PATH, 'random_forest_visibility.pkl'), 'rb') as f:
-        vis_model = pickle.load(f)
-    with open(os.path.join(MODEL_PATH, 'random_forest_cloud.pkl'), 'rb') as f:
-        cloud_model = pickle.load(f)
-    print("✅ Successfully loaded Weather-Only models (Month/Time removed)!")
+    with open(os.path.join(MODEL_PATH, 'xgb_cloud_model.pkl'), 'rb') as f:
+        cloud_bundle = pickle.load(f)
+    cloud_model = cloud_bundle['model']
+    cloud_mapping = cloud_bundle['mapping']
+
+    with open(os.path.join(MODEL_PATH, 'xgb_visibility_model.pkl'), 'rb') as f:
+        vis_bundle = pickle.load(f)
+    vis_model = vis_bundle['model']
+    vis_mapping = vis_bundle['mapping']
+    print("✅ Mapped and loaded optimized 16-feature lookup models successfully!")
 except Exception as e:
     print(f"❌ Model Loading Error: {e}")
 
 @app.route('/predict', methods=['POST'])
 def predict():
     try:
-        # Get data from the frontend request
         data = request.json
-        
-        # Extract basic weather parameters only
         temp = float(data['temp'])
         dew = float(data['dew'])
         rh = float(data['rh'])
         qnh = float(data['qnh'])
+        wind = float(data['wind'])
         
-        # Calculate Dew Point Depression (Feature Engineering used during training)
-        dew_point_depression = temp - dew
-        
-        # 3. Create a DataFrame for prediction
-        # The column names MUST match the features used in 'random_forest_model.py'
-        feature_names = ['Dry tem(0C)', 'Dew_Point_Depression', 'RH(%)', 'QNH (hPa)']
-        input_data = pd.DataFrame([[temp, dew_point_depression, rh, qnh]], 
-                                 columns=feature_names)
-        
-        # 4. Perform AI predictions
-        vis_prediction = vis_model.predict(input_data)[0]
-        cloud_pred_idx = cloud_model.predict(input_data)[0]
-        
-        # 5. Map numerical cloud index back to aviation labels
-        cloud_mapping = {0: 'OVC', 1: 'BKN', 2: 'SCT', 3: 'FEW', 4: 'NSC'}
-        cloud_status = cloud_mapping.get(cloud_pred_idx, "NSC")
+        # Mapped safely from dashboard payload names
+        month = float(data.get('month', 6))
+        hour = float(data.get('hour', 12))  # Matches dataset hour format (Time // 100)
+        wind_dir = float(data.get('wind_dir', 180))
+        weather_encoded = float(data.get('weather_encoded', 0))
 
-        # Return the results to the Dashboard
-        return jsonify({
-            "visibility_prediction": float(vis_prediction),
-            "cloud_status": cloud_status
-        })
+        # Re-calculating interaction metrics
+        dew_point_depression = temp - dew
+        temp_rh = temp * rh
+        wind_rh = wind * rh
+        pressure_wind = qnh * wind
+        rh_squared = rh ** 2
+
+        feature_names = [
+            'Month', 'Hour', 'Wind Dir.', 'Wind speed(Kts)', 'Dry tem(0C)', 'Dew point(0C)', 
+            'RH(%)', 'QNH (hPa)', 'Dew_Point_Depression', 'Temp_RH', 'Wind_RH', 
+            'Pressure_Wind', 'RH_Squared', 'Weather_Encoded'
+        ]
         
+        input_data = pd.DataFrame([[
+            month, hour, wind_dir, wind, temp, dew, rh, qnh,
+            dew_point_depression, temp_rh, wind_rh, pressure_wind, rh_squared, weather_encoded
+        ]], columns=feature_names)
+
+        # 🎯 FIXED: Force casting index to native Python int() to completely eliminate np.float32 mapping error
+        cloud_raw_pred = cloud_model.predict(input_data)[0]
+        cloud_idx = int(np.clip(np.round(cloud_raw_pred), 0, len(cloud_mapping) - 1))
+        
+        vis_raw_pred = vis_model.predict(input_data)[0]
+        vis_idx = int(np.clip(np.round(vis_raw_pred), 0, len(vis_mapping) - 1))
+
+        return jsonify({
+            "visibility_prediction": int(vis_mapping[vis_idx]),
+            "cloud_status": str(cloud_mapping[cloud_idx])
+        })
     except Exception as e:
-        # Print the exact error in the terminal for debugging
-        print(f"⚠️ Prediction API Error: {e}")
+        print(f"⚠️ Prediction Error: {e}")
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    # Running the Flask server on port 5000
     app.run(debug=True, port=5000)
