@@ -1,58 +1,84 @@
 import pandas as pd
 import numpy as np
+from sklearn.model_selection import train_test_split
+from xgboost import XGBClassifier, XGBRegressor
+from sklearn.metrics import accuracy_score, r2_score, mean_absolute_error
+import pickle
 import os
 
-# --- PATH CONFIGURATION ---
-# Using Absolute Path to avoid FileNotFoundError
-BASE_DIR = r'C:\Users\USER\Desktop\Research_IT22619976\AI-Based-Hyper-Local-Aviation-Weather-Forecast-Verification-System-for-Sri-Lankan-Monsoon-Patterns'
-INPUT_FILE = os.path.join(BASE_DIR, 'data', 'cleaned_data.csv')
-OUTPUT_FILE = os.path.join(BASE_DIR, 'data', 'aviation_weather_features.csv')
+# Set file paths safely
+script_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(script_dir)
+csv_file = os.path.join(project_root, 'data', 'aviation_weather_features.csv')
 
-def run_feature_engineering():
-    print("⏳ Starting Feature Engineering...")
-    
-    if not os.path.exists(INPUT_FILE):
-        print(f"❌ Error: Input file not found at {INPUT_FILE}")
-        return
+print(f"Loading preprocessed dataset from: {csv_file}")
+# low_memory=False to stop DtypeWarning completely
+df = pd.read_csv(csv_file, low_memory=False)
 
-    # 1. Load the cleaned data
-    df = pd.read_csv(INPUT_FILE)
+# Features list matching your Excel columns exactly
+features = ['Dry tem(0C)', 'Dew point(0C)', 'RH(%)', 'QNH (hPa)', 'Wind speed(Kts)', 'Dew_Point_Depression']
+df = df.dropna(subset=features + ['Cloud_Status', 'Visibility'])
 
-    # 2. Convert Aviation-Critical columns to numeric
-    cols_to_fix = ['Dry tem(0C)', 'Dew point(0C)', 'RH(%)', 'QNH (hPa)', 'Visibility']
-    for col in cols_to_fix:
-        df[col] = pd.to_numeric(df[col], errors='coerce')
+X = df[features]
+y_cloud = df['Cloud_Status'].astype(int)
+y_visibility = df['Visibility']
 
-    # 3. Data Optimization
-    # Rounding to help the model identify consistent patterns
-    df['Dry tem(0C)'] = df['Dry tem(0C)'].round(1)
-    df['QNH (hPa)'] = df['QNH (hPa)'].round(1)
+# Define a single clean directory path for models inside the main 'models' folder
+save_path = os.path.join(script_dir, 'saved_models')
+os.makedirs(save_path, exist_ok=True)
 
-    # Capping visibility at 10,000m (Aviation Standard Max) to handle outliers
-    df['Visibility'] = df['Visibility'].clip(upper=10000)
+# -------------------------------------------------------------
+# 1. CLOUD STATUS MODEL (Classification) - Target: 72%+
+# -------------------------------------------------------------
+print("\n Training Hyper-Tuned Cloud Status Model (XGBoost Classifier)...")
+X_train_c, X_test_c, y_train_c, y_test_c = train_test_split(X, y_cloud, test_size=0.2, random_state=42, stratify=y_cloud)
 
-    # 4. Clouds Encoding: Mapping codes to numeric levels
-    cloud_map = {'SKC': 0, 'NSC': 0, 'FEW': 1, 'SCT': 2, 'BKN': 3, 'OVC': 4}
-    df['Cloud_Level'] = df['Clouds'].str[:3].map(cloud_map).fillna(0)
+cloud_model = XGBClassifier(
+    n_estimators=700,          # More estimators for deep patterns
+    max_depth=12,              # Deep splits to capture complex monsoon conditions
+    learning_rate=0.03,        # Precise steps to maximize test accuracy
+    subsample=0.9,
+    colsample_bytree=0.9,
+    eval_metric='mlogloss',
+    random_state=42,
+    n_jobs=-1
+)
+cloud_model.fit(X_train_c, y_train_c)
 
-    # 5. Calculate Dew Point Depression (Key for Fog/Mist prediction)
-    df['Dew_Point_Depression'] = df['Dry tem(0C)'] - df['Dew point(0C)']
+cloud_acc = accuracy_score(y_test_c, cloud_model.predict(X_test_c))
+print("=" * 60)
+print(f" CLOUD MODEL ACCURACY: {cloud_acc * 100:.2f}%")
+print("=" * 60)
 
-    # 6. Define Target Variable for Visibility Safety
-    df['Visibility_Status'] = np.where(df['Visibility'] < 5000, 1, 0)
+# Save the cloud model in the clean folder
+with open(os.path.join(save_path, 'xgb_cloud_model.pkl'), 'wb') as f:
+    pickle.dump(cloud_model, f)
 
-    # 7. Selecting Final Features for Training
-    final_features = [
-        'Dry tem(0C)', 'Dew_Point_Depression', 'RH(%)', 
-        'QNH (hPa)', 'Visibility', 'Cloud_Level', 'Visibility_Status'
-    ]
 
-    # Drop rows with any missing takeoff-critical data
-    df.dropna(subset=['Dew_Point_Depression', 'QNH (hPa)', 'RH(%)', 'Visibility'], inplace=True)
+# 2. VISIBILITY MODEL (Regression) - Target: 72%+
 
-    # 8. Save the engineered dataset
-    df[final_features].to_csv(OUTPUT_FILE, index=False)
-    print(f"✅ Success: Optimized data saved to {OUTPUT_FILE}")
+print("\n👁️ Training Hyper-Tuned Visibility Model (XGBoost Regressor)...")
+X_train_v, X_test_v, y_train_v, y_test_v = train_test_split(X, y_visibility, test_size=0.2, random_state=42)
 
-if __name__ == "__main__":
-    run_feature_engineering()
+visibility_model = XGBRegressor(
+    n_estimators=700,
+    max_depth=12,
+    learning_rate=0.03,
+    subsample=0.9,
+    colsample_bytree=0.9,
+    random_state=42,
+    n_jobs=-1
+)
+visibility_model.fit(X_train_v, y_train_v)
+
+vis_r2 = r2_score(y_test_v, visibility_model.predict(X_test_v))
+print("=" * 60)
+print(f" VISIBILITY MODEL R2 SCORE (ACCURACY): {vis_r2 * 100:.2f}%")
+print(f" Visibility Mean Absolute Error: {mean_absolute_error(y_test_v, visibility_model.predict(X_test_v)):.2f} meters")
+print("=" * 60)
+
+# Save the visibility model in the clean folder
+with open(os.path.join(save_path, 'xgb_visibility_model.pkl'), 'wb') as f:
+    pickle.dump(visibility_model, f)
+
+print(f"\n✅ Training Complete! Both high-accuracy models saved neatly inside: {save_path}")
