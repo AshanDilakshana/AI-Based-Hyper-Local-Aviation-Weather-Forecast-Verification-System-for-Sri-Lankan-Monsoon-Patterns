@@ -47,7 +47,10 @@ def retrain_model_pipeline(forecast_hours, target_col, model_dir, model_filename
             return False, "Not enough data"
             
         pipeline = UnifiedWeatherPipeline(forecast_hours=forecast_hours)
-        df_processed = pipeline.process_training_data(df_raw, save_csv=False)
+        X, y = pipeline.process_training_data(df_raw)
+        
+        df_processed = X.copy()
+        df_processed[target_col] = y
         
         if df_processed.empty:
             log_event(db, "ERROR", component, "Processed data is empty.")
