@@ -27,7 +27,7 @@ export default function WeatherPrediction() {
     e.preventDefault();
 
     try {
-      const res = await axios.post("http://127.0.0.1:5000/predict", {
+      const res = await axios.post("http://127.0.0.1:8000/weather/predict/3h", {
         time_utc: formData.time_utc,
         temperature: Number(formData.temperature),
         humidity: Number(formData.humidity),
@@ -43,7 +43,7 @@ export default function WeatherPrediction() {
       console.error(error);
 
       alert(
-        error.response?.data?.error ||
+        error.response?.data?.detail ||
         "Prediction failed. Check backend connection."
       );
     }
@@ -160,7 +160,7 @@ export default function WeatherPrediction() {
             </p>
           </div>
         ) : (
-          <>
+          <div className="results-container">
             {/* TEMPERATURE CARD */}
             <div className="result-card">
               <div className="result-header">
@@ -212,7 +212,33 @@ export default function WeatherPrediction() {
                 Pressure forecast generated for next 3 hours.
               </p>
             </div>
-          </>
+
+            {/* HUMIDITY CARD */}
+            <div className="result-card">
+              <div className="result-header">
+                <h3>Predicted Relative Humidity</h3>
+                <span>SAFE</span>
+              </div>
+
+              <h1>{prediction.humidity.toFixed(2)}</h1>
+
+              <p className="unit">%</p>
+
+              <div className="mini-box">
+                <p>Forecast Type</p>
+                <b>T+3 Hour</b>
+              </div>
+
+              <div className="mini-box">
+                <p>Forecast UTC Time</p>
+                <b>{prediction.forecast_time_utc}</b>
+              </div>
+
+              <p className="note">
+                Humidity forecast generated using AI model.
+              </p>
+            </div>
+          </div>
         )}
       </div>
     </div>
