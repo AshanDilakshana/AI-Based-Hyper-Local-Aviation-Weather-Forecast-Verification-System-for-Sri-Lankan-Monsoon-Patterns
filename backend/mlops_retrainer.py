@@ -7,8 +7,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
 
 from backend.data.database import SessionLocal
 from backend.data.models import WeatherData, SystemLogs
-from Models.wind_pipeline import UnifiedWeatherPipeline
-from Models.wind_trainer import train_for_mlops, evaluate_old_model
+from preprocessing_and_feature_engineering.wind_prediction_model.unified_pipeline import UnifiedWeatherPipeline
+from Models.wind_models.wind_trainer import train_for_mlops, evaluate_old_model
 
 def get_all_historical_data(db_session):
     records = db_session.query(WeatherData).order_by(WeatherData.id.asc()).all()
@@ -101,10 +101,10 @@ def retrain_model_pipeline(forecast_hours, target_col, model_dir, model_filename
 def run_all_retrainings():
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../Models'))
     
-    dir_1h = os.path.join(base_dir, '1h prediction model')
+    dir_1h = os.path.join(base_dir, 'wind_models/1h prediction model')
     res_1h, msg_1h = retrain_model_pipeline(1, 'Wind speed(Kts)_1h_ahead', dir_1h, 'xgboost_wind_model_1h.json')
     
-    dir_3h = os.path.join(base_dir, '3h prediction model')
+    dir_3h = os.path.join(base_dir, 'wind_models/3h prediction model')
     res_3h, msg_3h = retrain_model_pipeline(3, 'Wind speed(Kts)_3h_ahead', dir_3h, 'xgboost_wind_model_3h.json')
     
     return {
