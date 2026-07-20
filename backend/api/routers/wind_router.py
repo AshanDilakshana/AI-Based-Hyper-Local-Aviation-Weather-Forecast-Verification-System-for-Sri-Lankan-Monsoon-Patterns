@@ -58,6 +58,18 @@ def calculate_aviation_winds(wind_speed: float, wind_dir: float, runway_heading:
     headwind = wind_speed * np.cos(angle_diff)
     return abs(crosswind), headwind
 
+def suggest_best_runway(wind_speed: float, wind_dir: float):
+    # Calculate for RWY 04 (heading 40)
+    crosswind_04, headwind_04 = calculate_aviation_winds(wind_speed, wind_dir, 40)
+    # Calculate for RWY 22 (heading 220)
+    crosswind_22, headwind_22 = calculate_aviation_winds(wind_speed, wind_dir, 220)
+    
+    # We prefer the runway with the highest headwind for safe takeoff
+    if headwind_22 > headwind_04:
+        return 220, abs(crosswind_22), headwind_22, "RWY 22"
+    else:
+        return 40, abs(crosswind_04), headwind_04, "RWY 04"
+
 def get_alert_status(crosswind: float, timeframe_str: str):
     status = "SAFE"
     message = f"Forecast for {timeframe_str}: Crosswind components are within normal limits."
@@ -132,14 +144,14 @@ def predict_wind_1h(request: WindPredictionRequest):
     features_ordered = features[expected_cols]
 
     predicted_wind_speed = float(model_1h.predict(features_ordered)[0])
-    crosswind, headwind = calculate_aviation_winds(predicted_wind_speed, request.wind_dir, request.runway_heading)
+    best_heading, crosswind, headwind, runway_name = suggest_best_runway(predicted_wind_speed, request.wind_dir)
     status, message = get_alert_status(crosswind, "1 hour ahead")
 
     return WindPredictionResponse(
         predicted_wind_speed_kts=round(predicted_wind_speed, 2),
         headwind_kts=round(headwind, 2),
         crosswind_kts=round(crosswind, 2),
-        runway=f"RWY {str(request.runway_heading).zfill(3)}",
+        runway=runway_name,
         status=status,
         message=message
     )
@@ -165,14 +177,14 @@ def predict_wind_3h(request: WindPredictionRequest):
     features_ordered = features[expected_cols]
 
     predicted_wind_speed = float(model_3h.predict(features_ordered)[0])
-    crosswind, headwind = calculate_aviation_winds(predicted_wind_speed, request.wind_dir, request.runway_heading)
+    best_heading, crosswind, headwind, runway_name = suggest_best_runway(predicted_wind_speed, request.wind_dir)
     status, message = get_alert_status(crosswind, "3 hours ahead")
 
     return WindPredictionResponse(
         predicted_wind_speed_kts=round(predicted_wind_speed, 2),
         headwind_kts=round(headwind, 2),
         crosswind_kts=round(crosswind, 2),
-        runway=f"RWY {str(request.runway_heading).zfill(3)}",
+        runway=runway_name,
         status=status,
         message=message
     )
