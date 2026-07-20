@@ -28,21 +28,19 @@ def seed_database():
     print("1. Initializing Database...")
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
-
-    # Check if we already have data
-    count = db.query(WeatherData).count()
-    if count > 0:
-        print(f"Database already contains {count} records. Skipping seed.")
-        db.close()
-        return
-
+    
     print("2. Reading historical Excel file...")
     data_path = os.path.join(os.path.dirname(__file__), '../BIA_METAR_DATA_(2019_2024).xlsx')
     df = pd.read_excel(data_path)
     
-    print("3. Seeding 500 records into SQLite...")
-    # Get the last 500 rows to simulate recent history
-    df_recent = df.tail(500).copy()
+    print("3. Seeding all records into SQLite...")
+    
+    # Clear existing data so we don't have duplicates if running again
+    db.query(WeatherData).delete()
+    db.commit()
+    
+    # Get all rows instead of just 500
+    df_recent = df.copy()
     
     records_to_insert = []
     for _, row in df_recent.iterrows():

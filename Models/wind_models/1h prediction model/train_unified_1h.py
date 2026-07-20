@@ -4,17 +4,18 @@ import pandas as pd
 
 # Allow importing the common files from the parent 'Models' directory
 current_dir = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(os.path.abspath(os.path.join(current_dir, '../')))
+sys.path.append(os.path.abspath(os.path.join(current_dir, '../'))) # For wind_trainer
+sys.path.append(os.path.abspath(os.path.join(current_dir, '../../../'))) # For preprocessing_and_feature_engineering
 
-from wind_pipeline import UnifiedWeatherPipeline
+from preprocessing_and_feature_engineering.wind_prediction_model.unified_pipeline import UnifiedWeatherPipeline
 from wind_trainer import train_xgboost_model
 
 def main():
     print("--- 1-Hour Unified Wind Forecasting Setup ---")
     
     # 1. Pipeline Execution
-    raw_data_path = os.path.abspath(os.path.join(current_dir, '../../BIA_METAR_DATA_(2019_2024).xlsx'))
-    processed_data_dir = os.path.abspath(os.path.join(current_dir, '../../backend/data'))
+    raw_data_path = os.path.abspath(os.path.join(current_dir, '../../../BIA_METAR_DATA_(2019_2024).xlsx'))
+    processed_data_dir = os.path.abspath(os.path.join(current_dir, '../../../backend/data'))
     os.makedirs(processed_data_dir, exist_ok=True)
     processed_data_path = os.path.join(processed_data_dir, 'processed_monsoon_data_1h.csv')
 
