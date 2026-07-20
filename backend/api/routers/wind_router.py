@@ -12,8 +12,8 @@ router = APIRouter(
 
 # Load the AI Models globally for this router
 # Corrected paths pointing to the 'Models' folder
-MODEL_1H_PATH = os.path.join(os.path.dirname(__file__), '../../../Models/1h prediction model/xgboost_wind_model_1h.json')
-MODEL_3H_PATH = os.path.join(os.path.dirname(__file__), '../../../Models/3h prediction model/xgboost_wind_model_3h.json')
+MODEL_1H_PATH = os.path.join(os.path.dirname(__file__), '../../../Models/wind_models/1h prediction model/xgboost_wind_model_1h.json')
+MODEL_3H_PATH = os.path.join(os.path.dirname(__file__), '../../../Models/wind_models/3h prediction model/xgboost_wind_model_3h.json')
 
 model_1h = None
 model_3h = None
@@ -88,7 +88,7 @@ import datetime
 
 # Ensure Models directory is accessible
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../')))
-from Models.wind_pipeline import UnifiedWeatherPipeline
+from preprocessing_and_feature_engineering.wind_prediction_model.unified_pipeline import UnifiedWeatherPipeline
 
 def get_historical_dataframe(db_session, current_request):
     records = db_session.query(WeatherData).order_by(WeatherData.id.desc()).limit(12).all()
