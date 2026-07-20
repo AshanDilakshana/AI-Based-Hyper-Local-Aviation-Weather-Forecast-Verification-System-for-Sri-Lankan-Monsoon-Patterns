@@ -88,7 +88,7 @@ import datetime
 
 # Ensure Models directory is accessible
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../')))
-from Models.wind_pipeline import UnifiedWeatherPipeline
+from preprocessing_and_feature_engineering.wind_prediction_model.unified_pipeline import UnifiedWeatherPipeline
 
 def get_historical_dataframe(db_session, current_request):
     records = db_session.query(WeatherData).order_by(WeatherData.id.desc()).limit(12).all()

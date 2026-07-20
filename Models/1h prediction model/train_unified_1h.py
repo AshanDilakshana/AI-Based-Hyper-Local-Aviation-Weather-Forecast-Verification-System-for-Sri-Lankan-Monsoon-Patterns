@@ -6,7 +6,7 @@ import pandas as pd
 current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.abspath(os.path.join(current_dir, '../')))
 
-from wind_pipeline import UnifiedWeatherPipeline
+from preprocessing_and_feature_engineering.wind_prediction_model.unified_pipeline import UnifiedWeatherPipeline
 from wind_trainer import train_xgboost_model
 
 def main():

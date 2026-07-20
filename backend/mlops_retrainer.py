@@ -7,7 +7,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
 
 from backend.data.database import SessionLocal
 from backend.data.models import WeatherData, SystemLogs
-from Models.wind_pipeline import UnifiedWeatherPipeline
+from preprocessing_and_feature_engineering.wind_prediction_model.unified_pipeline import UnifiedWeatherPipeline
 from Models.wind_trainer import train_for_mlops, evaluate_old_model
 
 def get_all_historical_data(db_session):
