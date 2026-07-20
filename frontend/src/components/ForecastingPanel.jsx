@@ -63,6 +63,10 @@ export default function ForecastingPanel({ liveData, apiBase, onForecastComplete
           </h3>
           
           <div className="data-row">
+            <span className="data-label">Suggested Runway</span>
+            <span className="data-value" style={{fontWeight: 'bold', color: 'var(--primary)'}}>{result.runway}</span>
+          </div>
+          <div className="data-row">
             <span className="data-label">Predicted Wind Speed</span>
             <span className="data-value">{result.predicted_wind_speed_kts} Kts</span>
           </div>
