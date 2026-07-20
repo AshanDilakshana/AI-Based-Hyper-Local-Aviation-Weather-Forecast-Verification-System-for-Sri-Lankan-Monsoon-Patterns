@@ -57,7 +57,7 @@ with open(os.path.join(save_path, 'xgb_cloud_model.pkl'), 'wb') as f:
 
 # 2. VISIBILITY MODEL (Regression) - Target: 72%+
 
-print("\n👁️ Training Hyper-Tuned Visibility Model (XGBoost Regressor)...")
+print("\n Training Hyper-Tuned Visibility Model (XGBoost Regressor)...")
 X_train_v, X_test_v, y_train_v, y_test_v = train_test_split(X, y_visibility, test_size=0.2, random_state=42)
 
 visibility_model = XGBRegressor(
@@ -81,4 +81,4 @@ print("=" * 60)
 with open(os.path.join(save_path, 'xgb_visibility_model.pkl'), 'wb') as f:
     pickle.dump(visibility_model, f)
 
-print(f"\n✅ Training Complete! Both high-accuracy models saved neatly inside: {save_path}")
+print(f"\n Training Complete! Both high-accuracy models saved neatly inside: {save_path}")
