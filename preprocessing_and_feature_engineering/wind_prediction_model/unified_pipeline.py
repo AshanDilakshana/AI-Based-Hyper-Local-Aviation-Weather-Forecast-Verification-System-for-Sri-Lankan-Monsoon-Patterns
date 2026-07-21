@@ -46,6 +46,7 @@ class UnifiedWeatherPipeline:
         if 'Month' in df_features.columns:
             df_features = df_features[df_features['Month'].isin([5, 6, 7, 8, 9])]
             
+            
         # --- THE CRITICAL SHIFT FOR FORECASTING ---
         # Data is in 30 min intervals. So shift rows = forecast_hours * 2
         row_shift = -(self.forecast_hours * 2)
