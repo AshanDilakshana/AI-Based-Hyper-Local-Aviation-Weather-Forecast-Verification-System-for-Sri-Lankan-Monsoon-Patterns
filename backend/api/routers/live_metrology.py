@@ -44,3 +44,16 @@ def get_current_live_weather():
         }
     finally:
         db.close()
+
+from backend.live_metar_fetcher import fetch_and_store_live_metar
+
+@router.post("/sync")
+def force_sync_weather():
+    """
+    Manually triggers an immediate fetch of live METAR data from aviationweather.gov.
+    """
+    try:
+        fetch_and_store_live_metar()
+        return {"message": "Live METAR data successfully synchronized."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to sync weather data: {str(e)}")
