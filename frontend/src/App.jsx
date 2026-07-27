@@ -12,10 +12,10 @@ function App() {
   const [liveData, setLiveData] = useState(null);
   const [forecast, setForecast] = useState(null);
 
-  // Fetch live mock data
+  // Fetch real live data
   const fetchLiveData = async () => {
     try {
-      const res = await axios.get(`${API_BASE}/mock-metrology/current`);
+      const res = await axios.get(`${API_BASE}/live-metrology/current`);
       setLiveData(res.data);
     } catch (err) {
       console.error("Error fetching live data", err);

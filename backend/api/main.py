@@ -5,7 +5,7 @@ import os
 # Ensure backend modules can be imported
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 
-from backend.api.routers import wind_router, mock_metrology
+from backend.api.routers import wind_router, live_metrology
 from backend.data.database import engine, Base
 from backend.data import models
 
@@ -35,8 +35,8 @@ app.add_middleware(
 # Ashan's Wind Prediction Models (1h & 3h)
 app.include_router(wind_router.router)
 
-# Mock Metrology API
-app.include_router(mock_metrology.router)
+# Live Metrology API
+app.include_router(live_metrology.router)
 
 # Example placeholders for other team members:
 # from backend.api.routers import visibility, clouds, temperature

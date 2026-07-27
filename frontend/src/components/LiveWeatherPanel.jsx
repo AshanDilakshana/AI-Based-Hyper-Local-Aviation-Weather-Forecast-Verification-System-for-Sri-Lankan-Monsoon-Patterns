@@ -4,7 +4,7 @@ export default function LiveWeatherPanel({ data, onRefresh }) {
   if (!data) {
     return (
       <div className="glass-panel">
-        <h2>Live Station Data (Mock)</h2>
+        <h2>Live Station Data</h2>
         <p>Connecting to BIA Metrology API...</p>
       </div>
     );
@@ -20,7 +20,7 @@ export default function LiveWeatherPanel({ data, onRefresh }) {
       </div>
       
       <p style={{ color: 'var(--text-muted)', marginBottom: '24px', fontSize: '0.9rem' }}>
-        Last Updated: {data.timestamp_simulated} (Simulating {data.year}-{data.month}-{data.date} {data.time_utc})
+        Last Updated: {data.year}-{data.month}-{data.date} {data.time_utc} UTC
       </p>
 
       <div className="data-row">
