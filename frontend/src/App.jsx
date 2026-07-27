@@ -22,6 +22,16 @@ function App() {
     }
   };
 
+  // Force an immediate external fetch from the backend
+  const handleSyncNow = async () => {
+    try {
+      await axios.post(`${API_BASE}/live-metrology/sync`);
+      await fetchLiveData();
+    } catch (err) {
+      console.error("Error forcing sync", err);
+    }
+  };
+
   useEffect(() => {
     fetchLiveData();
     // Auto-poll every 10 seconds
@@ -38,7 +48,7 @@ function App() {
 
       <main className="dashboard-container">
         <div className="left-column">
-          <LiveWeatherPanel data={liveData} onRefresh={fetchLiveData} />
+          <LiveWeatherPanel data={liveData} onRefresh={handleSyncNow} />
         </div>
         
         <div className="right-column">
