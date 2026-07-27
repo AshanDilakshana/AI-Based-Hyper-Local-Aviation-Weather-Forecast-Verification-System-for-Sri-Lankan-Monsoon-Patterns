@@ -9,9 +9,18 @@ from sqlalchemy.orm import Session
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
 
 from backend.data.database import SessionLocal, engine, Base
-from backend.data.models import WeatherData
+from backend.data.models import WeatherData, SystemLogs
 
 API_URL = "https://aviationweather.gov/api/data/metar?ids=VCBI&format=json"
+
+def log_event(db_session, level, component, message, details=None):
+    try:
+        log = SystemLogs(level=level, component=component, message=message, details=details)
+        db_session.add(log)
+        db_session.commit()
+    except Exception as e:
+        print(f"Failed to write log to DB: {e}")
+    print(f"[{level}] {component}: {message}")
 
 def calculate_rh(temp, dewp):
     if temp is None or dewp is None:
@@ -59,19 +68,19 @@ def extract_weather_and_clouds(raw_ob):
 def fetch_and_store_live_metar():
     print(f"[{datetime.utcnow()}] Fetching live METAR data for VCBI...")
     
+    # Initialize DB first so we can log errors
+    Base.metadata.create_all(bind=engine)
+    db = SessionLocal()
+    
     try:
         response = requests.get(API_URL, timeout=10)
         response.raise_for_status()
         data = response.json()
         
         if not data or len(data) == 0:
-            print("No data returned from API.")
+            log_event(db, "WARNING", "Live_METAR_Fetcher", "No data returned from API.")
             return
             
-        # Initialize DB
-        Base.metadata.create_all(bind=engine)
-        db = SessionLocal()
-        
         records_added = 0
         for ob in reversed(data): # Process oldest to newest
             raw_ob = ob.get('rawOb', '')
@@ -127,14 +136,14 @@ def fetch_and_store_live_metar():
         db.commit()
         
         if records_added > 0:
-            print(f"✅ Successfully added {records_added} new live METAR record(s) to database.")
+            log_event(db, "SUCCESS", "Live_METAR_Fetcher", f"Added {records_added} new live METAR record(s).")
         else:
-            print("No new METAR records to add. All fetched data already exists in DB.")
+            log_event(db, "INFO", "Live_METAR_Fetcher", "No new METAR records. All fetched data already exists in DB.")
             
-        db.close()
-        
     except Exception as e:
-        print(f"❌ Error fetching live METAR: {e}")
+        log_event(db, "ERROR", "Live_METAR_Fetcher", f"Error fetching live METAR: {str(e)}")
+    finally:
+        db.close()
 
 if __name__ == "__main__":
     fetch_and_store_live_metar()

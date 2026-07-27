@@ -12,11 +12,19 @@ from backend.data import models
 # Create database tables
 Base.metadata.create_all(bind=engine)
 
+from backend.scheduler import start_scheduler
+
 app = FastAPI(
     title="Aviation Weather Forecast API",
     description="Main API gateway for multiple aviation weather models.",
     version="1.0.0"
 )
+
+@app.on_event("startup")
+def on_startup():
+    print("Starting background scheduler...")
+    # Call start_scheduler (which is non-blocking since it uses BackgroundScheduler)
+    start_scheduler()
 
 from fastapi.middleware.cors import CORSMiddleware
 
