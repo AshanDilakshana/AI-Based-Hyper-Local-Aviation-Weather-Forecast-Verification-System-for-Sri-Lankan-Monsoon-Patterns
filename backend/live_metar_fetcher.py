@@ -142,8 +142,10 @@ def fetch_and_store_live_metar(hours=2):
         else:
             log_event(db, "INFO", f"Live_METAR_Fetcher_{hours}H", "No new METAR records. All fetched data already exists in DB.")
             
+        return records_added
     except Exception as e:
         log_event(db, "ERROR", f"Live_METAR_Fetcher_{hours}H", f"Error fetching live METAR: {str(e)}")
+        return 0
     finally:
         db.close()
 

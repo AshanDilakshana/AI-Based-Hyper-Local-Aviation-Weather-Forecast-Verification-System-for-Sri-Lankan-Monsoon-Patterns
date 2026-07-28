@@ -7,11 +7,35 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
 from backend.mlops_retrainer import run_all_retrainings
 from backend.live_metar_fetcher import fetch_and_store_live_metar
 
+from datetime import datetime, timedelta
+
+def smart_live_metar_fetch(sched):
+    """
+    Fetches METAR data. If no new data is found (records_added == 0),
+    it schedules a one-off retry job to run in 5 minutes.
+    """
+    records_added = fetch_and_store_live_metar(hours=2)
+    
+    if records_added == 0:
+        print(f"[{datetime.now()}] No new data found. Rescheduling fetch in 5 minutes...")
+        run_date = datetime.now() + timedelta(minutes=5)
+        sched.add_job(
+            smart_live_metar_fetch,
+            'date',
+            run_date=run_date,
+            args=[sched],
+            id='live_metar_retry_job',
+            name='Live METAR Retry Fetcher (5m)',
+            replace_existing=True
+        )
+    else:
+        print(f"[{datetime.now()}] Successfully fetched {records_added} new records.")
+
 def start_scheduler():
     """
     Initializes the APScheduler to run the MLOps retraining pipeline
     automatically on the 1st of every month at midnight, and fetch
-    live METAR data every 30 minutes.
+    live METAR data smartly every 32 minutes.
     """
     scheduler = BackgroundScheduler()
     
@@ -27,13 +51,14 @@ def start_scheduler():
         replace_existing=True
     )
 
-    # Fetch live METAR data every 17 minutes (default is 2 hours)
+    # Fetch live METAR data every 32 minutes
     scheduler.add_job(
-        fetch_and_store_live_metar,
+        smart_live_metar_fetch,
         'interval',
-        minutes=17,
+        minutes=32,
+        args=[scheduler],
         id='live_metar_fetch_job',
-        name='Live METAR Data Fetcher (17m)',
+        name='Live METAR Data Fetcher (32m)',
         replace_existing=True
     )
     
@@ -51,11 +76,14 @@ def start_scheduler():
     
     scheduler.start()
     print("✅ MLOps Background Scheduler started. Next run: 1st of the month at 00:00.")
-    print("✅ Live METAR Fetcher scheduled to run every 17 minutes.")
+    print("✅ Smart Live METAR Fetcher scheduled to run every 32 minutes (retries every 5m if delayed).")
     print("✅ Daily METAR Backup Fetcher scheduled to run every day at 01:00 AM.")
     
     # Return the scheduler instance so it can be managed if needed
     return scheduler
+
+
+    
 
 if __name__ == "__main__":
     scheduler = start_scheduler()
