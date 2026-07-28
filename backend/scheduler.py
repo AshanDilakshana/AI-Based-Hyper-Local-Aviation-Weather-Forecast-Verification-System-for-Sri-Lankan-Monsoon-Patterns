@@ -27,11 +27,11 @@ def start_scheduler():
         replace_existing=True
     )
 
-    # Fetch live METAR data every 15 minutes
+    # Fetch live METAR data every 17 minutes
     scheduler.add_job(
         fetch_and_store_live_metar,
-        'cron',
-        minute='*/15',
+        'interval',
+        minutes=17,
         id='live_metar_fetch_job',
         name='Live METAR Data Fetcher',
         replace_existing=True
@@ -39,8 +39,13 @@ def start_scheduler():
     
     scheduler.start()
     print("✅ MLOps Background Scheduler started. Next run: 1st of the month at 00:00.")
-    print("✅ Live METAR Fetcher scheduled to run every 15 minutes.")
+    print("✅ Live METAR Fetcher scheduled to run every 17 minutes.")
     
+    # Return the scheduler instance so it can be managed if needed
+    return scheduler
+
+if __name__ == "__main__":
+    scheduler = start_scheduler()
     # Keep the thread alive if running this script directly
     try:
         while True:
@@ -48,6 +53,3 @@ def start_scheduler():
     except (KeyboardInterrupt, SystemExit):
         scheduler.shutdown()
         print("Scheduler shut down.")
-
-if __name__ == "__main__":
-    start_scheduler()
