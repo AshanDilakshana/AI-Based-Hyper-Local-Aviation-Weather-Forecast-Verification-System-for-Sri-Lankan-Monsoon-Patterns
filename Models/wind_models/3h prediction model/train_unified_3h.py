@@ -14,13 +14,38 @@ def main():
     print("--- 3-Hour Unified Wind Forecasting Setup ---")
     
     # 1. Pipeline Execution
-    raw_data_path = os.path.abspath(os.path.join(current_dir, '../../../backend/data/BIA_METAR_DATA_(2019_2024).xlsx'))
+    from sqlalchemy import create_engine
+    
+    db_path = os.path.abspath(os.path.join(current_dir, '../../../weather_data.db'))
+    print(f"Connecting to database at: {db_path}")
+    engine = create_engine(f"sqlite:///{db_path}")
+    
+    # Query the data and sort chronologically
+    query = "SELECT * FROM weather_data ORDER BY id ASC"
+    df = pd.read_sql(query, engine)
+    
+    # Rename columns to match the Pipeline's expected Excel format
+    rename_map = {
+        'year': 'Year',
+        'month': 'Month',
+        'date': 'Date',
+        'time_utc': 'Time(UTC)',
+        'wind_dir': 'Wind Dir.',
+        'wind_speed_kts': 'Wind speed(Kts)',
+        'visibility': 'Visibility',
+        'weather': 'Weather',
+        'clouds': 'Clouds',
+        'dry_temp_c': 'Dry tem(0C)',
+        'dew_point_c': 'Dew point(0C)',
+        'rh_percent': 'RH(%)',
+        'qnh_hpa': 'QNH (hPa)'
+    }
+    df = df.rename(columns=rename_map)
+    print(f"Loaded {len(df)} records from database.")
+    
     processed_data_dir = os.path.abspath(os.path.join(current_dir, '../../../backend/data'))
     os.makedirs(processed_data_dir, exist_ok=True)
     processed_data_path = os.path.join(processed_data_dir, 'processed_monsoon_data_3h.csv')
-
-    print(f"Loading raw data from: {raw_data_path}")
-    df = pd.read_excel(raw_data_path)
 
     print("Running Unified Pipeline for 3-Hour Forecast...")
     pipeline = UnifiedWeatherPipeline(forecast_hours=3)
