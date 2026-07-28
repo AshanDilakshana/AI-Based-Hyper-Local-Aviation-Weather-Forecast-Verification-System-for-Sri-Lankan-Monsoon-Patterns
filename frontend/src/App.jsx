@@ -40,8 +40,8 @@ function App() {
 
   useEffect(() => {
     fetchLiveData();
-    // Auto-poll every 10 seconds
-    const interval = setInterval(fetchLiveData, 10000);
+    // Auto-poll every 60 seconds (1 minute)
+    const interval = setInterval(fetchLiveData, 60000);
     return () => clearInterval(interval);
   }, []);
 
