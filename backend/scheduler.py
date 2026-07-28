@@ -27,19 +27,32 @@ def start_scheduler():
         replace_existing=True
     )
 
-    # Fetch live METAR data every 17 minutes
+    # Fetch live METAR data every 17 minutes (default is 2 hours)
     scheduler.add_job(
         fetch_and_store_live_metar,
         'interval',
         minutes=17,
         id='live_metar_fetch_job',
-        name='Live METAR Data Fetcher',
+        name='Live METAR Data Fetcher (17m)',
+        replace_existing=True
+    )
+    
+    # Run a daily job to fetch the last 48 hours and fill any missing gaps
+    # It runs at 01:00 AM every day
+    scheduler.add_job(
+        lambda: fetch_and_store_live_metar(hours=48),
+        'cron',
+        hour=1,
+        minute=0,
+        id='live_metar_daily_backup',
+        name='Live METAR Data Backup Fetcher (48h)',
         replace_existing=True
     )
     
     scheduler.start()
     print("✅ MLOps Background Scheduler started. Next run: 1st of the month at 00:00.")
     print("✅ Live METAR Fetcher scheduled to run every 17 minutes.")
+    print("✅ Daily METAR Backup Fetcher scheduled to run every day at 01:00 AM.")
     
     # Return the scheduler instance so it can be managed if needed
     return scheduler
