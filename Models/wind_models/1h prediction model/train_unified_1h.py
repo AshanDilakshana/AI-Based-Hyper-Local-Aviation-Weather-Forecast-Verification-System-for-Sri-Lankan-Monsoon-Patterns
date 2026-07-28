@@ -14,7 +14,7 @@ def main():
     print("--- 1-Hour Unified Wind Forecasting Setup ---")
     
     # 1. Pipeline Execution
-    raw_data_path = os.path.abspath(os.path.join(current_dir, '../../../BIA_METAR_DATA_(2019_2024).xlsx'))
+    raw_data_path = os.path.abspath(os.path.join(current_dir, '../../../backend/data/BIA_METAR_DATA_(2019_2024).xlsx'))
     processed_data_dir = os.path.abspath(os.path.join(current_dir, '../../../backend/data'))
     os.makedirs(processed_data_dir, exist_ok=True)
     processed_data_path = os.path.join(processed_data_dir, 'processed_monsoon_data_1h.csv')
