@@ -90,39 +90,27 @@ import datetime
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../')))
 from preprocessing_and_feature_engineering.wind_prediction_model.unified_pipeline import UnifiedWeatherPipeline
 
-def get_historical_dataframe(db_session, current_request):
-    records = db_session.query(WeatherData).order_by(WeatherData.id.desc()).limit(12).all()
+def get_historical_dataframe(db_session):
+    # Fetch 13 records: 12 for past data + 1 for current live data
+    records = db_session.query(WeatherData).order_by(WeatherData.id.desc()).limit(13).all()
     records.reverse()
     
     data = []
-    for r in records:
+    for i, r in enumerate(records):
+        is_latest = (i == len(records) - 1)
         data.append({
             'Year': r.year,
             'Month': r.month,
             'Date': r.date,
             'Time(UTC)': str(r.time_utc).zfill(4) if r.time_utc else "0000",
             'Wind Dir': r.wind_dir,
-            'Wind speed(Kts)': r.wind_speed_kts,
+            'Wind speed(Kts)': None if is_latest else r.wind_speed_kts, # Hide target for the row we are predicting
             'Dry Temp(0C)': r.dry_temp_c,
             'Dew point(0C)': r.dew_point_c,
             'RH(%)': r.rh_percent,
             'QNH(hPa)': r.qnh_hpa
         })
         
-    now = datetime.datetime.utcnow()
-    data.append({
-        'Year': now.year,
-        'Month': now.month,
-        'Date': now.day,
-        'Time(UTC)': str(current_request.time_utc).zfill(4) if current_request.time_utc else now.strftime("%H%M"),
-        'Wind Dir': current_request.wind_dir,
-        'Wind speed(Kts)': None, 
-        'Dry Temp(0C)': current_request.temperature,
-        'Dew point(0C)': current_request.dew_point,
-        'RH(%)': current_request.humidity,
-        'QNH(hPa)': current_request.qnh_hpa
-    })
-    
     return pd.DataFrame(data)
 
 @router.post("/predict/1h", response_model=WindPredictionResponse)
@@ -132,7 +120,7 @@ def predict_wind_1h(request: WindPredictionRequest):
 
     db = SessionLocal()
     try:
-        df_window = get_historical_dataframe(db, request)
+        df_window = get_historical_dataframe(db)
     finally:
         db.close()
 
@@ -142,9 +130,11 @@ def predict_wind_1h(request: WindPredictionRequest):
     # Ensure ordering matches
     expected_cols = pipeline.required_features
     features_ordered = features[expected_cols]
+    
+    current_wind_dir = float(df_window.iloc[-1]['Wind Dir'])
 
     predicted_wind_speed = float(model_1h.predict(features_ordered)[0])
-    best_heading, crosswind, headwind, runway_name = suggest_best_runway(predicted_wind_speed, request.wind_dir)
+    best_heading, crosswind, headwind, runway_name = suggest_best_runway(predicted_wind_speed, current_wind_dir)
     status, message = get_alert_status(crosswind, "1 hour ahead")
 
     return WindPredictionResponse(
@@ -166,7 +156,7 @@ def predict_wind_3h(request: WindPredictionRequest):
 
     db = SessionLocal()
     try:
-        df_window = get_historical_dataframe(db, request)
+        df_window = get_historical_dataframe(db)
     finally:
         db.close()
 
@@ -175,9 +165,11 @@ def predict_wind_3h(request: WindPredictionRequest):
     
     expected_cols = pipeline.required_features
     features_ordered = features[expected_cols]
+    
+    current_wind_dir = float(df_window.iloc[-1]['Wind Dir'])
 
     predicted_wind_speed = float(model_3h.predict(features_ordered)[0])
-    best_heading, crosswind, headwind, runway_name = suggest_best_runway(predicted_wind_speed, request.wind_dir)
+    best_heading, crosswind, headwind, runway_name = suggest_best_runway(predicted_wind_speed, current_wind_dir)
     status, message = get_alert_status(crosswind, "3 hours ahead")
 
     return WindPredictionResponse(

@@ -37,7 +37,7 @@ def main():
         data_path=processed_data_path,
         target_col=pipeline.target,
         output_dir=current_dir,
-        model_filename='xgboost_wind_model_unified.json'
+        model_filename='xgboost_wind_model_1h.json'
     )
 
 if __name__ == '__main__':
