@@ -82,7 +82,7 @@ def get_alert_status(crosswind: float, timeframe_str: str):
     return status, message
 
 from backend.data.database import SessionLocal
-from backend.data.models import WeatherData
+from backend.data.models import WeatherData, PredictionRecord
 import sys
 import datetime
 
@@ -113,6 +113,14 @@ def get_historical_dataframe(db_session):
         
     return pd.DataFrame(data)
 
+def calculate_target_datetime(df_window, forecast_hours):
+    last_row = df_window.iloc[-1]
+    time_str = last_row['Time(UTC)']
+    year, month, date = last_row['Year'], last_row['Month'], last_row['Date']
+    dt = datetime.datetime(year, month, date, int(time_str[:2]), int(time_str[2:]))
+    dt_target = dt + datetime.timedelta(hours=forecast_hours)
+    return dt_target
+
 @router.post("/predict/1h", response_model=WindPredictionResponse)
 def predict_wind_1h(request: WindPredictionRequest):
     if model_1h is None:
@@ -136,6 +144,29 @@ def predict_wind_1h(request: WindPredictionRequest):
     predicted_wind_speed = float(model_1h.predict(features_ordered)[0])
     best_heading, crosswind, headwind, runway_name = suggest_best_runway(predicted_wind_speed, current_wind_dir)
     status, message = get_alert_status(crosswind, "1 hour ahead")
+
+    # Save to Database for Verification
+    dt_target = calculate_target_datetime(df_window, forecast_hours=1)
+    
+    db = SessionLocal()
+    try:
+        new_record = PredictionRecord(
+            forecast_type='1H',
+            target_year=dt_target.year,
+            target_month=dt_target.month,
+            target_date=dt_target.day,
+            target_time_utc=dt_target.strftime("%H%M"),
+            predicted_wind_speed_kts=predicted_wind_speed,
+            headwind_kts=headwind,
+            crosswind_kts=crosswind,
+            status=status
+        )
+        db.add(new_record)
+        db.commit()
+    except Exception as e:
+        print(f"Failed to save prediction record: {e}")
+    finally:
+        db.close()
 
     return WindPredictionResponse(
         predicted_wind_speed_kts=round(predicted_wind_speed, 2),
@@ -171,6 +202,29 @@ def predict_wind_3h(request: WindPredictionRequest):
     predicted_wind_speed = float(model_3h.predict(features_ordered)[0])
     best_heading, crosswind, headwind, runway_name = suggest_best_runway(predicted_wind_speed, current_wind_dir)
     status, message = get_alert_status(crosswind, "3 hours ahead")
+
+    # Save to Database for Verification
+    dt_target = calculate_target_datetime(df_window, forecast_hours=3)
+    
+    db = SessionLocal()
+    try:
+        new_record = PredictionRecord(
+            forecast_type='3H',
+            target_year=dt_target.year,
+            target_month=dt_target.month,
+            target_date=dt_target.day,
+            target_time_utc=dt_target.strftime("%H%M"),
+            predicted_wind_speed_kts=predicted_wind_speed,
+            headwind_kts=headwind,
+            crosswind_kts=crosswind,
+            status=status
+        )
+        db.add(new_record)
+        db.commit()
+    except Exception as e:
+        print(f"Failed to save prediction record: {e}")
+    finally:
+        db.close()
 
     return WindPredictionResponse(
         predicted_wind_speed_kts=round(predicted_wind_speed, 2),

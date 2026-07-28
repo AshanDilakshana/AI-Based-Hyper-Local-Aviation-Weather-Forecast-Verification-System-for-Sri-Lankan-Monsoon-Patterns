@@ -31,12 +31,12 @@ class PredictionRecord(Base):
     id = Column(Integer, primary_key=True, index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     
-    # Features used for prediction
-    input_temperature = Column(Float)
-    input_dew_point = Column(Float)
-    input_humidity = Column(Float)
-    input_wind_dir = Column(Float)
-    input_past_wind_speed = Column(Float)
+    # Target Information for Verification
+    forecast_type = Column(String) # '1H' or '3H'
+    target_year = Column(Integer)
+    target_month = Column(Integer)
+    target_date = Column(Integer)
+    target_time_utc = Column(String)
     
     # Results
     predicted_wind_speed_kts = Column(Float)
