@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import './index.css';
 import LiveWeatherPanel from './components/LiveWeatherPanel';
+import RecentDataPanel from './components/RecentDataPanel';
 import ForecastingPanel from './components/ForecastingPanel';
 import AircraftVisualizer from './components/AircraftVisualizer';
 import { PlaneTakeoff } from 'lucide-react';
@@ -12,11 +13,16 @@ function App() {
   const [liveData, setLiveData] = useState(null);
   const [forecast, setForecast] = useState(null);
 
+  const [recentData, setRecentData] = useState([]);
+
   // Fetch real live data
   const fetchLiveData = async () => {
     try {
       const res = await axios.get(`${API_BASE}/live-metrology/current`);
       setLiveData(res.data);
+      
+      const recentRes = await axios.get(`${API_BASE}/live-metrology/recent`);
+      setRecentData(recentRes.data);
     } catch (err) {
       console.error("Error fetching live data", err);
     }
@@ -49,6 +55,7 @@ function App() {
       <main className="dashboard-container">
         <div className="left-column">
           <LiveWeatherPanel data={liveData} onRefresh={handleSyncNow} />
+          <RecentDataPanel recentData={recentData} />
         </div>
         
         <div className="right-column">

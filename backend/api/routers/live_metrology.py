@@ -45,6 +45,36 @@ def get_current_live_weather():
     finally:
         db.close()
 
+@router.get("/recent")
+def get_recent_live_weather(limit: int = 10):
+    """
+    Returns the most recent `limit` METAR records from the database.
+    """
+    db = SessionLocal()
+    try:
+        records = db.query(WeatherData).order_by(WeatherData.id.desc()).limit(limit).all()
+        result = []
+        for r in records:
+            result.append({
+                "year": r.year,
+                "month": r.month,
+                "date": r.date,
+                "time_utc": str(r.time_utc),
+                "metar_speci": "METAR",
+                "wind_dir": r.wind_dir,
+                "wind_speed_kts": r.wind_speed_kts,
+                "visibility": r.visibility,
+                "weather": r.weather,
+                "clouds": r.clouds,
+                "dry_temp_c": r.dry_temp_c,
+                "dew_point_c": r.dew_point_c,
+                "rh_percent": r.rh_percent,
+                "qnh_hpa": r.qnh_hpa
+            })
+        return result
+    finally:
+        db.close()
+
 from backend.live_metar_fetcher import fetch_and_store_live_metar
 
 @router.post("/sync")
