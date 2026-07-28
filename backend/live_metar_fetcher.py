@@ -65,20 +65,22 @@ def extract_weather_and_clouds(raw_ob):
         " ".join(weather) if weather else None
     )
 
-def fetch_and_store_live_metar():
-    print(f"[{datetime.utcnow()}] Fetching live METAR data for VCBI...")
+def fetch_and_store_live_metar(hours=2):
+    print(f"[{datetime.utcnow()}] Fetching live METAR data for VCBI (Last {hours} hours)...")
+    
+    url = f"https://aviationweather.gov/api/data/metar?ids=VCBI&format=json&hours={hours}"
     
     # Initialize DB first so we can log errors
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
     
     try:
-        response = requests.get(API_URL, timeout=10)
+        response = requests.get(url, timeout=15)
         response.raise_for_status()
         data = response.json()
         
         if not data or len(data) == 0:
-            log_event(db, "WARNING", "Live_METAR_Fetcher", "No data returned from API.")
+            log_event(db, "WARNING", f"Live_METAR_Fetcher_{hours}H", "No data returned from API.")
             return
             
         records_added = 0
@@ -136,14 +138,14 @@ def fetch_and_store_live_metar():
         db.commit()
         
         if records_added > 0:
-            log_event(db, "SUCCESS", "Live_METAR_Fetcher", f"Added {records_added} new live METAR record(s).")
+            log_event(db, "SUCCESS", f"Live_METAR_Fetcher_{hours}H", f"Added {records_added} new live METAR record(s).")
         else:
-            log_event(db, "INFO", "Live_METAR_Fetcher", "No new METAR records. All fetched data already exists in DB.")
+            log_event(db, "INFO", f"Live_METAR_Fetcher_{hours}H", "No new METAR records. All fetched data already exists in DB.")
             
     except Exception as e:
-        log_event(db, "ERROR", "Live_METAR_Fetcher", f"Error fetching live METAR: {str(e)}")
+        log_event(db, "ERROR", f"Live_METAR_Fetcher_{hours}H", f"Error fetching live METAR: {str(e)}")
     finally:
         db.close()
 
 if __name__ == "__main__":
-    fetch_and_store_live_metar()
+    fetch_and_store_live_metar(hours=2)
