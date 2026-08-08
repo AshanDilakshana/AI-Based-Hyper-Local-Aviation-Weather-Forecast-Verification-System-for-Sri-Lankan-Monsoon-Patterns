@@ -1,5 +1,59 @@
+<<<<<<< HEAD
 *.pkl
 *.png
 data/processed_features.csv
 models/XGBoost/importance_xgb.csv
 *.csv
+=======
+# --- Data Files ---
+BIA_METAR_DATA_(2019_2024).xlsx
+backend/data/*.csv
+backend/data/*.parquet
+*.csv
+
+# --- Machine Learning Models ---
+backend/models/*.pkl
+backend/models/*.json
+backend/models/*.joblib
+*.pkl
+*.joblib
+
+# --- Plots & Visualizations ---
+*.png
+*.jpg
+*.jpeg
+
+# --- Python & Environments ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+venv/
+env/
+.venv/
+.env
+
+# --- Jupyter Notebooks ---
+.ipynb_checkpoints/
+
+# --- Frontend (Node/React) ---
+node_modules/
+frontend/node_modules/
+dist/
+build/
+.env.local
+
+# --- OS & Editor ---
+.DS_Store
+.vscode/
+.idea/
+
+# --- Logs ---
+*.log
+
+predict_demo.py
+*.json
+branch_structure.json
+temp_auto_push.bat
+temp_interactive_push.bat
+>>>>>>> 3be37e4eef8a8656bb1ad5a0122e31932d8890a2
