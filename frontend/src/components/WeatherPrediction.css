@@ -1,0 +1,175 @@
+.aviation-page {
+  min-height: 100vh;
+  background: #090e1a;
+  color: #e5e7eb;
+  padding: 28px;
+  font-family: Arial, sans-serif;
+}
+
+.top-bar {
+  max-width: 1100px;
+  margin: 0 auto 28px;
+  background: #121827;
+  border: 1px solid #1f2937;
+  border-radius: 16px;
+  padding: 18px 28px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.top-bar h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.top-bar p {
+  margin: 4px 0 0;
+  color: #94a3b8;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.utc-badge {
+  background: #10264a;
+  color: #60a5fa;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-weight: bold;
+}
+
+.main-grid {
+  max-width: 1100px;
+  margin: auto;
+  display: grid;
+  grid-template-columns: 300px 1fr 1fr;
+  gap: 24px;
+}
+
+.feed-card,
+.ready-card,
+.result-card {
+  background: #121827;
+  border: 1px solid #1f2937;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+}
+
+.feed-card h3 {
+  margin-top: 0;
+  margin-bottom: 18px;
+}
+
+.feed-card label {
+  display: block;
+  font-size: 12px;
+  color: #94a3b8;
+  margin: 12px 0 6px;
+}
+
+.feed-card input {
+  width: 100%;
+  background: #080d18;
+  border: 1px solid #1f2937;
+  color: #e5e7eb;
+  padding: 11px;
+  border-radius: 7px;
+  outline: none;
+}
+
+.feed-card input:focus {
+  border-color: #3b82f6;
+}
+
+.feed-card button {
+  width: 100%;
+  margin-top: 20px;
+  padding: 13px;
+  border: none;
+  border-radius: 8px;
+  background: #3b82f6;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.feed-card button:hover {
+  background: #2563eb;
+}
+
+.ready-card {
+  grid-column: span 2;
+  min-height: 210px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: #94a3b8;
+}
+
+.ready-card h2 {
+  color: #e5e7eb;
+}
+
+.result-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.result-header h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.result-header span {
+  background: #064e3b;
+  color: #34d399;
+  font-size: 11px;
+  padding: 5px 9px;
+  border-radius: 20px;
+  font-weight: bold;
+}
+
+.result-card h1 {
+  font-size: 48px;
+  margin: 28px 0 0;
+}
+
+.unit {
+  color: #94a3b8;
+  margin-top: 4px;
+}
+
+.mini-box {
+  background: #0b1120;
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 22px;
+}
+
+.mini-box p {
+  color: #94a3b8;
+  margin: 0 0 6px;
+  font-size: 12px;
+}
+
+.note {
+  border-left: 3px solid #22c55e;
+  padding-left: 12px;
+  color: #94a3b8;
+  font-size: 13px;
+  margin-top: 18px;
+}
+
+@media (max-width: 900px) {
+  .main-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ready-card {
+    grid-column: span 1;
+  }
+}
