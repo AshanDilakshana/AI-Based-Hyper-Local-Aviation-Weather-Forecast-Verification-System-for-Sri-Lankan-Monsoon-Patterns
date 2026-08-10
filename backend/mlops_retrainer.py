@@ -100,7 +100,7 @@ def retrain_model_pipeline(forecast_hours, target_col, model_dir, model_filename
 
 
 
-    
+
 
 def run_all_retrainings():
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../Models'))
@@ -112,7 +112,7 @@ def run_all_retrainings():
     res_3h, msg_3h = retrain_model_pipeline(3, 'Wind speed(Kts)_3h_ahead', dir_3h, 'xgboost_wind_model_3h.json')
     
     # ---------------------------------------------------------
-    # TEAM MEMBERS: Add your model retraining calls here!
+    # ubarlage codes tika methanatd plug karanna oni (imash,sachiii,vijjj)
     # Example:
     # res_vis, msg_vis = retrain_visibility_pipeline(...)
     # res_clouds, msg_clouds = retrain_clouds_pipeline(...)
@@ -122,7 +122,7 @@ def run_all_retrainings():
         "1H_Wind_Model": msg_1h,
         "3H_Wind_Model": msg_3h
         # ---------------------------------------------------------
-        # TEAM MEMBERS: Add your result messages to this dictionary!
+        # (imash,sachiii,vijjj): Add your result messages to this dictionary!
         # Example:
         # ,"Visibility_Model": msg_vis
         # ,"Clouds_Model": msg_clouds

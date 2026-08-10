@@ -68,7 +68,7 @@ from fastapi import HTTPException
 from backend.mlops_retrainer import run_all_retrainings
 from backend.api.routers.wind_router import load_Wind_models
 # ---------------------------------------------------------
-# TEAM MEMBERS: Import your model loading functions here!
+# (imash,sachiii,vijjj): Import your model loading functions here!
 # Example:
 # from backend.api.routers.visibility_router import load_Visibility_models
 # from backend.api.routers.clouds_router import load_Clouds_models
@@ -84,7 +84,7 @@ def manual_retrain_models():
         
         load_Wind_models() # Hot-reload models into memory
         # ---------------------------------------------------------
-        # TEAM MEMBERS: Call your model loading functions here 
+        # (imash,sachiii,vijjj): Call your model loading functions here 
         # so they update in RAM after retraining!
         # Example:
         # load_Visibility_models()
