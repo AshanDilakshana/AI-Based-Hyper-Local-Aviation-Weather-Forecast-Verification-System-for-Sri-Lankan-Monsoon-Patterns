@@ -98,6 +98,10 @@ def retrain_model_pipeline(forecast_hours, target_col, model_dir, model_filename
         
     return ret
 
+
+
+    
+
 def run_all_retrainings():
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../Models'))
     
@@ -107,9 +111,22 @@ def run_all_retrainings():
     dir_3h = os.path.join(base_dir, 'wind_models/3h prediction model')
     res_3h, msg_3h = retrain_model_pipeline(3, 'Wind speed(Kts)_3h_ahead', dir_3h, 'xgboost_wind_model_3h.json')
     
+    # ---------------------------------------------------------
+    # TEAM MEMBERS: Add your model retraining calls here!
+    # Example:
+    # res_vis, msg_vis = retrain_visibility_pipeline(...)
+    # res_clouds, msg_clouds = retrain_clouds_pipeline(...)
+    # ---------------------------------------------------------
+    
     return {
-        "1H_Model": msg_1h,
-        "3H_Model": msg_3h
+        "1H_Wind_Model": msg_1h,
+        "3H_Wind_Model": msg_3h
+        # ---------------------------------------------------------
+        # TEAM MEMBERS: Add your result messages to this dictionary!
+        # Example:
+        # ,"Visibility_Model": msg_vis
+        # ,"Clouds_Model": msg_clouds
+        # ---------------------------------------------------------
     }
 
 if __name__ == "__main__":

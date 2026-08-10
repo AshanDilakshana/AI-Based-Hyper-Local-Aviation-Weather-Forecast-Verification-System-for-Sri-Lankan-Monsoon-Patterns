@@ -18,7 +18,7 @@ MODEL_3H_PATH = os.path.join(os.path.dirname(__file__), '../../../Models/wind_mo
 model_1h = None
 model_3h = None
 
-def load_models():
+def load_Wind_models():
     global model_1h, model_3h
     
     try:
@@ -49,7 +49,7 @@ def load_models():
             print("CRITICAL: Failed to load 3H model and backup.")
             model_3h = None
 
-load_models()
+load_Wind_models()
 
 def calculate_aviation_winds(wind_speed: float, wind_dir: float, runway_heading: int):
     """Calculates Headwind and Crosswind for a specific runway."""
@@ -70,6 +70,7 @@ def suggest_best_runway(wind_speed: float, wind_dir: float):
     else:
         return 40, abs(crosswind_04), headwind_04, "RWY 04"
 
+
 def get_alert_status(crosswind: float, timeframe_str: str):
     status = "SAFE"
     message = f"Forecast for {timeframe_str}: Crosswind components are within normal limits."
@@ -80,6 +81,7 @@ def get_alert_status(crosswind: float, timeframe_str: str):
         status = "DANGER"
         message = f"Forecast for {timeframe_str}: Severe crosswind. Exceeds standard operating limits."
     return status, message
+
 
 from backend.data.database import SessionLocal
 from backend.data.models import WeatherData, PredictionRecord
@@ -120,6 +122,8 @@ def calculate_target_datetime(df_window, forecast_hours):
     dt = datetime.datetime(year, month, date, int(time_str[:2]), int(time_str[2:]))
     dt_target = dt + datetime.timedelta(hours=forecast_hours)
     return dt_target
+
+
 
 @router.post("/predict/1h", response_model=WindPredictionResponse)
 def predict_wind_1h(request: WindPredictionRequest):
@@ -176,6 +180,7 @@ def predict_wind_1h(request: WindPredictionRequest):
         status=status,
         message=message
     )
+
 
 @router.post("/predict/3h", response_model=WindPredictionResponse)
 def predict_wind_3h(request: WindPredictionRequest):
@@ -235,16 +240,7 @@ def predict_wind_3h(request: WindPredictionRequest):
         message=message
     )
 
-from backend.mlops_retrainer import run_all_retrainings
 
-@router.post("/models/retrain")
-def manual_retrain_models():
-    """
-    Manually triggers the MLOps retraining pipeline.
-    """
-    try:
-        results = run_all_retrainings()
-        load_models() # Hot-reload models into memory
-        return {"message": "Retraining complete", "results": results}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+
+
+
