@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from typing import Optional
 
 from backend.data.database import get_db
-from backend.data.models import VerifiedForecast
+from backend.data.models import VerifiedForecast, SystemLogs
 
 router = APIRouter(
     prefix="/forecasts",
@@ -42,6 +42,17 @@ def verify_forecast(forecast: VerifiedForecastCreate, db: Session = Depends(get_
             crosswind_kts=forecast.crosswind_kts
         )
         db.add(new_record)
+        
+        # Log to SystemLogs
+        audit_log = SystemLogs(
+            timestamp_utc=datetime.utcnow(),
+            level="SUCCESS",
+            component="Forecast_Verification",
+            message="Forecaster verified and published 3H forecast guidance.",
+            details=f"Wind: {forecast.wind_speed_kts}kts / {forecast.wind_dir}°, Temp: {forecast.dry_temp_c}°C"
+        )
+        db.add(audit_log)
+        
         db.commit()
         db.refresh(new_record)
         return {"message": "Verified forecast saved successfully", "id": new_record.id}
@@ -64,7 +75,6 @@ def update_forecast(forecast_id: int, forecast: VerifiedForecastCreate, db: Sess
     
     try:
         record.target_time = forecast.target_time
-        # optionally update created_at or leave it
         record.dry_temp_c = forecast.dry_temp_c
         record.wind_speed_kts = forecast.wind_speed_kts
         record.wind_dir = forecast.wind_dir
@@ -74,6 +84,16 @@ def update_forecast(forecast_id: int, forecast: VerifiedForecastCreate, db: Sess
         record.qnh_hpa = forecast.qnh_hpa
         record.headwind_kts = forecast.headwind_kts
         record.crosswind_kts = forecast.crosswind_kts
+        
+        # Log to SystemLogs
+        audit_log = SystemLogs(
+            timestamp_utc=datetime.utcnow(),
+            level="SUCCESS",
+            component="Forecast_Verification",
+            message=f"Forecaster updated verified forecast record (ID #{forecast_id}).",
+            details=f"Updated Wind: {forecast.wind_speed_kts}kts / {forecast.wind_dir}°"
+        )
+        db.add(audit_log)
         
         db.commit()
         db.refresh(record)

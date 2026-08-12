@@ -5,7 +5,7 @@ import os
 # Ensure backend modules can be imported
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 
-from backend.api.routers import wind_router, live_metrology, forecast_router
+from backend.api.routers import wind_router, live_metrology, forecast_router, logs_router
 from backend.data.database import engine, Base
 from backend.data import models
 
@@ -48,6 +48,9 @@ app.include_router(live_metrology.router)
 
 # Verified Forecasts API
 app.include_router(forecast_router.router)
+
+# System & Activity Logs API
+app.include_router(logs_router.router)
 
 # Example placeholders for other team members:
 # from backend.api.routers import visibility, clouds, temperature
