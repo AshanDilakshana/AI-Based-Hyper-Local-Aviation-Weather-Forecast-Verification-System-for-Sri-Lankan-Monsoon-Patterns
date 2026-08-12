@@ -5,7 +5,7 @@ import os
 # Ensure backend modules can be imported
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 
-from backend.api.routers import wind_router, live_metrology, forecast_router, logs_router
+from backend.api.routers import wind_router, live_metrology, forecast_router, logs_router, pilot_router
 from backend.data.database import engine, Base
 from backend.data import models
 
@@ -14,11 +14,20 @@ Base.metadata.create_all(bind=engine)
 
 from backend.scheduler import start_scheduler
 
+from fastapi.staticfiles import StaticFiles
+
 app = FastAPI(
     title="Aviation Weather Forecast API",
     description="Main API gateway for multiple aviation weather models.",
     version="1.0.0"
 )
+
+# Mount static directory for generated documents
+DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data")
+DOCS_DIR = os.path.join(DATA_DIR, "documents")
+if not os.path.exists(DOCS_DIR):
+    os.makedirs(DOCS_DIR)
+app.mount("/documents", StaticFiles(directory=DOCS_DIR), name="documents")
 
 @app.on_event("startup")
 def on_startup():
@@ -51,6 +60,9 @@ app.include_router(forecast_router.router)
 
 # System & Activity Logs API
 app.include_router(logs_router.router)
+
+# Pilot Flight Planning & Document API
+app.include_router(pilot_router.router)
 
 # Example placeholders for other team members:
 # from backend.api.routers import visibility, clouds, temperature
