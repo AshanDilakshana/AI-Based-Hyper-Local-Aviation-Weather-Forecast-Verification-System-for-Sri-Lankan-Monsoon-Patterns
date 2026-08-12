@@ -54,3 +54,21 @@ class SystemLogs(Base):
     component = Column(String) # e.g., MLOps, API
     message = Column(String)
     details = Column(String, nullable=True) # Optional JSON string for extra data like MAE comparison
+
+class VerifiedForecast(Base):
+    __tablename__ = "verified_forecasts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow) # Time forecast was saved
+    target_time = Column(DateTime) # Target valid time
+    
+    # Weather metrics
+    dry_temp_c = Column(Float, nullable=True)
+    wind_speed_kts = Column(Float, nullable=True)
+    wind_dir = Column(Float, nullable=True)
+    rh_percent = Column(Float, nullable=True)
+    clouds = Column(String, nullable=True)
+    visibility = Column(Float, nullable=True)
+    qnh_hpa = Column(Float, nullable=True)
+    headwind_kts = Column(Float, nullable=True)
+    crosswind_kts = Column(Float, nullable=True)
