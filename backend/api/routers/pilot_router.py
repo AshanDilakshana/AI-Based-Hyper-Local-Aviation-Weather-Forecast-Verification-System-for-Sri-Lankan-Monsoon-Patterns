@@ -2,11 +2,14 @@ import os
 import json
 import uuid
 import requests
+import time
 from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 from typing import List, Optional
 from sqlalchemy.orm import Session
+from PIL import Image, ImageDraw, ImageFont
 
 from backend.data.database import get_db
 from backend.data.models import SystemLogs, VerifiedForecast
@@ -45,30 +48,56 @@ def load_flight_data():
             return json.load(f)
     return {}
 
-def get_live_map(map_type: str, flight_level: str) -> str:
-    """Fetches a live map GIF from aviationweather.gov and returns the local filepath."""
-    # Mapping to standard public AWC products
-    # Using SIGWX Area D as an example.
-    # In a fully production system, URLs would be constructed based on level/time dynamically.
+def get_forecast_hour(duration_mins: int) -> str:
+    hours = duration_mins / 60.0
+    if hours <= 6: return "06"
+    elif hours <= 12: return "12"
+    elif hours <= 18: return "18"
+    elif hours <= 24: return "24"
+    elif hours <= 30: return "30"
+    else: return "36"
+
+# Global cache for downloaded maps to avoid repeated requests and timeouts
+MAP_URL_CACHE = {}
+
+def get_live_map(map_type: str, flight_level: str, area: str, forecast_hour: str) -> str:
+    """Fetches a real map GIF from aviationweather.gov based on exact flight parameters."""
+    
+    # Parse Area (e.g. "Area D" -> "d")
+    area_code = area.split()[-1].lower() if "Area" in area else "d"
+    
+    # Parse Flight Level (e.g. "FL390" -> "390")
+    fl_code = flight_level.replace("FL", "") if "FL" in flight_level else "340"
+    
+    # Construct exact NOAA AWC URL
     if "SIGWX" in map_type.upper():
-        url = "https://aviationweather.gov/data/products/swl/D_sigwx.gif"
+        # Using High Level SigWx for Region E (South Asia) as default for Sri Lanka
+        url = f"https://aviationweather.gov/data/products/fax/F24_sigwx_hi_e.gif"
     else:
-        # Fallback to a generic wind/temp chart
-        url = "https://aviationweather.gov/data/products/swh/pgwa_00_fd1.gif"
+        # Wind/Temp Chart
+        url = f"https://aviationweather.gov/data/products/fax/F{forecast_hour}_wind_{fl_code}_{area_code}.gif"
+        
+    # Check cache first
+    if url in MAP_URL_CACHE and os.path.exists(MAP_URL_CACHE[url]):
+        return MAP_URL_CACHE[url]
         
     filename = f"{uuid.uuid4()}.gif"
     filepath = os.path.join(TEMP_MAP_DIR, filename)
     
     try:
-        response = requests.get(url, timeout=5)
+        # Add a delay so we fetch them strictly one by one without overwhelming the server
+        time.sleep(1.5)
+        # We use a slightly longer timeout (10 seconds) to give AWC more time
+        response = requests.get(url, timeout=10)
         if response.status_code == 200:
             with open(filepath, 'wb') as f:
                 f.write(response.content)
+            MAP_URL_CACHE[url] = filepath
             return filepath
-    except Exception as e:
-        print(f"Failed to fetch live map from {url}: {e}")
-        
-    return None
+        else:
+            raise HTTPException(status_code=400, detail=f"AWC map fetch failed (Status {response.status_code}). Please retry again.")
+    except requests.exceptions.RequestException as e:
+        raise HTTPException(status_code=400, detail="Network timeout while fetching forecast maps. Please retry.")
 
 def generate_briefing_pdf(filepath: str, req: FlightPlanRequest, duration_mins: int, arrival_time: datetime, forecasts: List[VerifiedForecast]):
     doc = SimpleDocTemplate(filepath, pagesize=A4,
@@ -78,6 +107,9 @@ def generate_briefing_pdf(filepath: str, req: FlightPlanRequest, duration_mins: 
     styles = getSampleStyleSheet()
     title_style = styles['Heading1']
     title_style.alignment = 1 # Center
+    
+    # Calculate nearest forecast horizon based on duration
+    forecast_hour = get_forecast_hour(duration_mins)
     
     normal_style = styles['Normal']
     
@@ -190,10 +222,10 @@ def generate_briefing_pdf(filepath: str, req: FlightPlanRequest, duration_mins: 
         for map_type in req.maps:
             elements.append(Spacer(1, 10))
             
-            # Fetch live map image
-            map_filepath = get_live_map(map_type, fl)
+            # Fetch live map image with actual dynamic flight parameters
+            map_filepath = get_live_map(map_type, fl, req.area, forecast_hour)
             
-            if map_filepath:
+            if map_filepath and os.path.exists(map_filepath):
                 try:
                     img = RLImage(map_filepath, width=6*inch, height=3.5*inch)
                     # A table to hold the title + image
