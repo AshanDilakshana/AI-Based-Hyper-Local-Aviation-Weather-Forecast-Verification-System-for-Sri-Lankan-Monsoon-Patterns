@@ -14,12 +14,13 @@ router = APIRouter(
 # Corrected paths pointing to the 'Models' folder
 import sys
 import torch
-# pyrefly: ignore [missing-import]
 from pytorch_forecasting import TemporalFusionTransformer
 
 TFT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../Models/wind_models/TFT_3H'))
 if TFT_DIR not in sys.path:
     sys.path.append(TFT_DIR)
+    
+# pyrefly: ignore [missing-import]
 from tft_dataset_builder import load_and_prepare_data
 
 def get_latest_tft_checkpoint(lightning_logs_dir):
