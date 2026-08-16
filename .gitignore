@@ -33,6 +33,41 @@ node_modules/
 frontend/node_modules/
 dist/
 build/
+# --- Data Files ---
+BIA_METAR_DATA_(2019_2024).xlsx
+backend/data/*.csv
+backend/data/*.parquet
+*.csv
+
+# --- Machine Learning Models ---
+backend/models/*.pkl
+backend/models/*.json
+backend/models/*.joblib
+*.pkl
+*.joblib
+
+# --- Plots & Visualizations ---
+*.png
+*.jpg
+*.jpeg
+
+# --- Python & Environments ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+venv/
+env/
+.venv/
+
+# --- Jupyter Notebooks ---
+.ipynb_checkpoints/
+
+# --- Frontend (Node/React) ---
+node_modules/
+frontend/node_modules/
+dist/
+build/
 
 # --- OS & Editor ---
 .DS_Store
@@ -41,6 +76,11 @@ build/
 
 # --- Logs ---
 *.log
+lightning_logs/
+
+# --- Database ---
+*.db
+*.sqlite3
 
 predict_demo.py
 *.json
