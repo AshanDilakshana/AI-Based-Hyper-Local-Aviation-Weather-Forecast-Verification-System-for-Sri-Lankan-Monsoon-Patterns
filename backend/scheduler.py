@@ -31,6 +31,28 @@ def smart_live_metar_fetch(sched):
     else:
         print(f"[{datetime.now()}] Successfully fetched {records_added} new records.")
 
+def scheduled_retraining_job():
+    print(f"[{datetime.now()}] Starting scheduled MLOps retraining pipeline...")
+    run_all_retrainings()
+    
+    # Hot-reload the models into memory so the API uses the newly trained versions
+    from backend.api.routers.wind_router import load_Wind_models
+    load_Wind_models()
+    
+    # ---------------------------------------------------------
+    # (imash,sachiii,vijjj): Call your model loading functions here 
+    # so they update in RAM automatically after monthly retraining!
+    # Example:
+    # from backend.api.routers.visibility_router import load_Visibility_models
+    # load_Visibility_models()
+    # 
+    # from backend.api.routers.clouds_router import load_Clouds_models
+    # load_Clouds_models()
+    # ---------------------------------------------------------
+    
+    print(f"[{datetime.now()}] Scheduled retraining complete and models hot-reloaded.")
+
+
 def start_scheduler():
     """
     Initializes the APScheduler to run the MLOps retraining pipeline
@@ -41,7 +63,7 @@ def start_scheduler():
     
     # Run retraining on the 1st day of every month at midnight
     scheduler.add_job(
-        run_all_retrainings,
+        scheduled_retraining_job,
         'cron',
         day='1',
         hour='0',
