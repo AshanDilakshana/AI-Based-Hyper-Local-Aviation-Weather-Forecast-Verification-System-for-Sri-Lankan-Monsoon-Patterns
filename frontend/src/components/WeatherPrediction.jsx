@@ -1,6 +1,7 @@
 import { useState } from "react";
 import axios from "axios";
 import "./WeatherPrediction.css";
+import { Link } from "react-router-dom";
 
 export default function WeatherPrediction() {
   const [formData, setFormData] = useState({
@@ -27,7 +28,7 @@ export default function WeatherPrediction() {
     e.preventDefault();
 
     try {
-      const res = await axios.post("http://127.0.0.1:8000/weather/predict/3h", {
+      const res = await axios.post("http://127.0.0.1:5000/predict", {
         time_utc: formData.time_utc,
         temperature: Number(formData.temperature),
         humidity: Number(formData.humidity),
@@ -43,7 +44,7 @@ export default function WeatherPrediction() {
       console.error(error);
 
       alert(
-        error.response?.data?.detail ||
+        error.response?.data?.error ||
         "Prediction failed. Check backend connection."
       );
     }
@@ -55,6 +56,11 @@ export default function WeatherPrediction() {
         <div>
           <h2>Aviation Weather Forecast Center</h2>
           <p>Bandaranaike International Airport (BIA)</p>
+        </div>
+
+        <div className="nav-links" style={{ display: "flex", gap: "20px", alignItems: "center", margin: "0 auto 0 40px" }}>
+          <Link to="/" style={{ color: "#94a3b8", textDecoration: "none", fontWeight: "bold" }}>Dashboard</Link>
+          <Link to="/forecast" style={{ color: "#60a5fa", textDecoration: "none", fontWeight: "bold", borderBottom: "2px solid #3b82f6" }}>Forecast Form</Link>
         </div>
 
         <span className="utc-badge">UTC System</span>
@@ -160,7 +166,7 @@ export default function WeatherPrediction() {
             </p>
           </div>
         ) : (
-          <div className="results-container">
+          <>
             {/* TEMPERATURE CARD */}
             <div className="result-card">
               <div className="result-header">
@@ -212,33 +218,7 @@ export default function WeatherPrediction() {
                 Pressure forecast generated for next 3 hours.
               </p>
             </div>
-
-            {/* HUMIDITY CARD */}
-            <div className="result-card">
-              <div className="result-header">
-                <h3>Predicted Relative Humidity</h3>
-                <span>SAFE</span>
-              </div>
-
-              <h1>{prediction.humidity.toFixed(2)}</h1>
-
-              <p className="unit">%</p>
-
-              <div className="mini-box">
-                <p>Forecast Type</p>
-                <b>T+3 Hour</b>
-              </div>
-
-              <div className="mini-box">
-                <p>Forecast UTC Time</p>
-                <b>{prediction.forecast_time_utc}</b>
-              </div>
-
-              <p className="note">
-                Humidity forecast generated using AI model.
-              </p>
-            </div>
-          </div>
+          </>
         )}
       </div>
     </div>
