@@ -102,14 +102,70 @@ def retrain_model_pipeline(forecast_hours, target_col, model_dir, model_filename
 
 
 
+def retrain_tft_pipeline(tft_dir):
+    db = SessionLocal()
+    component = "MLOps_TFT_3H"
+    
+    try:
+        log_event(db, "INFO", component, "Started TFT Retraining Process")
+        
+        if tft_dir not in sys.path:
+            sys.path.append(tft_dir)
+            
+        import pytorch_forecasting
+        from train_tft_model import train_model
+        
+        best_model_path, best_val_loss = train_model()
+        
+        if best_model_path:
+            msg = f"TFT Model trained successfully. MAE: {best_val_loss:.2f}"
+            log_event(db, "SUCCESS", component, msg)
+            ret = True, msg
+        else:
+            msg = "TFT Training completed but no checkpoint was saved."
+            log_event(db, "WARNING", component, msg)
+            ret = False, msg
+
+        # --- Cleanup Old Lightning Logs ---
+        # Keep only the 3 most recent versions to save space
+        import shutil
+        lightning_logs_dir = os.path.join(tft_dir, "lightning_logs")
+        if os.path.exists(lightning_logs_dir):
+            version_dirs = [d for d in os.listdir(lightning_logs_dir) if os.path.isdir(os.path.join(lightning_logs_dir, d)) and d.startswith("version_")]
+            if len(version_dirs) > 3:
+                version_dirs.sort(key=lambda x: int(x.split('_')[1]))
+                dirs_to_delete = version_dirs[:-3]  # Keep the last 3
+                for d in dirs_to_delete:
+                    dir_path = os.path.join(lightning_logs_dir, d)
+                    try:
+                        shutil.rmtree(dir_path)
+                        log_event(db, "INFO", component, f"Cleaned up old version to save space: {d}")
+                    except Exception as e:
+                        log_event(db, "WARNING", component, f"Failed to delete old version {d}: {e}")
+
+    except Exception as e:
+        log_event(db, "ERROR", component, f"Error during TFT retraining: {str(e)}")
+        ret = False, str(e)
+    finally:
+        db.close()
+        
+    return ret
+
+
 def run_all_retrainings():
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../Models'))
     
-    dir_1h = os.path.join(base_dir, 'wind_models/1h prediction model')
-    res_1h, msg_1h = retrain_model_pipeline(1, 'Wind speed(Kts)_1h_ahead', dir_1h, 'xgboost_wind_model_1h.json')
-    
+    # 1st: 3H XGBoost Model
     dir_3h = os.path.join(base_dir, 'wind_models/3h prediction model')
     res_3h, msg_3h = retrain_model_pipeline(3, 'Wind speed(Kts)_3h_ahead', dir_3h, 'xgboost_wind_model_3h.json')
+    
+    # 2nd: TFT 3H Model
+    dir_tft = os.path.join(base_dir, 'wind_models/TFT_3H')
+    res_tft, msg_tft = retrain_tft_pipeline(dir_tft)
+    
+    # 3rd: 1H XGBoost Model
+    dir_1h = os.path.join(base_dir, 'wind_models/1h prediction model')
+    res_1h, msg_1h = retrain_model_pipeline(1, 'Wind speed(Kts)_1h_ahead', dir_1h, 'xgboost_wind_model_1h.json')
     
     # ---------------------------------------------------------
     # ubarlage codes tika methanatd plug karanna oni (imash,sachiii,vijjj)
@@ -119,8 +175,9 @@ def run_all_retrainings():
     # ---------------------------------------------------------
     
     return {
-        "1H_Wind_Model": msg_1h,
-        "3H_Wind_Model": msg_3h
+        "3H_Wind_Model": msg_3h,
+        "TFT_3H_Model": msg_tft,
+        "1H_Wind_Model": msg_1h
         # ---------------------------------------------------------
         # (imash,sachiii,vijjj): Add your result messages to this dictionary!
         # Example:
