@@ -20,7 +20,7 @@ router = APIRouter(
 )
 
 # Load the AI Models globally
-MODEL_DIR = os.path.join(os.path.dirname(__file__), '../../../Models/3h prediction model')
+MODEL_DIR = os.path.join(os.path.dirname(__file__), '../../../Models/RandomForest_model')
 MODEL_PATH = os.path.join(MODEL_DIR, 'weather_model.pkl')
 SCALER_PATH = os.path.join(MODEL_DIR, 'scaler.pkl')
 FEATURES_PATH = os.path.join(MODEL_DIR, 'feature_columns.pkl')

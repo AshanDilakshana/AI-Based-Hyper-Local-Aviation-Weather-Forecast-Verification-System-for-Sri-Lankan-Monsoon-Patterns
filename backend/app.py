@@ -26,9 +26,9 @@ PROJECT_DIR = os.path.dirname(BASE_DIR)
 DB_PATH = os.path.join(BASE_DIR, "weather_system.db")
 
 # Load prediction objects for manual POST requests
-model = joblib.load(os.path.join(PROJECT_DIR, "model", "weather_model.pkl"))
-scaler = joblib.load(os.path.join(PROJECT_DIR, "model", "scaler.pkl"))
-features = joblib.load(os.path.join(PROJECT_DIR, "model", "feature_columns.pkl"))
+model = joblib.load(os.path.join(PROJECT_DIR, "Models", "RandomForest_model", "weather_model.pkl"))
+scaler = joblib.load(os.path.join(PROJECT_DIR, "Models", "RandomForest_model", "scaler.pkl"))
+features = joblib.load(os.path.join(PROJECT_DIR, "Models", "RandomForest_model", "feature_columns.pkl"))
 
 def make_prediction_for_obs(db_path, obs_data, dt, model_obj, scaler_obj, features_obj):
     # Prepare base dictionary
@@ -234,9 +234,9 @@ def background_sync_worker(db_path):
     print("Background METAR sync thread started.")
     try:
         # Load local model references
-        model_obj = joblib.load(os.path.join(PROJECT_DIR, "model", "weather_model.pkl"))
-        scaler_obj = joblib.load(os.path.join(PROJECT_DIR, "model", "scaler.pkl"))
-        features_obj = joblib.load(os.path.join(PROJECT_DIR, "model", "feature_columns.pkl"))
+        model_obj = joblib.load(os.path.join(PROJECT_DIR, "Models", "RandomForest_model", "weather_model.pkl"))
+        scaler_obj = joblib.load(os.path.join(PROJECT_DIR, "Models", "RandomForest_model", "scaler.pkl"))
+        features_obj = joblib.load(os.path.join(PROJECT_DIR, "Models", "RandomForest_model", "feature_columns.pkl"))
     except Exception as e:
         print(f"Error loading models in background thread: {e}")
         return
@@ -348,9 +348,9 @@ def run_active_prediction():
         latest_obs = obs[0]
         
         # Load model references
-        model_obj = joblib.load(os.path.join(PROJECT_DIR, "model", "weather_model.pkl"))
-        scaler_obj = joblib.load(os.path.join(PROJECT_DIR, "model", "scaler.pkl"))
-        features_obj = joblib.load(os.path.join(PROJECT_DIR, "model", "feature_columns.pkl"))
+        model_obj = joblib.load(os.path.join(PROJECT_DIR, "Models", "RandomForest_model", "weather_model.pkl"))
+        scaler_obj = joblib.load(os.path.join(PROJECT_DIR, "Models", "RandomForest_model", "scaler.pkl"))
+        features_obj = joblib.load(os.path.join(PROJECT_DIR, "Models", "RandomForest_model", "feature_columns.pkl"))
         
         dt = datetime.strptime(latest_obs["report_time"][:19], "%Y-%m-%dT%H:%M:%S")
         

@@ -63,7 +63,7 @@ export default function ForecastingView() {
         observation: latestObs
       });
       await fetchVerificationHistory();
-      alert("Local GRU Weather Model forecast successfully calculated & saved to SQLite!");
+      alert("Local Random Forest Weather Model forecast successfully calculated & saved to SQLite!");
     } catch (err) {
       alert(err.response?.data?.error || "Model execution failed.");
     } finally {
@@ -95,7 +95,7 @@ export default function ForecastingView() {
         {/* LEFT COLUMN: ACTIVE CONTEXT AND RUN TRIGGER */}
         <div className="dashboard-section-card form-card" style={{ minHeight: "410px", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
           <div>
-            <h3>GRU Weather Model Predictor</h3>
+            <h3>Random Forest Weather Model Predictor</h3>
             <p className="card-desc" style={{ marginBottom: "15px" }}>Uses active observation coordinates stored in SQLite database</p>
 
             {latestObs ? (
