@@ -1,13 +1,16 @@
-from flask import Flask, request, jsonify
-import pickle
-import pandas as pd
-import numpy as np
 import os
+import pickle
+
+import numpy as np
+import pandas as pd
+from flask import Flask, jsonify, request
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.join(BASE_DIR, '../models/saved_models')
+MODEL_PATH = os.path.abspath(os.path.join(BASE_DIR, '../models/saved_models'))
 
 try:
     with open(os.path.join(MODEL_PATH, 'xgb_cloud_model.pkl'), 'rb') as f:
@@ -19,9 +22,9 @@ try:
         vis_bundle = pickle.load(f)
     vis_model = vis_bundle['model']
     vis_mapping = vis_bundle['mapping']
-    print("✅ Mapped and loaded optimized 16-feature lookup models successfully!")
+    print("[SUCCESS] Mapped and loaded optimized 16-feature lookup models successfully!")
 except Exception as e:
-    print(f"❌ Model Loading Error: {e}")
+    print(f"[ERROR] Model Loading Error: {e}")
 
 @app.route('/predict', methods=['POST'])
 def predict():
