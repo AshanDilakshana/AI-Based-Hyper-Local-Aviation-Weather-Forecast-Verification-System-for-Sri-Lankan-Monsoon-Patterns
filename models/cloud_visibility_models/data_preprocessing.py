@@ -1,12 +1,13 @@
-import pandas as pd
-import numpy as np
 import os
 import pickle
+
+import numpy as np
+import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-INPUT_PATH = os.path.join(BASE_DIR, '../data/BIA_METAR_DATA_(2019_2024).xlsx')
-OUTPUT_PATH = os.path.join(BASE_DIR, '../data/aviation_weather_features.csv')
+INPUT_PATH = os.path.abspath(os.path.join(BASE_DIR, '../../data/BIA_METAR_DATA_(2019_2024).xlsx'))
+OUTPUT_PATH = os.path.abspath(os.path.join(BASE_DIR, '../../data/aviation_weather_features.csv'))
 
 def preprocess_metar_data():
     print(" Loading original METAR dataset...")
@@ -39,7 +40,7 @@ def preprocess_metar_data():
     weather_encoder = LabelEncoder()
     df['Weather_Encoded'] = weather_encoder.fit_transform(df['Weather'])
     
-    save_models_dir = os.path.join(BASE_DIR, 'saved_models')
+    save_models_dir = os.path.abspath(os.path.join(BASE_DIR, '../saved_models'))
     os.makedirs(save_models_dir, exist_ok=True)
     with open(os.path.join(save_models_dir, 'weather_encoder.pkl'), 'wb') as f:
         pickle.dump(weather_encoder, f)
@@ -61,7 +62,8 @@ def preprocess_metar_data():
 
     print(f"Saving processed dataset (14 features) to {OUTPUT_PATH}...")
     df.to_csv(OUTPUT_PATH, index=False)
-    print("✅ Preprocessing and Feature Engineering Complete!")
+    print("[SUCCESS] Preprocessing and Feature Engineering Complete!")
+
 
 if __name__ == "__main__":
     preprocess_metar_data()
