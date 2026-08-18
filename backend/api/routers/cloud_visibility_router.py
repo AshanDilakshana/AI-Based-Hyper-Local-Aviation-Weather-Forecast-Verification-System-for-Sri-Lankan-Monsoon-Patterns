@@ -47,7 +47,7 @@ router = APIRouter(
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 MODEL_PATH = os.path.abspath(
-    os.path.join(BASE_DIR, "../../../models/saved_models")
+    os.path.join(BASE_DIR, "../../../Models/saved_models")
 )
 
 
