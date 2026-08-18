@@ -1,6 +1,7 @@
 import { useState } from "react";
 import axios from "axios";
 import "./WeatherPrediction.css";
+import { Link } from "react-router-dom";
 
 export default function WeatherPrediction() {
   const [formData, setFormData] = useState({
@@ -55,6 +56,11 @@ export default function WeatherPrediction() {
         <div>
           <h2>Aviation Weather Forecast Center</h2>
           <p>Bandaranaike International Airport (BIA)</p>
+        </div>
+
+        <div className="nav-links" style={{ display: "flex", gap: "20px", alignItems: "center", margin: "0 auto 0 40px" }}>
+          <Link to="/" style={{ color: "#94a3b8", textDecoration: "none", fontWeight: "bold" }}>Dashboard</Link>
+          <Link to="/forecast" style={{ color: "#60a5fa", textDecoration: "none", fontWeight: "bold", borderBottom: "2px solid #3b82f6" }}>Forecast Form</Link>
         </div>
 
         <span className="utc-badge">UTC System</span>

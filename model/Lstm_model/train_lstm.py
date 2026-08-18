@@ -44,7 +44,6 @@ selected_features = [
 ]
 
 X = df[selected_features]
-
 y = df[[
     "target_temperature",
     "target_pressure"
@@ -67,16 +66,14 @@ X_test_scaled = x_scaler.transform(X_test_raw)
 y_train_scaled = y_scaler.fit_transform(y_train_raw)
 y_test_scaled = y_scaler.transform(y_test_raw)
 
-time_steps = 6
+time_steps = 12  # Sequence length matches GRU (6 hours of history)
 
 def create_sequences(X, y, time_steps):
     X_seq = []
     y_seq = []
-
     for i in range(time_steps, len(X)):
         X_seq.append(X[i - time_steps:i])
         y_seq.append(y[i])
-
     return np.array(X_seq), np.array(y_seq)
 
 X_train, y_train = create_sequences(X_train_scaled, y_train_scaled, time_steps)
@@ -84,10 +81,10 @@ X_test, y_test = create_sequences(X_test_scaled, y_test_scaled, time_steps)
 
 model = Sequential([
     Input(shape=(X_train.shape[1], X_train.shape[2])),
-
+    LSTM(64, return_sequences=True),
+    Dropout(0.2),
     LSTM(32, return_sequences=False),
-    Dropout(0.1),
-
+    Dropout(0.2),
     Dense(16, activation="relu"),
     Dense(2)
 ])
@@ -100,22 +97,23 @@ model.compile(
 
 early_stop = EarlyStopping(
     monitor="val_loss",
-    patience=1000,
+    patience=5,
     restore_best_weights=True
 )
 
 reduce_lr = ReduceLROnPlateau(
     monitor="val_loss",
     factor=0.8,
-    patience=10,
+    patience=3,
     min_lr=0.00001
 )
 
+print("Training LSTM model...")
 history = model.fit(
     X_train,
     y_train,
-    epochs=5000,
-    batch_size=16,
+    epochs=20,
+    batch_size=64,
     validation_split=0.2,
     callbacks=[early_stop, reduce_lr],
     verbose=1
@@ -127,25 +125,26 @@ y_pred = y_scaler.inverse_transform(y_pred_scaled)
 y_test_original = y_scaler.inverse_transform(y_test)
 
 temp_mae = mean_absolute_error(y_test_original[:, 0], y_pred[:, 0])
+temp_r2 = r2_score(y_test_original[:, 0], y_pred[:, 0])
 pressure_mae = mean_absolute_error(y_test_original[:, 1], y_pred[:, 1])
+pressure_r2 = r2_score(y_test_original[:, 1], y_pred[:, 1])
 overall_rmse = np.sqrt(mean_squared_error(y_test_original, y_pred))
 overall_r2 = r2_score(y_test_original, y_pred)
 
-print("\n📊 SIMPLE LSTM MODEL PERFORMANCE")
+print("\nLSTM MODEL PERFORMANCE:")
 print("Temperature MAE:", temp_mae)
+print("Temperature R2 Score:", temp_r2)
 print("Pressure MAE:", pressure_mae)
+print("Pressure R2 Score:", pressure_r2)
 print("Overall RMSE:", overall_rmse)
-print("Overall R2 Score:", overall_r2)
+print("Overall R2 Score (average):", overall_r2)
 print("Accuracy:", round(overall_r2 * 100, 2), "%")
 
+# Save outputs
 model.save(os.path.join(BASE_DIR, "lstm_weather_model.keras"))
-
 joblib.dump(x_scaler, os.path.join(BASE_DIR, "lstm_x_scaler.pkl"))
 joblib.dump(y_scaler, os.path.join(BASE_DIR, "lstm_y_scaler.pkl"))
 joblib.dump(selected_features, os.path.join(BASE_DIR, "lstm_feature_columns.pkl"))
 joblib.dump(time_steps, os.path.join(BASE_DIR, "lstm_time_steps.pkl"))
 
-print("\n✅ Simple LSTM Model trained & saved successfully!")
-print("Saved in:", BASE_DIR)
-print("Time steps used:", time_steps)
-print("Features used:", selected_features)
+print("\nLSTM Model trained & saved successfully in:", BASE_DIR)
