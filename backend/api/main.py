@@ -8,13 +8,6 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'
 # Import available local routers
 from backend.api.routers import temperature_pressure_router
 
-# Safely import team routers (prevent crashes if they don't exist locally yet)
-try:
-    from backend.api.routers import live_metrology, forecast_router, logs_router, pilot_router
-    has_team_routers = True
-except ImportError:
-    has_team_routers = False
-
 from backend.data.database import engine, Base
 from backend.data import models
 
@@ -57,25 +50,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ---------------------------------------------------------
 # Include Route Modules
 # ---------------------------------------------------------
 
-
-
-# Imash - Temperature & Pressure
 try:
-    from backend.api.routers import temperature_pressure_router
     app.include_router(temperature_pressure_router.router)
-except ImportError:
+except NameError:
     print("Warning: temperature_pressure_router not found locally. Skipping.")
-
-# Team's other routers (only included if available locally)
-if has_team_routers:
-    app.include_router(live_metrology.router)
-    app.include_router(forecast_router.router)
-    app.include_router(logs_router.router)
-    app.include_router(pilot_router.router)
 
 @app.get("/")
 def read_root():

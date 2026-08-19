@@ -1,62 +1,39 @@
 import pandas as pd
-import sys
+import joblib
 import os
 
-# Ensure backend modules can be imported
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
-
-from preprocessing_and_feature_engineering.temperature_pressure_model.data_cleaner import DataCleaner
-from preprocessing_and_feature_engineering.temperature_pressure_model.feature_engineer import FeatureEngineer
-import pickle
+from .data_cleaner import WeatherDataCleaner
+from .feature_engineer import WeatherFeatureEngineer
 
 class UnifiedWeatherPipeline:
-    """
-    Coordinator pipeline for Temperature and Pressure Forecasting.
-    """
-    def __init__(self):
-        self.cleaner = DataCleaner()
-        self.engineer = FeatureEngineer()
+    def __init__(self, model_dir: str):
+        self.cleaner = WeatherDataCleaner()
+        self.engineer = WeatherFeatureEngineer()
         
-        # Load required features from the pickle file to ensure exact matching
-        base_dir = os.path.dirname(__file__)
-        temp_features_path = os.path.abspath(os.path.join(base_dir, '../../../Models/Temperature/temp_feature_columns.pkl'))
-        press_features_path = os.path.abspath(os.path.join(base_dir, '../../../Models/Temperature/pressure_feature_columns.pkl'))
+        # Load features and scaler dynamically for inference
+        self.features = joblib.load(os.path.join(model_dir, "feature_columns.pkl"))
+        self.scaler = joblib.load(os.path.join(model_dir, "scaler.pkl"))
         
-        try:
-            with open(temp_features_path, 'rb') as f:
-                self.required_temp_features = pickle.load(f)
-        except Exception as e:
-            print(f"Warning: Could not load temp features, using defaults. Error: {e}")
-            self.required_temp_features = []
-            
-        try:
-            with open(press_features_path, 'rb') as f:
-                self.required_press_features = pickle.load(f)
-        except Exception as e:
-            print(f"Warning: Could not load pressure features, using defaults. Error: {e}")
-            self.required_press_features = []
-
-    def process_inference_data(self, df_window: pd.DataFrame) -> tuple:
+    def process_inference_data(self, df: pd.DataFrame) -> pd.DataFrame:
         """
-        Runs the full pipeline for Live API Prediction.
-        Returns the feature sets for Temperature and Pressure models.
+        Processes real-time data for model inference exactly matching the training pipeline.
         """
-        df_clean = self.cleaner.clean(df_window)
-        df_features = self.engineer.create_features(df_clean)
+        # 1. Clean the data
+        df_cleaned = self.cleaner.clean_inference_data(df)
         
-        # Get the latest row for inference
-        latest_row = df_features.iloc[[-1]].copy()
+        # 2. Generate Features (Lags, Trigonometric, etc.)
+        df_engineered = self.engineer.generate_features(df_cleaned)
         
-        # Select required columns, fill missing with 0 if any
-        temp_features = pd.DataFrame()
-        press_features = pd.DataFrame()
-        
-        if self.required_temp_features:
-            for col in self.required_temp_features:
-                temp_features[col] = latest_row.get(col, 0)
+        # 3. Ensure all feature columns expected by the model exist, fill with 0 if missing
+        for col in self.features:
+            if col not in df_engineered.columns:
+                df_engineered[col] = 0
                 
-        if self.required_press_features:
-            for col in self.required_press_features:
-                press_features[col] = latest_row.get(col, 0)
-
-        return temp_features, press_features
+        # 4. Filter columns
+        df_final = df_engineered[self.features]
+        
+        # 5. Scale features
+        df_scaled_array = self.scaler.transform(df_final)
+        
+        # We can return as DataFrame for easy debugging/passing
+        return df_scaled_array

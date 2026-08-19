@@ -9,7 +9,7 @@ from sklearn.multioutput import MultiOutputRegressor
 from sklearn.metrics import mean_absolute_error, r2_score
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_DIR = os.path.dirname(BASE_DIR)
+PROJECT_DIR = os.path.dirname(os.path.dirname(BASE_DIR))
 
 input_path = os.path.join(PROJECT_DIR, "data", "featured_northeast_monsoon.csv")
 df = pd.read_csv(input_path)
