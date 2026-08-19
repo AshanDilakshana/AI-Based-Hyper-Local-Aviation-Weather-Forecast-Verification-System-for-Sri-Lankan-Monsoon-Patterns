@@ -9,7 +9,7 @@ def retrain_temperature_pressure_pipeline():
     and returns a success boolean and a message.
     """
     try:
-        train_script = os.path.join(BASE_DIR, "model", "random_forest", "train_quick_rf.py")
+        train_script = os.path.join(BASE_DIR, "Models", "Temperature", "random_forest", "train_quick_rf.py")
         
         print(f"🔄 Starting Temperature & Pressure Model Retraining...")
         
