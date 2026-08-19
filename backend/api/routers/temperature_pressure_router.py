@@ -6,6 +6,8 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 from typing import Dict, Any, List
+from backend.data.database import SessionLocal
+from backend.data.models import PredictionRecord
 
 router = APIRouter(prefix="/predict", tags=["Temperature & Pressure Forecast"])
 
@@ -171,6 +173,26 @@ def predict_temperature_and_pressure(obs: ObservationRequest):
         pred_press = pressure_model.predict(df_press_scaled)[0]
 
         dt_out = dt + timedelta(hours=3)
+        
+        # --- Save Prediction to Database ---
+        try:
+            db = SessionLocal()
+            new_pred = PredictionRecord(
+                forecast_type='3H',
+                target_year=dt_out.year,
+                target_month=dt_out.month,
+                target_date=dt_out.day,
+                target_time_utc=dt_out.strftime("%H%M"),
+                predicted_temperature_c=float(pred_temp),
+                predicted_pressure_hpa=float(pred_press),
+                status="SAFE"
+            )
+            db.add(new_pred)
+            db.commit()
+            db.close()
+        except Exception as db_err:
+            print(f"Warning: Could not save prediction to DB: {db_err}")
+        # -----------------------------------
 
         return {
             "input_obs_time": obs_data["obs_time"],

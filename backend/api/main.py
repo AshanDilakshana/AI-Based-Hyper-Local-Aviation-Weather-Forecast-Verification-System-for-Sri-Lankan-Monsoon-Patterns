@@ -6,7 +6,7 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 
 # Import available local routers
-from backend.api.routers import wind_router, temperature_pressure_router
+from backend.api.routers import temperature_pressure_router
 
 # Safely import team routers (prevent crashes if they don't exist locally yet)
 try:
@@ -61,8 +61,7 @@ app.add_middleware(
 # Include Route Modules
 # ---------------------------------------------------------
 
-# Ashan's Wind Prediction Models
-app.include_router(wind_router.router)
+
 
 # Imash's Temperature & Pressure Prediction Models
 app.include_router(temperature_pressure_router.router)
@@ -79,7 +78,7 @@ def read_root():
     return {
         "message": "Welcome to the Aviation Weather Forecast API.",
         "docs": "Visit /docs for the Swagger UI.",
-        "active_models": ["Wind Prediction", "Temperature & Pressure"]
+        "active_models": ["Temperature & Pressure"]
     }
 
 # ---------------------------------------------------------
@@ -90,12 +89,10 @@ try:
 except ImportError:
     # Fallback to your local retrainer if the main one isn't pulled yet
     def run_all_retrainings():
-        from backend.mlops_retrainer_plugin import retrain_temperature_pressure_pipeline
+        from backend.mlops_retrainer import retrain_temperature_pressure_pipeline
         success, msg = retrain_temperature_pressure_pipeline()
         return {"Temperature_Pressure_Model": msg}
 
-# pyrefly: ignore [missing-import]
-from backend.api.routers.wind_router import load_Wind_models
 # Imash's model loader
 from backend.api.routers.temperature_pressure_router import load_Temp_Press_models
 
@@ -106,8 +103,6 @@ def manual_retrain_models():
     """
     try:
         results = run_all_retrainings()
-        
-        load_Wind_models() # Hot-reload models into memory
         
         # Load Temperature & Pressure models into memory!
         load_Temp_Press_models()
