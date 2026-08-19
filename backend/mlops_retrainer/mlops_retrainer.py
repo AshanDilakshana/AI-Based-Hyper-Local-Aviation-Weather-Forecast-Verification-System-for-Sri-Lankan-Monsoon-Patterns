@@ -2,8 +2,7 @@ import os
 import sys
 import pandas as pd
 from datetime import datetime
-import importlib.util
-import glob
+import subprocess
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
 
@@ -38,49 +37,45 @@ def log_event(db_session, level, component, message, details=None):
 
 
 
-def load_and_run_plugins(db_session=None):
+def retrain_temperature_pressure():
     """
-    Dynamically loads and runs all retraining plugins from backend/mlops_plugins/
+    Executes the training script for the Temperature and Pressure models
+    and returns a tuple: (success_boolean, message, model_key).
     """
-    results = {}
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    plugins_dir = os.path.join(base_dir, 'mlops_plugins')
-    
-    if not os.path.exists(plugins_dir):
-        return results
+    try:
+        BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        train_script = os.path.join(BASE_DIR, "Models", "Temperature", "train_quick_rf.py")
         
-    plugin_files = glob.glob(os.path.join(plugins_dir, "*.py"))
-    
-    for file_path in plugin_files:
-        if os.path.basename(file_path) == "__init__.py":
-            continue
-            
-        module_name = os.path.basename(file_path)[:-3]
+        print(f"Starting Temperature & Pressure Model Retraining...")
         
-        try:
-            spec = importlib.util.spec_from_file_location(module_name, file_path)
-            module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(module)
+        result = subprocess.run(
+            ["python", train_script], 
+            capture_output=True, 
+            text=True
+        )
+        
+        model_key = "Temperature_Pressure_Model"
+        
+        if result.returncode == 0:
+            msg = "Successfully retrained Temperature & Pressure Models. Metrics: " + result.stdout.split('--- SEPARATE RANDOM FOREST PERFORMANCE ---')[-1].strip()
+            print(msg)
+            return True, msg, model_key
+        else:
+            error_msg = f"Error retraining Temperature/Pressure Models: {result.stderr}"
+            print(error_msg)
+            return False, error_msg, model_key
             
-            if hasattr(module, 'retrain'):
-                success, msg, model_key = module.retrain()
-                results[model_key] = msg
-        except Exception as e:
-            print(f"Failed to load/run plugin {module_name}: {e}")
-            results[module_name] = f"Plugin Error: {e}"
-            
-    return results
+    except Exception as e:
+        error_msg = f"Exception during Temperature/Pressure retraining: {str(e)}"
+        print(error_msg)
+        return False, error_msg, "Temperature_Pressure_Model"
+
 
 def run_all_retrainings():
-    # ---------------------------------------------------------
-    # => NOW USING DYNAMIC PLUGIN ARCHITECTURE!
-    # ---------------------------------------------------------
-    
-    plugin_results = load_and_run_plugins()
-    
     final_results = {}
     
-    final_results.update(plugin_results)
+    success, msg, model_key = retrain_temperature_pressure()
+    final_results[model_key] = msg
     
     return final_results
 
