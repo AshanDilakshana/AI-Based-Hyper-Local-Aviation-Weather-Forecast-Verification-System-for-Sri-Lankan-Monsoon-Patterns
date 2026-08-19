@@ -102,7 +102,6 @@ def retrain_model_pipeline(forecast_hours, target_col, model_dir, model_filename
 
 
 
-
 def retrain_tft_pipeline(tft_dir):
     db = SessionLocal()
     component = "MLOps_TFT_3H"
@@ -153,7 +152,7 @@ def retrain_tft_pipeline(tft_dir):
     return ret
 
 
-def run_all_retrainings():
+def run_wind_models_retraining():
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../Models'))
     
     # 1st: 3H XGBoost Model
@@ -168,25 +167,12 @@ def run_all_retrainings():
     dir_1h = os.path.join(base_dir, 'wind_models/1h prediction model')
     res_1h, msg_1h = retrain_model_pipeline(1, 'Wind speed(Kts)_1h_ahead', dir_1h, 'xgboost_wind_model_1h.json')
     
-    # ---------------------------------------------------------
-    # ubarlage codes tika methanatd plug karanna oni (imash,sachiii,vijjj)
-    # Example:
-    # res_vis, msg_vis = retrain_visibility_pipeline(...)
-    # res_clouds, msg_clouds = retrain_clouds_pipeline(...)
-    # ---------------------------------------------------------
-    
     return {
         "3H_Wind_Model": msg_3h,
         "TFT_3H_Model": msg_tft,
         "1H_Wind_Model": msg_1h
-        # ---------------------------------------------------------
-        # (imash,sachiii,vijjj): Add your result messages to this dictionary!
-        # Example:
-        # ,"Visibility_Model": msg_vis
-        # ,"Clouds_Model": msg_clouds
-        # ---------------------------------------------------------
     }
 
 if __name__ == "__main__":
-    results = run_all_retrainings()
+    results = run_wind_models_retraining()
     print("Retraining Results:", results)
