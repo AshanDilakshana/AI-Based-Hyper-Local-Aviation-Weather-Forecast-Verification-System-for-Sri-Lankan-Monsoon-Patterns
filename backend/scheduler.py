@@ -1,39 +1,18 @@
-import os
-import sys
-# pyrefly: ignore [missing-import]
-from apscheduler.schedulers.background import BackgroundScheduler
-import time
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, declarative_base
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
-from backend.mlops_retrainer import run_all_retrainings
+SQLALCHEMY_DATABASE_URL = "sqlite:///./weather_data.db"
+# For SQLite we need check_same_thread=False
+engine = create_engine(
+    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
+)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-def start_scheduler():
-    """
-    Initializes the APScheduler to run the MLOps retraining pipeline
-    automatically on the 1st of every month at midnight.
-    """
-    scheduler = BackgroundScheduler()
-    
-    scheduler.add_job(
-        run_all_retrainings,
-        'cron',
-        day='1',
-        hour='0',
-        minute='0',
-        id='monthly_retrain_job',
-        name='MLOps Monthly Retraining',
-        replace_existing=True
-    )
-    
-    scheduler.start()
-    print("[SUCCESS] MLOps Background Scheduler started. Next run: 1st of the month at 00:00.")
-    
+Base = declarative_base()
+
+def get_db():
+    db = SessionLocal()
     try:
-        while True:
-            time.sleep(2)
-    except (KeyboardInterrupt, SystemExit):
-        scheduler.shutdown()
-        print("Scheduler shut down.")
-
-if __name__ == "__main__":
-    start_scheduler()
+        yield db
+    finally:
+        db.close()
