@@ -17,3 +17,7 @@ build/
 *.csv
 frontend/
 public/fonts/
+
+# Database files
+*.db
+*.sqlite3
