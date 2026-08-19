@@ -24,3 +24,6 @@ public/fonts/
 
 # VS Code
 .vscode/
+
+# Backend static files (e.g. downloaded charts)
+backend/static/
