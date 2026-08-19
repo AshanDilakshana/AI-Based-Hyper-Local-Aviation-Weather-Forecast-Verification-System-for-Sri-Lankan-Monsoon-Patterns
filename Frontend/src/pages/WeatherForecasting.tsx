@@ -103,7 +103,7 @@ export function WeatherForecasting() {
     };
 
     try {
-      const res = await axios.post(`${API_BASE}/wind/predict/3h`, payload);
+      const res = await axios.post(`${API_BASE}/wind/predict/hybrid_3h`, payload);
       setForecastData(res.data);
     } catch (err) {
       console.error("Error fetching forecast:", err);
