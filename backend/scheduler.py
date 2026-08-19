@@ -4,7 +4,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 import time
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
-from backend.mlops_retrainer import run_wind_models_retraining
+from backend.mlops_retrainer.mlops_Wind_retrainer import run_wind_models_retraining
 from backend.live_metar_fetcher import fetch_and_store_live_metar
 
 from datetime import datetime, timedelta

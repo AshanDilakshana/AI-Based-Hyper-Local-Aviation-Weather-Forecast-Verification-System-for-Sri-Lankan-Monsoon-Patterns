@@ -3,7 +3,7 @@ import sys
 import pandas as pd
 from datetime import datetime
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 
 from backend.data.database import SessionLocal
 from backend.data.models import WeatherData, SystemLogs
@@ -99,9 +99,6 @@ def retrain_model_pipeline(forecast_hours, target_col, model_dir, model_filename
         
     return ret
 
-
-
-
 def retrain_tft_pipeline(tft_dir):
     db = SessionLocal()
     component = "MLOps_TFT_3H"
@@ -153,7 +150,7 @@ def retrain_tft_pipeline(tft_dir):
 
 
 def run_wind_models_retraining():
-    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../Models'))
+    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../Models'))
     
     # 1st: 3H XGBoost Model
     dir_3h = os.path.join(base_dir, 'wind_models/3h prediction model')
