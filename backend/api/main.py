@@ -49,9 +49,6 @@ app.add_middleware(
 # Include Route Modules (Different team members' models)
 # ---------------------------------------------------------
 
-# Ashan's Wind Prediction Models (1h & 3h)
-app.include_router(wind_router.router)
-
 # Live Metrology API
 app.include_router(live_metrology.router)
 
@@ -64,11 +61,34 @@ app.include_router(logs_router.router)
 # Pilot Flight Planning & Document API
 app.include_router(pilot_router.router)
 
+
+# Ashan's Wind Prediction Models (1h & 3h)
+app.include_router(wind_router.router)
+
+
 # Example placeholders for other team members:
-# from backend.api.routers import visibility, clouds, temperature
-# app.include_router(visibility.router)
-# app.include_router(clouds.router)
-# app.include_router(temperature.router)
+# (Safely imported so that missing files locally don't crash the main server)
+
+# Imash - Temperature & Pressure
+# try:
+#     from backend.api.routers import temperature_pressure_router
+#     app.include_router(temperature_pressure_router.router)
+# except ImportError:
+#     print("Warning: temperature_pressure_router not found locally. Skipping.")
+
+# Sachiii - Visibility (Placeholder)
+# try:
+#     from backend.api.routers import visibility_router
+#     app.include_router(visibility_router.router)
+# except ImportError:
+#     pass # Ignored until visibility_router is merged
+
+# Vijjj - Clouds (Placeholder)
+# try:
+#     from backend.api.routers import clouds_router
+#     app.include_router(clouds_router.router)
+# except ImportError:
+#     pass # Ignored until clouds_router is merged
 
 @app.get("/")
 def read_root():
@@ -87,9 +107,22 @@ from backend.mlops_retrainer import run_all_retrainings
 from backend.api.routers.wind_router import load_Wind_models
 # ---------------------------------------------------------
 # (imash,sachiii,vijjj): Import your model loading functions here!
-# Example:
-# from backend.api.routers.visibility_router import load_Visibility_models
-# from backend.api.routers.clouds_router import load_Clouds_models
+# ---------------------------------------------------------
+# try:
+#     from backend.api.routers.temperature_pressure_router import load_Temp_Press_models
+#     from backend.mlops_retrainer_plugin import retrain_temperature_pressure_pipeline
+# except ImportError:
+#     pass
+
+# try:
+#     from backend.api.routers.visibility_router import load_Visibility_models
+# except ImportError:
+#     pass
+
+# try:
+#     from backend.api.routers.clouds_router import load_Clouds_models
+# except ImportError:
+#     pass
 # ---------------------------------------------------------
 
 @app.post("/models/retrain")
@@ -98,16 +131,37 @@ def manual_retrain_models():
     Manually triggers the MLOps retraining pipeline.
     """
     try:
+        # 1. Retrain core models (Wind)
         results = run_all_retrainings()
         
-        load_Wind_models() # Hot-reload models into memory
+        # 2. Safely trigger other team members' retraining if available
+        # try:
+        #     temp_success, temp_msg = retrain_temperature_pressure_pipeline()
+        #     results["Temperature_Pressure_Model"] = temp_msg
+        # except NameError:
+        #     pass # retrain_temperature_pressure_pipeline not imported
+            
+        # 3. Hot-reload models into memory
+        load_Wind_models() 
+        
         # ---------------------------------------------------------
         # (imash,sachiii,vijjj): Call your model loading functions here 
         # so they update in RAM after retraining!
-        # Example:
-        # load_Visibility_models()
-        # load_Clouds_models()
         # ---------------------------------------------------------
+        # try:
+        #     load_Temp_Press_models()
+        # except NameError:
+        #     pass
+            
+        # try:
+        #     load_Visibility_models()
+        # except NameError:
+        #     pass
+            
+        # try:
+        #     load_Clouds_models()
+        # except NameError:
+        #     pass
         
         return {"message": "Retraining complete", "results": results}
     except Exception as e:
