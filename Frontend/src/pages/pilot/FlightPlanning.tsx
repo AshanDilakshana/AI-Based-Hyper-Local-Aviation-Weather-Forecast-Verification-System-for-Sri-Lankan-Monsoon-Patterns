@@ -8,6 +8,21 @@ import { flightLevels, requestMaps, requestPreview } from '../../data/flight';
 const fieldClass =
   'h-11 w-full rounded-lg border border-lineStrong bg-ink px-3 text-sm text-faint placeholder:text-muted transition-colors duration-150 ease-out focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent';
 
+const getInitialUTCDate = () => {
+  const now = new Date();
+  const yyyy = now.getUTCFullYear();
+  const mm = String(now.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(now.getUTCDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+};
+
+const getInitialUTCTime = () => {
+  const now = new Date();
+  const hh = String(now.getUTCHours()).padStart(2, '0');
+  const min = String(now.getUTCMinutes()).padStart(2, '0');
+  return `${hh}:${min}`;
+};
+
 export function FlightPlanning() {
   const navigate = useNavigate();
   const [levels, setLevels] = useState<string[]>(['FL390', 'FL340', 'FL180', 'FL100']);
@@ -16,7 +31,8 @@ export function FlightPlanning() {
   // Form State
   const [departure, setDeparture] = useState("VCBI");
   const [destination, setDestination] = useState("WSSS");
-  const [departureTime, setDepartureTime] = useState("2026-06-18T08:30");
+  const [departureDate, setDepartureDate] = useState(getInitialUTCDate());
+  const [departureTime, setDepartureTime] = useState(getInitialUTCTime());
   const [area, setArea] = useState("Area D");
   
   // Modal & API State
@@ -27,14 +43,18 @@ export function FlightPlanning() {
   // Reference for datetime input
   const dateInputRef = useRef<HTMLInputElement>(null);
 
-  // Parse raw datetime-local string to Aviation UTC
-  const getAviationTime = (dtStr: string) => {
-    if (!dtStr || !dtStr.includes('T')) return '';
-    const [datePart, timePart] = dtStr.split('T');
-    const day = datePart.split('-')[2];
-    const hour = timePart.split(':')[0];
-    const minute = timePart.split(':')[1];
-    return `${day}${hour}${minute}Z`;
+  // Parse raw date and time strings to Aviation UTC
+  const getAviationTime = (dStr: string, tStr: string) => {
+    if (!dStr || !tStr) return '';
+    try {
+      const day = dStr.split('-')[2];
+      const hour = tStr.split(':')[0];
+      const minute = tStr.split(':')[1];
+      if (!day || !hour || !minute) return '';
+      return `${day}${hour}${minute}Z`;
+    } catch {
+      return '';
+    }
   };
 
   const toggle = (value: string, list: string[], set: (next: string[]) => void) => {
@@ -53,7 +73,7 @@ export function FlightPlanning() {
       const response = await axios.post('http://localhost:8000/pilot/flight-plan', {
         departure,
         destination,
-        departure_time: departureTime,
+        departure_time: `${departureDate}T${departureTime}`,
         area,
         flight_levels: levels,
         maps
@@ -119,29 +139,37 @@ export function FlightPlanning() {
 
             <label className="block">
               <span className="text-xs font-medium text-subtle">Departure date &amp; time (Select in UTC)</span>
-              <div 
-                className="relative mt-1.5 cursor-pointer"
-                onClick={() => dateInputRef.current?.showPicker && dateInputRef.current.showPicker()}
-              >
-                <ClockIcon
-                  className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
-                  aria-hidden="true"
-                />
-                <input
-                  type="datetime-local"
-                  ref={dateInputRef}
-                  value={departureTime}
-                  onChange={(e) => setDepartureTime(e.target.value)}
-                  className={`${fieldClass} pl-9 pr-10 cursor-pointer`}
-                  required
-                />
-                <CalendarDaysIcon
-                  className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted hover:text-accent transition-colors"
-                  aria-hidden="true"
-                />
+              <div className="mt-1.5 flex gap-2">
+                <div className="relative flex-1">
+                  <CalendarDaysIcon
+                    className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
+                    aria-hidden="true"
+                  />
+                  <input
+                    type="date"
+                    value={departureDate}
+                    onChange={(e) => setDepartureDate(e.target.value)}
+                    className={`${fieldClass} pl-9 cursor-pointer`}
+                    required
+                  />
+                </div>
+                <div className="relative w-[120px]">
+                  <ClockIcon
+                    className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
+                    aria-hidden="true"
+                  />
+                  <input
+                    type="time"
+                    lang="en-GB"
+                    value={departureTime}
+                    onChange={(e) => setDepartureTime(e.target.value)}
+                    className={`${fieldClass} pl-9 cursor-pointer`}
+                    required
+                  />
+                </div>
               </div>
               <p className="mt-1 text-[11px] text-sky-pale/60">
-                Aviation format: <span className="font-mono text-sky-pale">{getAviationTime(departureTime)}</span>
+                Aviation format: <span className="font-mono text-sky-pale">{getAviationTime(departureDate, departureTime)}</span>
               </p>
             </label>
 
@@ -251,7 +279,7 @@ export function FlightPlanning() {
                 <div className="rounded-lg bg-ink p-3 border border-line">
                   <p className="text-xs text-muted mb-1">Departure</p>
                   <p className="font-bold text-white">{departure}</p>
-                  <p className="text-xs text-faint mt-1">{departureTime.replace('T', ' ')} UTC</p>
+                  <p className="text-xs text-faint mt-1">{departureDate} {departureTime} UTC</p>
                 </div>
                 <div className="rounded-lg bg-ink p-3 border border-line">
                   <p className="text-xs text-muted mb-1">Destination</p>

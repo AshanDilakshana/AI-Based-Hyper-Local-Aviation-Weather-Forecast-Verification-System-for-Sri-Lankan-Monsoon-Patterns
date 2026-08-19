@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { AuthUser, Role } from '../types/auth';
 import { roleMeta } from '../types/auth';
 
@@ -28,7 +28,22 @@ function toInitials(name: string): string {
 }
 
 export function AuthProvider({ children }: {children: React.ReactNode;}) {
-  const [user, setUser] = useState<AuthUser | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(() => {
+    try {
+      const stored = localStorage.getItem('aviation_auth_user');
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem('aviation_auth_user', JSON.stringify(user));
+    } else {
+      localStorage.removeItem('aviation_auth_user');
+    }
+  }, [user]);
 
   const signIn = useCallback((input: SignInInput) => {
     const isPilot = input.role === 'pilot';

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { BellIcon, MenuIcon, RadioTowerIcon, ShieldCheckIcon, UserIcon } from 'lucide-react';
 import { STATION } from '../../data/weather';
@@ -12,6 +12,15 @@ type TopBarProps = {
 export function TopBar({ onMenuClick }: TopBarProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [time, setTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const slstTime = 'SLST ' + time.toLocaleTimeString('en-US', { timeZone: 'Asia/Colombo', hour12: false });
+  const utcTime = 'UTC ' + time.toLocaleTimeString('en-US', { timeZone: 'UTC', hour12: false });
 
   return (
     <header className="sticky top-0 z-20 flex h-[74px] w-full items-center justify-between gap-4 border-b border-line bg-topbar px-4 sm:px-6">
@@ -21,7 +30,7 @@ export function TopBar({ onMenuClick }: TopBarProps) {
           onClick={onMenuClick}
           className="rounded-md p-2 text-slate-300 transition-colors hover:bg-slate-500/10 hover:text-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent lg:hidden"
           aria-label="Open navigation">
-          
+
           <MenuIcon className="h-5 w-5" />
         </button>
         <div className="min-w-0">
@@ -35,16 +44,22 @@ export function TopBar({ onMenuClick }: TopBarProps) {
         </div>
       </div>
 
+      <div className="hidden md:flex items-center gap-2 text-[13px] font-mono text-slate-300  px-4 py-2 rounded-lg border border-line ">
+        <span className="font-semibold text-accent-pale tracking-wider">{slstTime}</span>
+        <span className="text-slate-500 px-1">/</span>
+        <span className="font-medium text-slate-400 tracking-wider">{utcTime}</span>
+      </div>
+
       <div className="flex items-center gap-2 sm:gap-3">
         <ThemeToggle />
 
         {user ?
-        <>
+          <>
             <button
-            type="button"
-            className="relative rounded-md p-2 text-slate-400 transition-colors hover:bg-slate-500/10 hover:text-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-            aria-label="Notifications, 2 unread">
-            
+              type="button"
+              className="relative rounded-md p-2 text-slate-400 transition-colors hover:bg-slate-500/10 hover:text-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              aria-label="Notifications, 2 unread">
+
               <BellIcon className="h-[18px] w-[18px]" />
               <span className="absolute right-0 top-0 flex h-4 w-4 items-center justify-center rounded-full bg-amber-400 text-[9px] font-bold text-slate-900">
                 2
@@ -52,11 +67,11 @@ export function TopBar({ onMenuClick }: TopBarProps) {
             </button>
 
             <button
-            type="button"
-            onClick={() => navigate('/profile')}
-            className="flex items-center gap-3 rounded-lg border border-transparent px-2 py-1 transition-colors hover:border-line focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-            aria-label="Open your profile">
-            
+              type="button"
+              onClick={() => navigate('/profile')}
+              className="flex items-center gap-3 rounded-lg border border-transparent px-2 py-1 transition-colors hover:border-line focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              aria-label="Open your profile">
+
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent-deep text-xs font-bold text-white">
                 {user.initials}
               </span>
@@ -72,10 +87,10 @@ export function TopBar({ onMenuClick }: TopBarProps) {
             <ShieldCheckIcon className="hidden h-[18px] w-[18px] text-emerald-500 sm:block" aria-hidden="true" />
           </> :
 
-        <Link
-          to="/sign-in"
-          className="flex items-center gap-2 rounded-lg border border-line px-3 py-2 text-xs font-semibold text-slate-300 transition-colors hover:border-accent hover:text-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent">
-          
+          <Link
+            to="/sign-in"
+            className="flex items-center gap-2 rounded-lg border border-line px-3 py-2 text-xs font-semibold text-slate-300 transition-colors hover:border-accent hover:text-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent">
+
             <UserIcon className="h-[18px] w-[18px]" aria-hidden="true" />
             <span className="hidden sm:inline">Sign in</span>
           </Link>
