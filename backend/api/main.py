@@ -94,6 +94,7 @@ except ImportError:
         success, msg = retrain_temperature_pressure_pipeline()
         return {"Temperature_Pressure_Model": msg}
 
+# pyrefly: ignore [missing-import]
 from backend.api.routers.wind_router import load_Wind_models
 # Imash's model loader
 from backend.api.routers.temperature_pressure_router import load_Temp_Press_models
