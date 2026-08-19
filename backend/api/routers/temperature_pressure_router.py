@@ -54,8 +54,12 @@ def prepare_features_with_lags(db: Session, current_data: dict = None):
     # Fetch last 4 records (to get current + 3 lags, or if current_data is provided, just 3 lags)
     recent_records = db.query(WeatherData).order_by(WeatherData.timestamp_utc.desc()).limit(4).all()
     
-    if len(recent_records) < 4:
+    if len(recent_records) == 0:
         raise ValueError("Not enough historical data in DB to generate lag features.")
+        
+    # Pad records if less than 4
+    while len(recent_records) < 4:
+        recent_records.append(recent_records[-1])
         
     recent_records.reverse() # chronologically: oldest to newest
     
@@ -180,17 +184,23 @@ def predict_temperature_pressure(request: TempPressPredictionRequest, db: Sessio
         predicted_press = current_pressure + predicted_press_diff
         
         target_time = datetime.utcnow() + timedelta(hours=3)
+        created_at_utc = datetime.utcnow()
+        sl_tz_offset = timedelta(hours=5, minutes=30)
         
         record = PredictionRecord(
-            created_at=datetime.utcnow(),
+            created_at=created_at_utc,
+            created_at_local=created_at_utc + sl_tz_offset,
             forecast_type="3H_MANUAL",
             target_year=target_time.year,
             target_month=target_time.month,
             target_date=target_time.day,
             target_time_utc=target_time.strftime("%H%M"),
+            target_time_local=(target_time + sl_tz_offset).strftime("%H%M"),
             predicted_temperature_c=predicted_temp,
             predicted_pressure_hpa=predicted_press,
-            status="SAFE"
+            status="SAFE",
+            error_message="None",
+            error_value=0.0
         )
         db.add(record)
         db.commit()
@@ -204,4 +214,132 @@ def predict_temperature_pressure(request: TempPressPredictionRequest, db: Sessio
         
     except Exception as e:
         db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/live")
+def predict_live_weather(db: Session = Depends(get_db)):
+    if temp_model is None or press_model is None:
+        raise HTTPException(status_code=500, detail="Temperature/Pressure models are not loaded.")
+        
+    try:
+        import requests
+        # Fetch live data
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        response = requests.get('https://aviationweather.gov/api/data/metar?ids=VCBI&format=json', headers=headers, timeout=10)
+        if response.status_code != 200 or not response.json():
+            raise Exception("Failed to fetch live METAR data.")
+            
+        data = response.json()[0]
+        
+        # Parse data
+        temp_c = data.get("temp", 30)
+        dew_c = data.get("dewp", 25)
+        wind_dir = data.get("wdir", 0)
+        wind_spd = data.get("wspd", 0)
+        visibility = data.get("visib")
+        if isinstance(visibility, str) and '+' in visibility:
+            visibility = float(visibility.replace('+', ''))
+        elif visibility is None:
+            visibility = 10.0
+        else:
+            visibility = float(visibility)
+            
+        qnh = data.get("altim", 1010)
+        # Approximate Relative Humidity
+        rh = 100 - 5 * (temp_c - dew_c) 
+        
+        clouds = ""
+        if "clouds" in data and len(data["clouds"]) > 0:
+            clouds = data["clouds"][0].get("cover", "")
+            
+        raw_ob = data.get("rawOb", "")
+        
+        obs_time = datetime.utcnow()
+        if "reportTime" in data:
+            try:
+                # Format: 2026-08-19T18:10:00.000Z
+                obs_time = datetime.strptime(data["reportTime"], "%Y-%m-%dT%H:%M:%S.%fZ")
+            except:
+                pass
+                
+        # Save to WeatherData
+        weather_record = WeatherData(
+            timestamp_utc=obs_time,
+            year=obs_time.year,
+            month=obs_time.month,
+            date=obs_time.day,
+            time_utc=obs_time.strftime("%H%M"),
+            wind_dir=wind_dir,
+            wind_speed_kts=wind_spd,
+            visibility=visibility,
+            weather=raw_ob,
+            clouds=clouds,
+            dry_temp_c=temp_c,
+            dew_point_c=dew_c,
+            rh_percent=rh,
+            qnh_hpa=qnh
+        )
+        db.add(weather_record)
+        db.commit()
+        db.refresh(weather_record)
+        
+        # Run Prediction (now that live data is in DB)
+        df = prepare_features_with_lags(db)
+        
+        X_temp = df.reindex(columns=temp_features, fill_value=0)
+        X_temp_scaled = temp_scaler.transform(X_temp)
+        predicted_temp = float(temp_model.predict(X_temp_scaled)[0])
+        
+        X_press = df.reindex(columns=press_features, fill_value=0)
+        X_press_scaled = press_scaler.transform(X_press)
+        predicted_press_diff = float(press_model.predict(X_press_scaled)[0])
+        
+        current_pressure = qnh
+        predicted_press = current_pressure + predicted_press_diff
+        
+        target_time = datetime.utcnow() + timedelta(hours=3)
+        created_at_utc = datetime.utcnow()
+        sl_tz_offset = timedelta(hours=5, minutes=30)
+        
+        record = PredictionRecord(
+            created_at=created_at_utc,
+            created_at_local=created_at_utc + sl_tz_offset,
+            forecast_type="3H_LIVE",
+            target_year=target_time.year,
+            target_month=target_time.month,
+            target_date=target_time.day,
+            target_time_utc=target_time.strftime("%H%M"),
+            target_time_local=(target_time + sl_tz_offset).strftime("%H%M"),
+            predicted_temperature_c=predicted_temp,
+            predicted_pressure_hpa=predicted_press,
+            status="SAFE",
+            error_message="None",
+            error_value=0.0
+        )
+        db.add(record)
+        db.commit()
+        
+        return {
+            "live_data": {
+                "temperature": temp_c,
+                "pressure": qnh,
+                "wind_speed": wind_spd,
+                "wind_direction": wind_dir,
+                "visibility": visibility,
+                "time_utc": obs_time.strftime("%H%M"),
+                "time_local": (obs_time + sl_tz_offset).strftime("%H%M"),
+                "raw_ob": raw_ob
+            },
+            "prediction": {
+                "temperature": round(predicted_temp, 2),
+                "pressure": round(predicted_press, 2),
+                "forecast_time_utc": target_time.strftime("%H%M"),
+                "forecast_time_local": (target_time + sl_tz_offset).strftime("%H%M")
+            }
+        }
+        
+    except Exception as e:
+        db.rollback()
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
