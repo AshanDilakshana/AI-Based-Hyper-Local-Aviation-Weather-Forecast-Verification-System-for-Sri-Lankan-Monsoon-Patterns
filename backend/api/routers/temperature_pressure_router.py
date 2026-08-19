@@ -10,9 +10,8 @@ from typing import Dict, Any, List
 router = APIRouter(prefix="/predict", tags=["Temperature & Pressure Forecast"])
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-PROJECT_DIR = os.path.dirname(BASE_DIR)
-DB_PATH = os.path.join(BASE_DIR, "weather_data.db") # Adjusted for local structure
-MODEL_DIR = os.path.join(PROJECT_DIR, "model")
+DB_PATH = os.path.join(BASE_DIR, "weather_data.db") 
+MODEL_DIR = os.path.join(BASE_DIR, "Models", "Temperature")
 
 # Global variables to hold models
 temp_model = None
