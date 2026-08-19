@@ -50,6 +50,9 @@ export default function ForecastingPanel({ liveData, apiBase, onForecastComplete
         <button onClick={() => handlePredict('3h')} disabled={loading || !liveData}>
           3-Hour Forecast
         </button>
+        <button onClick={() => handlePredict('hybrid_3h')} disabled={loading || !liveData} style={{ background: 'var(--primary)', color: '#000' }}>
+          Hybrid 3-Hour Forecast
+        </button>
       </div>
 
       {loading && <p style={{ marginTop: '20px' }}>Analyzing weather patterns...</p>}
