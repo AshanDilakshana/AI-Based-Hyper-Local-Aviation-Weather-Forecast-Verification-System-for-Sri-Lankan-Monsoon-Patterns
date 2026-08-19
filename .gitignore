@@ -21,3 +21,6 @@ public/fonts/
 # Database files
 *.db
 *.sqlite3
+
+# VS Code
+.vscode/
