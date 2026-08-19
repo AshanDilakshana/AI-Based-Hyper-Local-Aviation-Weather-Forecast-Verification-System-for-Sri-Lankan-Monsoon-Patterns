@@ -39,7 +39,7 @@ def run_inference():
     
     best_tft = TemporalFusionTransformer.load_from_checkpoint(best_model_path)
     
-    db_path = os.path.abspath(os.path.join(current_dir, '../../weather_data.db'))
+    db_path = os.path.abspath(os.path.join(current_dir, '../../../weather_data.db'))
     df = load_and_prepare_data(db_path)
     
     # Take only the last 24 hours of data to speed up dataset building for single prediction
