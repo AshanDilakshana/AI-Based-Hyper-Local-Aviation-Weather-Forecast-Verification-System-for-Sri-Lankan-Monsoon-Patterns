@@ -4,7 +4,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 import time
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
-from backend.mlops_retrainer import run_all_retrainings
+from backend.mlops_retrainer import run_wind_models_retraining
 from backend.live_metar_fetcher import fetch_and_store_live_metar
 
 from datetime import datetime, timedelta
@@ -33,7 +33,21 @@ def smart_live_metar_fetch(sched):
 
 def scheduled_retraining_job():
     print(f"[{datetime.now()}] Starting scheduled MLOps retraining pipeline...")
-    run_all_retrainings()
+    
+    # 1. Ashan's Wind Models Retraining
+    run_wind_models_retraining()
+    
+    # ---------------------------------------------------------
+    # (imash,sachiii,vijjj): Add your model retraining functions here!
+    # (Use try...except so missing files don't crash the scheduler)
+    # ---------------------------------------------------------
+    # try:
+    #     from backend.mlops_retrainer_plugin import retrain_temperature_pressure_pipeline
+    #     retrain_temperature_pressure_pipeline()
+    # except ImportError:
+    #     pass
+    # ---------------------------------------------------------
+    
     
     # Hot-reload the models into memory so the API uses the newly trained versions
     from backend.api.routers.wind_router import load_Wind_models
@@ -42,12 +56,24 @@ def scheduled_retraining_job():
     # ---------------------------------------------------------
     # (imash,sachiii,vijjj): Call your model loading functions here 
     # so they update in RAM automatically after monthly retraining!
-    # Example:
-    # from backend.api.routers.visibility_router import load_Visibility_models
-    # load_Visibility_models()
-    # 
-    # from backend.api.routers.clouds_router import load_Clouds_models
-    # load_Clouds_models()
+    # ---------------------------------------------------------
+    # try:
+    #     from backend.api.routers.temperature_pressure_router import load_Temp_Press_models
+    #     load_Temp_Press_models()
+    # except ImportError:
+    #     pass
+    #
+    # try:
+    #     from backend.api.routers.visibility_router import load_Visibility_models
+    #     load_Visibility_models()
+    # except ImportError:
+    #     pass
+    #
+    # try:
+    #     from backend.api.routers.clouds_router import load_Clouds_models
+    #     load_Clouds_models()
+    # except ImportError:
+    #     pass
     # ---------------------------------------------------------
     
     print(f"[{datetime.now()}] Scheduled retraining complete and models hot-reloaded.")
