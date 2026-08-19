@@ -63,8 +63,12 @@ app.add_middleware(
 
 
 
-# Imash's Temperature & Pressure Prediction Models
-app.include_router(temperature_pressure_router.router)
+# Imash - Temperature & Pressure
+try:
+    from backend.api.routers import temperature_pressure_router
+    app.include_router(temperature_pressure_router.router)
+except ImportError:
+    print("Warning: temperature_pressure_router not found locally. Skipping.")
 
 # Team's other routers (only included if available locally)
 if has_team_routers:
@@ -94,7 +98,10 @@ except ImportError:
         return {"Temperature_Pressure_Model": msg}
 
 # Imash's model loader
-from backend.api.routers.temperature_pressure_router import load_Temp_Press_models
+try:
+    from backend.api.routers.temperature_pressure_router import load_Temp_Press_models
+except ImportError:
+    pass
 
 @app.post("/models/retrain")
 def manual_retrain_models():
@@ -105,7 +112,10 @@ def manual_retrain_models():
         results = run_all_retrainings()
         
         # Load Temperature & Pressure models into memory!
-        load_Temp_Press_models()
+        try:
+            load_Temp_Press_models()
+        except NameError:
+            pass
         
         return {"message": "Retraining complete", "results": results}
     except Exception as e:

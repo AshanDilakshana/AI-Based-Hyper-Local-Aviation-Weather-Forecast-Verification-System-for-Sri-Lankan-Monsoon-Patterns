@@ -28,3 +28,5 @@ public/fonts/
 # Backend static files (e.g. downloaded charts)
 backend/static/
 data
+
+frontend
