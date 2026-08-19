@@ -45,6 +45,8 @@ class PredictionRecord(Base):
     
     status = Column(String) # SAFE, WARNING, DANGER
 
+
+
 class SystemLogs(Base):
     __tablename__ = "system_logs"
     
@@ -54,6 +56,9 @@ class SystemLogs(Base):
     component = Column(String) # e.g., MLOps, API
     message = Column(String)
     details = Column(String, nullable=True) # Optional JSON string for extra data like MAE comparison
+
+
+
 
 class VerifiedForecast(Base):
     __tablename__ = "verified_forecasts"

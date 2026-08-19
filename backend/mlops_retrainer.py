@@ -71,6 +71,7 @@ def retrain_model_pipeline(forecast_hours, target_col, model_dir, model_filename
             
         details = f"{{\"old_mae\": {old_mae:.2f}, \"new_mae\": {new_mae:.2f}}}"
         
+        
         # New model is better if error is lower
         if new_mae < old_mae:
             log_event(db, "SUCCESS", component, f"New Model is better! (Old MAE: {old_mae:.2f}, New MAE: {new_mae:.2f})", details)
