@@ -58,6 +58,12 @@ try:
 except NameError:
     print("Warning: temperature_pressure_router not found locally. Skipping.")
 
+try:
+    from backend.api.routers import dashboard_router
+    app.include_router(dashboard_router.router)
+except ImportError:
+    print("Warning: dashboard_router not found locally. Skipping.")
+
 @app.get("/")
 def read_root():
     return {

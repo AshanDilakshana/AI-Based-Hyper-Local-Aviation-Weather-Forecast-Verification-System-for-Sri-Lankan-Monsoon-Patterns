@@ -3,66 +3,194 @@ from pydantic import BaseModel
 import pandas as pd
 import joblib
 import os
+import numpy as np
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Adjust paths assuming this file is in backend/api/routers/
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-MODEL_DIR = os.path.join(BASE_DIR, "Models", "Temperature")
+MODEL_DIR = os.path.join(BASE_DIR, "Models", "Temperature", "random_forest")
 
 import sys
 sys.path.append(BASE_DIR)
 
-from preprocessing_and_feature_engineering.temperature_pressure_model.unified_pipeline import UnifiedWeatherPipeline
 from backend.data.database import get_db
-from backend.data.models import PredictionRecord
+from backend.data.models import PredictionRecord, WeatherData
 
 router = APIRouter(prefix="/predict", tags=["Temperature & Pressure Forecast"])
 
 from backend.api.schemas import TempPressPredictionRequest
 
 # Global model instance
-model = None
-pipeline = None
+temp_model = None
+temp_scaler = None
+temp_features = None
+
+press_model = None
+press_scaler = None
+press_features = None
 
 def load_Temp_Press_models():
     """Loads the Temperature & Pressure models into memory."""
-    global model, pipeline
+    global temp_model, temp_scaler, temp_features, press_model, press_scaler, press_features
     try:
-        model = joblib.load(os.path.join(MODEL_DIR, "weather_model.pkl"))
-        pipeline = UnifiedWeatherPipeline(model_dir=MODEL_DIR)
-        print("Temperature & Pressure model loaded successfully.")
+        temp_model = joblib.load(os.path.join(MODEL_DIR, "temp_model.pkl"))
+        temp_scaler = joblib.load(os.path.join(MODEL_DIR, "temp_scaler.pkl"))
+        temp_features = joblib.load(os.path.join(MODEL_DIR, "temp_feature_columns.pkl"))
+        
+        press_model = joblib.load(os.path.join(MODEL_DIR, "pressure_model.pkl"))
+        press_scaler = joblib.load(os.path.join(MODEL_DIR, "pressure_scaler.pkl"))
+        press_features = joblib.load(os.path.join(MODEL_DIR, "pressure_feature_columns.pkl"))
+        
+        print("Temperature & Pressure models loaded successfully.")
     except Exception as e:
-        print(f"Warning: Temperature & Pressure model could not be loaded: {e}")
+        print(f"Warning: Temperature & Pressure models could not be loaded: {e}")
 
 # Call immediately on module load
 load_Temp_Press_models()
 
 
-@router.post("/temp-press")
-def predict_temperature_pressure(request: TempPressPredictionRequest, db: Session = Depends(get_db)):
-    if model is None or pipeline is None:
-        raise HTTPException(status_code=500, detail="Temperature/Pressure model is not loaded.")
+def prepare_features_with_lags(db: Session, current_data: dict = None):
+    # Fetch last 4 records (to get current + 3 lags, or if current_data is provided, just 3 lags)
+    recent_records = db.query(WeatherData).order_by(WeatherData.timestamp_utc.desc()).limit(4).all()
+    
+    if len(recent_records) < 4:
+        raise ValueError("Not enough historical data in DB to generate lag features.")
+        
+    recent_records.reverse() # chronologically: oldest to newest
+    
+    # We will build a dataframe to create lag features identically to training
+    data = []
+    for r in recent_records:
+        data.append({
+            'year': r.year,
+            'month': r.month,
+            'date': r.date,
+            'time_utc': r.time_utc,
+            'wind_dir': r.wind_dir,
+            'wind_speed_kts': r.wind_speed_kts,
+            'visibility': r.visibility,
+            'dry_temp_c': r.dry_temp_c,
+            'dew_point_c': r.dew_point_c,
+            'rh_percent': r.rh_percent,
+            'qnh_hpa': r.qnh_hpa
+        })
+        
+    df = pd.DataFrame(data)
+    
+    if current_data is not None:
+        # Override the most recent row with the manual current_data provided by user
+        idx = df.index[-1]
+        df.at[idx, 'dry_temp_c'] = current_data.get('temperature', df.at[idx, 'dry_temp_c'])
+        df.at[idx, 'qnh_hpa'] = current_data.get('pressure', df.at[idx, 'qnh_hpa'])
+        df.at[idx, 'rh_percent'] = current_data.get('humidity', df.at[idx, 'rh_percent'])
+        df.at[idx, 'dew_point_c'] = current_data.get('dew_point', df.at[idx, 'dew_point_c'])
+        df.at[idx, 'wind_speed_kts'] = current_data.get('wind_speed', df.at[idx, 'wind_speed_kts'])
+        df.at[idx, 'wind_dir'] = current_data.get('wind_direction', df.at[idx, 'wind_dir'])
+        df.at[idx, 'visibility'] = current_data.get('visibility', df.at[idx, 'visibility'])
+    
+    for i in range(1, 4):
+        df[f'qnh_hpa_lag_{i}'] = df['qnh_hpa'].shift(i)
+        df[f'dry_temp_c_lag_{i}'] = df['dry_temp_c'].shift(i)
+        df[f'rh_percent_lag_{i}'] = df['rh_percent'].shift(i)
+        
+    # Get the last row which now has all lag features populated
+    latest_row = df.iloc[[-1]].copy()
+    
+    latest_row = latest_row.select_dtypes(include=[np.number])
+    latest_row = latest_row.replace([np.inf, -np.inf], np.nan)
+    latest_row = latest_row.fillna(0) # simplistic imputation for inference
+    
+    return latest_row
+
+@router.post("/run-active-prediction")
+def run_active_prediction(db: Session = Depends(get_db)):
+    """Runs a prediction based entirely on the latest data in the database."""
+    if temp_model is None or press_model is None:
+        raise HTTPException(status_code=500, detail="Temperature/Pressure models are not loaded.")
         
     try:
-        # Convert request to single-row dataframe
-        df = pd.DataFrame([request.dict()])
+        df = prepare_features_with_lags(db)
         
-        # Preprocess using the unified pipeline
-        X_scaled = pipeline.process_inference_data(df)
+        # Make sure columns match what the model expects
+        X_temp = df.reindex(columns=temp_features, fill_value=0)
+        X_temp_scaled = temp_scaler.transform(X_temp)
+        predicted_temp = float(temp_model.predict(X_temp_scaled)[0])
         
-        # Predict using MultiOutputRegressor
-        predictions = model.predict(X_scaled)
+        X_press = df.reindex(columns=press_features, fill_value=0)
+        X_press_scaled = press_scaler.transform(X_press)
+        predicted_press_diff = float(press_model.predict(X_press_scaled)[0])
         
-        predicted_temp = float(predictions[0][0])
-        predicted_press = float(predictions[0][1])
+        current_pressure = float(df['qnh_hpa'].iloc[0])
+        predicted_press = current_pressure + predicted_press_diff
         
-        # Optional: Log to DB (mimicking the team's pattern)
+        # The latest record we just predicted from
+        latest_record = db.query(WeatherData).order_by(WeatherData.timestamp_utc.desc()).first()
+        
+        target_time = datetime.utcnow() + timedelta(hours=3)
+        
         record = PredictionRecord(
-            timestamp_utc=datetime.utcnow(),
-            predicted_temperature=predicted_temp,
-            predicted_pressure=predicted_press,
-            model_version="temp_press_v1"
+            created_at=datetime.utcnow(),
+            forecast_type="3H",
+            target_year=target_time.year,
+            target_month=target_time.month,
+            target_date=target_time.day,
+            target_time_utc=target_time.strftime("%H%M"),
+            predicted_temperature_c=predicted_temp,
+            predicted_pressure_hpa=predicted_press,
+            status="SAFE"
+        )
+        
+        db.add(record)
+        db.commit()
+        db.refresh(record)
+        
+        return {
+            "id": record.id,
+            "forecast_report_time": target_time.isoformat(),
+            "predicted_temperature": round(predicted_temp, 2),
+            "predicted_pressure": round(predicted_press, 2),
+            "input_report_time": latest_record.timestamp_utc.isoformat() if latest_record.timestamp_utc else datetime.utcnow().isoformat()
+        }
+        
+    except Exception as e:
+        db.rollback()
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/temp-press")
+def predict_temperature_pressure(request: TempPressPredictionRequest, db: Session = Depends(get_db)):
+    if temp_model is None or press_model is None:
+        raise HTTPException(status_code=500, detail="Temperature/Pressure models are not loaded.")
+        
+    try:
+        # Use manual input for current data, fetch lags from DB
+        df = prepare_features_with_lags(db, request.dict())
+        
+        X_temp = df.reindex(columns=temp_features, fill_value=0)
+        X_temp_scaled = temp_scaler.transform(X_temp)
+        predicted_temp = float(temp_model.predict(X_temp_scaled)[0])
+        
+        X_press = df.reindex(columns=press_features, fill_value=0)
+        X_press_scaled = press_scaler.transform(X_press)
+        predicted_press_diff = float(press_model.predict(X_press_scaled)[0])
+        
+        current_pressure = request.pressure
+        predicted_press = current_pressure + predicted_press_diff
+        
+        target_time = datetime.utcnow() + timedelta(hours=3)
+        
+        record = PredictionRecord(
+            created_at=datetime.utcnow(),
+            forecast_type="3H_MANUAL",
+            target_year=target_time.year,
+            target_month=target_time.month,
+            target_date=target_time.day,
+            target_time_utc=target_time.strftime("%H%M"),
+            predicted_temperature_c=predicted_temp,
+            predicted_pressure_hpa=predicted_press,
+            status="SAFE"
         )
         db.add(record)
         db.commit()
