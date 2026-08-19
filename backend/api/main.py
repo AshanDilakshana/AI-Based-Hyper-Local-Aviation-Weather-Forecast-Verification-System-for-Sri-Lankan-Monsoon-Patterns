@@ -103,7 +103,7 @@ def read_root():
 #retrain models from api request
 
 from fastapi import HTTPException
-from backend.mlops_retrainer import run_all_retrainings
+from backend.mlops_retrainer.mlops_Wind_retrainer import run_wind_models_retraining
 from backend.api.routers.wind_router import load_Wind_models
 # ---------------------------------------------------------
 # (imash,sachiii,vijjj): Import your model loading functions here!
@@ -132,7 +132,7 @@ def manual_retrain_models():
     """
     try:
         # 1. Retrain core models (Wind)
-        results = run_all_retrainings()
+        results = run_wind_models_retraining()
         
         # 2. Safely trigger other team members' retraining if available
         # try:
