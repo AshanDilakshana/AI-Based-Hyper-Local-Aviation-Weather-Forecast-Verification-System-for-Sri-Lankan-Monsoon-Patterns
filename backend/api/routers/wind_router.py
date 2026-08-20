@@ -12,8 +12,8 @@ router = APIRouter(
 
 # Load the AI Models globally for this router
 # Corrected paths pointing to the 'Models' folder
-MODEL_1H_PATH = os.path.join(os.path.dirname(__file__), '../../../Models/wind_models/1h prediction model/xgboost_wind_model_1h.json')
-MODEL_3H_PATH = os.path.join(os.path.dirname(__file__), '../../../Models/wind_models/3h prediction model/xgboost_wind_model_3h.json')
+MODEL_1H_PATH = os.path.join(os.path.dirname(__file__), '../../../models/wind_models/1h prediction model/xgboost_wind_model_1h.json')
+MODEL_3H_PATH = os.path.join(os.path.dirname(__file__), '../../../models/wind_models/3h prediction model/xgboost_wind_model_3h.json')
 
 model_1h = None
 model_3h = None

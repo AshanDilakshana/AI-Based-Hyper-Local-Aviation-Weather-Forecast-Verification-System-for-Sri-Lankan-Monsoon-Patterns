@@ -30,7 +30,7 @@ def seed_database():
     db = SessionLocal()
     
     print("2. Reading historical Excel file...")
-    data_path = os.path.join(os.path.dirname(__file__), '../BIA_METAR_DATA_(2019_2024).xlsx')
+    data_path = os.path.join(os.path.dirname(__file__), '../data/BIA_METAR_DATA_(2019_2024).xlsx')
     df = pd.read_excel(data_path)
     
     print("3. Seeding all records into SQLite...")
@@ -67,7 +67,7 @@ def seed_database():
             
     db.add_all(records_to_insert)
     db.commit()
-    print(f"✅ Successfully seeded {len(records_to_insert)} records into weather_data.db!")
+    print(f"[SUCCESS] Successfully seeded {len(records_to_insert)} records into weather_data.db!")
     db.close()
 
 if __name__ == "__main__":

@@ -10,7 +10,7 @@ router = APIRouter(
 )
 
 # Load data into memory once
-DATA_PATH = os.path.join(os.path.dirname(__file__), '../../../BIA_METAR_DATA_(2019_2024).xlsx')
+DATA_PATH = os.path.join(os.path.dirname(__file__), '../../../data/BIA_METAR_DATA_(2019_2024).xlsx')
 df = None
 
 try:
