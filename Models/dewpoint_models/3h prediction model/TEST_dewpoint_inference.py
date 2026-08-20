@@ -33,9 +33,7 @@ def run_manual_test():
     latest_timestamp = df['timestamp_utc'].iloc[-1]
 
     
-    # Define features
-    drop_cols = ['timestamp_utc', 'time_utc', 'weather', 'clouds', 'target_dewpoint_3h']
-    features = [c for c in df.columns if c not in drop_cols]
+    features = pipeline.get_feature_columns(df)
     
     X_latest = latest_row[features]
     

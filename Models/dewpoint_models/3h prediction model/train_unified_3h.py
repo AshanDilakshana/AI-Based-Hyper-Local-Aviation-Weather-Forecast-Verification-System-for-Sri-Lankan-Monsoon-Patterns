@@ -27,9 +27,7 @@ def train_dewpoint_3h_model():
         return
 
     # Define features and target
-    # Drop datetime and non-numeric columns
-    drop_cols = ['timestamp_utc', 'time_utc', 'weather', 'clouds', 'target_dewpoint_3h']
-    features = [c for c in df.columns if c not in drop_cols]
+    features = pipeline.get_feature_columns(df)
     
     X = df[features]
     y = df['target_dewpoint_3h']

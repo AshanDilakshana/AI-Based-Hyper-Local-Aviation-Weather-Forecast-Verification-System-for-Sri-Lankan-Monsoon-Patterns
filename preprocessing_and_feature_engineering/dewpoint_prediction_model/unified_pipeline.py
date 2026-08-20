@@ -34,6 +34,11 @@ class DewpointUnifiedPipeline:
         
         print(f"Pipeline completed. Output shape: {df_features.shape}")
         return df_features
+        
+    def get_feature_columns(self, df: pd.DataFrame) -> list:
+        """Returns the list of columns that are actually used as features by the model."""
+        drop_cols = ['timestamp_utc', 'time_utc', 'weather', 'clouds', 'target_dewpoint_3h']
+        return [c for c in df.columns if c not in drop_cols]
 
 if __name__ == "__main__":
     # For testing the pipeline independently
