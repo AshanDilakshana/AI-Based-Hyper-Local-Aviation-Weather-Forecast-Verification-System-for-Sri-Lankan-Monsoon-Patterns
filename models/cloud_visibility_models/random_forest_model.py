@@ -1,60 +1,90 @@
 import os
 import pickle
-
+import sqlite3
+import numpy as np
 import pandas as pd
-from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
-from sklearn.metrics import accuracy_score, r2_score
+from sklearn.metrics import mean_absolute_error, accuracy_score
 from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.abspath(os.path.join(script_dir, '../../'))
-csv_file = os.path.join(project_root, 'data', 'aviation_weather_features.csv')
+db_path = os.path.abspath(os.path.join(project_root, '../weather_data.db'))
 
-print(f"[INFO] Random Forest Script: Loading clean dataset from {csv_file}")
-df = pd.read_csv(csv_file, low_memory=False)
+print(f"[INFO] Random Forest Script: Loading dataset from DB {db_path}...")
 
-from sklearn.preprocessing import LabelEncoder
+conn = sqlite3.connect(db_path)
+df = pd.read_sql_query("SELECT * FROM weather_data", conn)
+conn.close()
 
-# Target column detection
-cloud_col = 'Cloud_Cleaned' if 'Cloud_Cleaned' in df.columns else 'Clouds'
-vis_col = 'Visibility_Cleaned' if 'Visibility_Cleaned' in df.columns else 'Visibility'
+# Calculate derived features
+df['Hour'] = pd.to_datetime(df['timestamp_utc'], format='mixed', utc=True).dt.hour
+df['Dew_Point_Depression'] = df['dry_temp_c'] - df['dew_point_c']
+
+def clean_cloud(text):
+    text = str(text).upper()
+    if any(x in text for x in ['BKN', 'OVC']): return 'CLOUDY'
+    if any(x in text for x in ['SCT', 'FEW']): return 'PARTLY_CLOUDY'
+    if any(x in text for x in ['NSC', 'SKC', 'CLR', 'NIL']): return 'CLEAR'
+    return 'OTHER'
+
+df['Cloud_Cleaned'] = df['clouds'].apply(clean_cloud)
+
+# Rename to match original feature list
+df.rename(columns={
+    'wind_speed_kts': 'Wind speed(Kts)',
+    'dry_temp_c': 'Dry tem(0C)',
+    'dew_point_c': 'Dew point(0C)',
+    'rh_percent': 'RH(%)',
+    'qnh_hpa': 'QNH (hPa)',
+    'visibility': 'Visibility_Cleaned'
+}, inplace=True)
 
 features = ['Dry tem(0C)', 'Dew point(0C)', 'RH(%)', 'QNH (hPa)', 'Wind speed(Kts)', 'Dew_Point_Depression']
-df = df.dropna(subset=features + [cloud_col, vis_col])
+df = df.dropna(subset=features + ['Cloud_Cleaned', 'Visibility_Cleaned'])
+
+df['Cloud_Code'] = df['Cloud_Cleaned'].astype('category').cat.codes
+cloud_mapping = dict(enumerate(df['Cloud_Cleaned'].astype('category').cat.categories))
+
+df['Vis_Code'] = df['Visibility_Cleaned'] # Maintain continuous values
 
 X = df[features]
-le_cloud = LabelEncoder()
-y_cloud = le_cloud.fit_transform(df[cloud_col].astype(str))
-y_visibility = pd.to_numeric(df[vis_col], errors='coerce')
+y_cloud = df['Cloud_Code']
+y_vis = df['Vis_Code']
 
-
-# Drop any rows where y_visibility became NaN after coercion
-valid_mask = ~y_visibility.isna()
-X = X[valid_mask]
-y_cloud = y_cloud[valid_mask]
-y_visibility = y_visibility[valid_mask]
-
-save_path = os.path.abspath(os.path.join(script_dir, '../saved_models'))
+save_path = os.path.join(project_root, 'Models', 'saved_models')
 os.makedirs(save_path, exist_ok=True)
 
-# Train Standard Random Forest Cloud Model
-print("[CLOUD] Training Standard Random Forest Cloud Model...")
+print("\n[TRAINING] Training Bundled Random Forest Models (Cloud + Visibility together)...")
 X_train_c, X_test_c, y_train_c, y_test_c = train_test_split(X, y_cloud, test_size=0.2, random_state=42)
-rf_cloud = RandomForestClassifier(n_estimators=100, max_depth=8, random_state=42, n_jobs=-1)
-rf_cloud.fit(X_train_c, y_train_c)
-print(f"[ACCURACY] Random Forest Cloud Accuracy: {accuracy_score(y_test_c, rf_cloud.predict(X_test_c)) * 100:.2f}%")
+X_train_v, X_test_v, y_train_v, y_test_v = train_test_split(X, y_vis, test_size=0.2, random_state=42)
 
-with open(os.path.join(save_path, 'random_forest_model.pkl'), 'wb') as f:
-    pickle.dump(rf_cloud, f)
+# Cloud Classifier
+cloud_model = RandomForestClassifier(n_estimators=100, max_depth=6, random_state=42, n_jobs=-1)
+cloud_model.fit(X_train_c, y_train_c)
 
-# Train Standard Random Forest Visibility Model
-print("[VISIBILITY] Training Standard Random Forest Visibility Model...")
-X_train_v, X_test_v, y_train_v, y_test_v = train_test_split(X, y_visibility, test_size=0.2, random_state=42)
-rf_vis = RandomForestRegressor(n_estimators=100, max_depth=8, random_state=42, n_jobs=-1)
-rf_vis.fit(X_train_v, y_train_v)
-print(f"[ACCURACY] Random Forest Visibility R2 Score: {r2_score(y_test_v, rf_vis.predict(X_test_v)) * 100:.2f}%")
+# Visibility Regressor
+vis_model = RandomForestRegressor(n_estimators=100, max_depth=6, random_state=42, n_jobs=-1)
+vis_model.fit(X_train_v, y_train_v)
 
-with open(os.path.join(save_path, 'random_forest_visibility.pkl'), 'wb') as f:
-    pickle.dump(rf_vis, f)
+# Predict both
+c_preds = cloud_model.predict(X_test_c)
+v_preds = vis_model.predict(X_test_v)
 
-print("[SUCCESS] Random Forest Models Saved Successfully!")
+cloud_acc = accuracy_score(y_test_c, c_preds)
+vis_mae = mean_absolute_error(y_test_v, v_preds)
+
+print(f"\n[RESULTS] Random Forest Bundled Model:")
+print(f"  -> Cloud Classification Accuracy: {cloud_acc * 100:.2f}%")
+print(f"  -> Visibility Mean Absolute Error (MAE): {vis_mae:.4f}")
+
+bundled_model = {
+    'cloud_model': cloud_model,
+    'vis_model': vis_model,
+    'cloud_mapping': cloud_mapping
+}
+
+with open(os.path.join(save_path, 'random_forest_multi_model.pkl'), 'wb') as f:
+    pickle.dump(bundled_model, f)
+
+print("[SUCCESS] Bundled Random Forest model saved!")
