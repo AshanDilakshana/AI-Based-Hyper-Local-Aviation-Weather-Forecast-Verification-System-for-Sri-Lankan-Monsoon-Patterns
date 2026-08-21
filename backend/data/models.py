@@ -38,9 +38,9 @@ class PredictionRecord(Base):
     target_date = Column(Integer)
     target_time_utc = Column(String)
     
-    # Local Times
-    created_at_local = Column(DateTime, nullable=True)
-    target_time_local = Column(String, nullable=True)
+    # Local Times (Not in current SQLite schema)
+    # created_at_local = Column(DateTime, nullable=True)
+    # target_time_local = Column(String, nullable=True)
     
     # Results (Team's Wind models)
     predicted_wind_speed_kts = Column(Float, nullable=True)
@@ -53,9 +53,9 @@ class PredictionRecord(Base):
     
     status = Column(String) # SAFE, WARNING, DANGER
     
-    # Errors
-    error_message = Column(String, nullable=True)
-    error_value = Column(Float, nullable=True)
+    # Errors (Not in current SQLite schema)
+    # error_message = Column(String, nullable=True)
+    # error_value = Column(Float, nullable=True)
 
 class SystemLogs(Base):
     __tablename__ = "system_logs"

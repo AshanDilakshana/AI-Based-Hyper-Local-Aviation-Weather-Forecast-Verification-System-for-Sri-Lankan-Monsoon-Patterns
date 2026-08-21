@@ -7,6 +7,15 @@ import numpy as np
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 
+from backend.api.physics_utils import (
+    calculate_pressure_altitude, 
+    calculate_isa_temperature, 
+    calculate_density_altitude, 
+    classify_vcbi_density_altitude, 
+    get_aviation_performance_impact
+)
+from tensorflow.keras.models import load_model
+
 # Adjust paths assuming this file is in backend/api/routers/
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 MODEL_DIR = os.path.join(BASE_DIR, "Models", "Temperature", "random_forest")
@@ -30,9 +39,15 @@ press_model = None
 press_scaler = None
 press_features = None
 
+lstm_model = None
+hybrid_model = None
+lstm_scaler_X = None
+lstm_scaler_y = None
+
 def load_Temp_Press_models():
     """Loads the Temperature & Pressure models into memory."""
     global temp_model, temp_scaler, temp_features, press_model, press_scaler, press_features
+    global lstm_model, hybrid_model, lstm_scaler_X, lstm_scaler_y
     try:
         temp_model = joblib.load(os.path.join(MODEL_DIR, "temp_model.pkl"))
         temp_scaler = joblib.load(os.path.join(MODEL_DIR, "temp_scaler.pkl"))
@@ -41,6 +56,11 @@ def load_Temp_Press_models():
         press_model = joblib.load(os.path.join(MODEL_DIR, "pressure_model.pkl"))
         press_scaler = joblib.load(os.path.join(MODEL_DIR, "pressure_scaler.pkl"))
         press_features = joblib.load(os.path.join(MODEL_DIR, "pressure_feature_columns.pkl"))
+        
+        lstm_model = load_model(os.path.join(MODEL_DIR, "..", "lstm_hybrid", "lstm_model.keras"), compile=False)
+        hybrid_model = joblib.load(os.path.join(MODEL_DIR, "..", "lstm_hybrid", "hybrid_rf_model.pkl"))
+        lstm_scaler_X = joblib.load(os.path.join(MODEL_DIR, "..", "lstm_hybrid", "lstm_scaler_X.pkl"))
+        lstm_scaler_y = joblib.load(os.path.join(MODEL_DIR, "..", "lstm_hybrid", "lstm_scaler_y.pkl"))
         
         print("Temperature & Pressure models loaded successfully.")
     except Exception as e:
@@ -107,6 +127,24 @@ def prepare_features_with_lags(db: Session, current_data: dict = None):
     
     return latest_row
 
+def prepare_lstm_sequence(db: Session, current_data: dict = None):
+    SEQ_LEN = 12
+    recent_records = db.query(WeatherData).order_by(WeatherData.timestamp_utc.desc()).limit(SEQ_LEN).all()
+    if len(recent_records) < SEQ_LEN:
+        while len(recent_records) < SEQ_LEN:
+            recent_records.append(recent_records[-1] if len(recent_records)>0 else WeatherData(dry_temp_c=30, qnh_hpa=1010))
+    recent_records.reverse()
+    
+    data = []
+    for r in recent_records:
+        data.append([r.dry_temp_c or 30.0, r.qnh_hpa or 1010.0])
+        
+    if current_data is not None:
+        data[-1][0] = current_data.get('temperature', data[-1][0])
+        data[-1][1] = current_data.get('pressure', data[-1][1])
+        
+    return np.array(data)
+
 @router.post("/run-active-prediction")
 def run_active_prediction(db: Session = Depends(get_db)):
     """Runs a prediction based entirely on the latest data in the database."""
@@ -127,6 +165,30 @@ def run_active_prediction(db: Session = Depends(get_db)):
         
         current_pressure = float(df['qnh_hpa'].iloc[0])
         predicted_press = current_pressure + predicted_press_diff
+        
+        try:
+            seq = prepare_lstm_sequence(db)
+            seq_scaled = lstm_scaler_X.transform(seq)
+            seq_scaled = np.expand_dims(seq_scaled, axis=0)
+            
+            lstm_pred_scaled = lstm_model.predict(seq_scaled, verbose=0)
+            lstm_pred = lstm_scaler_y.inverse_transform(lstm_pred_scaled)[0]
+            
+            curr_temp = seq[-1][0]
+            curr_press = seq[-1][1]
+            hybrid_features = np.array([[curr_temp, curr_press, lstm_pred[0], lstm_pred[1]]])
+            
+            final_pred = hybrid_model.predict(hybrid_features)[0]
+            predicted_temp = float(final_pred[0])
+            predicted_press = float(final_pred[1])
+        except Exception as e:
+            print("Hybrid failed, falling back to RF:", e)
+            
+        pa = calculate_pressure_altitude(predicted_press)
+        isa = calculate_isa_temperature(pa)
+        da = calculate_density_altitude(pa, predicted_temp, isa)
+        classification = classify_vcbi_density_altitude(da)
+        impact = get_aviation_performance_impact(classification)
         
         # The latest record we just predicted from
         latest_record = db.query(WeatherData).order_by(WeatherData.timestamp_utc.desc()).first()
@@ -154,7 +216,14 @@ def run_active_prediction(db: Session = Depends(get_db)):
             "forecast_report_time": target_time.isoformat(),
             "predicted_temperature": round(predicted_temp, 2),
             "predicted_pressure": round(predicted_press, 2),
-            "input_report_time": latest_record.timestamp_utc.isoformat() if latest_record.timestamp_utc else datetime.utcnow().isoformat()
+            "input_report_time": latest_record.timestamp_utc.isoformat() if latest_record.timestamp_utc else datetime.utcnow().isoformat(),
+            "derived_parameters": {
+                "pressure_altitude_ft": round(pa, 2),
+                "isa_temperature_c": round(isa, 2),
+                "density_altitude_ft": round(da, 2),
+                "classification": classification,
+                "performance_impact": impact
+            }
         }
         
     except Exception as e:
@@ -183,24 +252,44 @@ def predict_temperature_pressure(request: TempPressPredictionRequest, db: Sessio
         current_pressure = request.pressure
         predicted_press = current_pressure + predicted_press_diff
         
+        try:
+            seq = prepare_lstm_sequence(db, request.dict())
+            seq_scaled = lstm_scaler_X.transform(seq)
+            seq_scaled = np.expand_dims(seq_scaled, axis=0)
+            
+            lstm_pred_scaled = lstm_model.predict(seq_scaled, verbose=0)
+            lstm_pred = lstm_scaler_y.inverse_transform(lstm_pred_scaled)[0]
+            
+            curr_temp = seq[-1][0]
+            curr_press = seq[-1][1]
+            hybrid_features = np.array([[curr_temp, curr_press, lstm_pred[0], lstm_pred[1]]])
+            
+            final_pred = hybrid_model.predict(hybrid_features)[0]
+            predicted_temp = float(final_pred[0])
+            predicted_press = float(final_pred[1])
+        except Exception as e:
+            print("Hybrid failed, falling back to RF:", e)
+            
+        pa = calculate_pressure_altitude(predicted_press)
+        isa = calculate_isa_temperature(pa)
+        da = calculate_density_altitude(pa, predicted_temp, isa)
+        classification = classify_vcbi_density_altitude(da)
+        impact = get_aviation_performance_impact(classification)
+        
         target_time = datetime.utcnow() + timedelta(hours=3)
         created_at_utc = datetime.utcnow()
         sl_tz_offset = timedelta(hours=5, minutes=30)
         
         record = PredictionRecord(
             created_at=created_at_utc,
-            created_at_local=created_at_utc + sl_tz_offset,
             forecast_type="3H_MANUAL",
             target_year=target_time.year,
             target_month=target_time.month,
             target_date=target_time.day,
             target_time_utc=target_time.strftime("%H%M"),
-            target_time_local=(target_time + sl_tz_offset).strftime("%H%M"),
             predicted_temperature_c=predicted_temp,
             predicted_pressure_hpa=predicted_press,
-            status="SAFE",
-            error_message="None",
-            error_value=0.0
+            status="SAFE"
         )
         db.add(record)
         db.commit()
@@ -209,6 +298,13 @@ def predict_temperature_pressure(request: TempPressPredictionRequest, db: Sessio
             "prediction": {
                 "temperature_C": round(predicted_temp, 2),
                 "pressure_hPa": round(predicted_press, 2)
+            },
+            "derived_parameters": {
+                "pressure_altitude_ft": round(pa, 2),
+                "isa_temperature_c": round(isa, 2),
+                "density_altitude_ft": round(da, 2),
+                "classification": classification,
+                "performance_impact": impact
             }
         }
         
@@ -297,24 +393,44 @@ def predict_live_weather(db: Session = Depends(get_db)):
         current_pressure = qnh
         predicted_press = current_pressure + predicted_press_diff
         
+        try:
+            seq = prepare_lstm_sequence(db)
+            seq_scaled = lstm_scaler_X.transform(seq)
+            seq_scaled = np.expand_dims(seq_scaled, axis=0)
+            
+            lstm_pred_scaled = lstm_model.predict(seq_scaled, verbose=0)
+            lstm_pred = lstm_scaler_y.inverse_transform(lstm_pred_scaled)[0]
+            
+            curr_temp = seq[-1][0]
+            curr_press = seq[-1][1]
+            hybrid_features = np.array([[curr_temp, curr_press, lstm_pred[0], lstm_pred[1]]])
+            
+            final_pred = hybrid_model.predict(hybrid_features)[0]
+            predicted_temp = float(final_pred[0])
+            predicted_press = float(final_pred[1])
+        except Exception as e:
+            print("Hybrid failed, falling back to RF:", e)
+            
+        pa = calculate_pressure_altitude(predicted_press)
+        isa = calculate_isa_temperature(pa)
+        da = calculate_density_altitude(pa, predicted_temp, isa)
+        classification = classify_vcbi_density_altitude(da)
+        impact = get_aviation_performance_impact(classification)
+        
         target_time = datetime.utcnow() + timedelta(hours=3)
         created_at_utc = datetime.utcnow()
         sl_tz_offset = timedelta(hours=5, minutes=30)
         
         record = PredictionRecord(
             created_at=created_at_utc,
-            created_at_local=created_at_utc + sl_tz_offset,
             forecast_type="3H_LIVE",
             target_year=target_time.year,
             target_month=target_time.month,
             target_date=target_time.day,
             target_time_utc=target_time.strftime("%H%M"),
-            target_time_local=(target_time + sl_tz_offset).strftime("%H%M"),
             predicted_temperature_c=predicted_temp,
             predicted_pressure_hpa=predicted_press,
-            status="SAFE",
-            error_message="None",
-            error_value=0.0
+            status="SAFE"
         )
         db.add(record)
         db.commit()
@@ -335,6 +451,13 @@ def predict_live_weather(db: Session = Depends(get_db)):
                 "pressure": round(predicted_press, 2),
                 "forecast_time_utc": target_time.strftime("%H%M"),
                 "forecast_time_local": (target_time + sl_tz_offset).strftime("%H%M")
+            },
+            "derived_parameters": {
+                "pressure_altitude_ft": round(pa, 2),
+                "isa_temperature_c": round(isa, 2),
+                "density_altitude_ft": round(da, 2),
+                "classification": classification,
+                "performance_impact": impact
             }
         }
         
