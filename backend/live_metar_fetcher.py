@@ -24,13 +24,41 @@ def calculate_rh(temp, dewp):
     except Exception:
         return None
 
-def fetch_and_store_live_metar(hours=2):
+def parse_metar_time(time_str):
+    if not time_str:
+        return datetime.utcnow()
+    for fmt in ("%Y-%m-%dT%H:%M:%S.%fZ", "%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%d %H:%M:%S"):
+        try:
+            return datetime.strptime(time_str, fmt)
+        except ValueError:
+            pass
+    try:
+        from dateutil import parser
+        return parser.parse(time_str).replace(tzinfo=None)
+    except Exception:
+        return datetime.utcnow()
+
+def fetch_and_store_live_metar(hours=None):
     """
     Fetches METAR data from AviationWeather API for VCBI.
-    Stores new records in the weather_data table.
-    Returns the number of new records added.
+    Automatically detects time gap since last database record (up to 48 hours)
+    so no data is lost even if the laptop was asleep or offline!
     """
-    # Using the official JSON API for AviationWeather
+    db = SessionLocal()
+    
+    # Auto-detect gap since last observation if hours is not specified
+    if hours is None:
+        try:
+            last_rec = db.query(WeatherData).order_by(WeatherData.timestamp_utc.desc()).first()
+            if last_rec and last_rec.timestamp_utc:
+                gap_hours = (datetime.utcnow() - last_rec.timestamp_utc).total_seconds() / 3600.0
+                hours = max(2, min(48, math.ceil(gap_hours + 2)))
+            else:
+                hours = 24
+        except Exception:
+            hours = 24
+            
+    print(f"[{datetime.now()}] Fetching METAR data for the past {hours} hours (Auto-Backfill)...")
     url = f"https://aviationweather.gov/api/data/metar?ids=VCBI&format=json&hours={hours}"
     
     try:
@@ -39,19 +67,18 @@ def fetch_and_store_live_metar(hours=2):
         data = response.json()
     except Exception as e:
         print(f"[{datetime.now()}] Error fetching live METAR data: {e}")
+        db.close()
         return 0
 
-    db = SessionLocal()
     records_added = 0
 
     try:
         for obs in data:
-            report_time_str = obs.get("reportTime")
+            report_time_str = obs.get("reportTime") or obs.get("receiptTime")
             if not report_time_str:
                 continue
                 
-            # Parse datetime: '2023-10-25 08:30:00'
-            obs_dt = datetime.strptime(report_time_str, "%Y-%m-%d %H:%M:%S")
+            obs_dt = parse_metar_time(report_time_str)
             
             year = obs_dt.year
             month = obs_dt.month

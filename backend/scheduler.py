@@ -9,7 +9,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
 def smart_live_metar_fetch(sched):
     try:
         from backend.live_metar_fetcher import fetch_and_store_live_metar
-        records_added = fetch_and_store_live_metar(hours=2)
+        records_added = fetch_and_store_live_metar()
         
         if records_added == 0:
             print(f"[{datetime.now()}] No new data found. Rescheduling fetch in 5 minutes...")
