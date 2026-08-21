@@ -47,15 +47,37 @@ class PredictionRecord(Base):
     headwind_kts = Column(Float, nullable=True)
     crosswind_kts = Column(Float, nullable=True)
     
-    # Results (Imash's Temperature & Pressure models)
-    predicted_temperature_c = Column(Float, nullable=True)
-    predicted_pressure_hpa = Column(Float, nullable=True)
-    
     status = Column(String) # SAFE, WARNING, DANGER
     
     # Errors (Not in current SQLite schema)
     # error_message = Column(String, nullable=True)
     # error_value = Column(Float, nullable=True)
+
+class TempPressurePredictionRecord(Base):
+    __tablename__ = "temp_pressure_prediction_records"
+
+    id = Column(Integer, primary_key=True, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Target Information for Verification
+    forecast_type = Column(String) # '1H' or '3H'
+    target_year = Column(Integer)
+    target_month = Column(Integer)
+    target_date = Column(Integer)
+    target_time_utc = Column(String)
+    
+    # Results (Imash's models)
+    predicted_temperature_c = Column(Float, nullable=True)
+    predicted_pressure_hpa = Column(Float, nullable=True)
+    
+    # Verification & Error Rate Tracking
+    actual_temperature_c = Column(Float, nullable=True)
+    actual_pressure_hpa = Column(Float, nullable=True)
+    temperature_error = Column(Float, nullable=True)
+    pressure_error = Column(Float, nullable=True)
+    is_verified = Column(Integer, default=0) # 0: Pending, 1: Verified
+    
+    status = Column(String) # SAFE, WARNING, DANGER
 
 class SystemLogs(Base):
     __tablename__ = "system_logs"

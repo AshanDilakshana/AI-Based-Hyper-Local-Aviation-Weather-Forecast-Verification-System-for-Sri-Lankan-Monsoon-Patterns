@@ -24,7 +24,7 @@ import sys
 sys.path.append(BASE_DIR)
 
 from backend.data.database import get_db
-from backend.data.models import PredictionRecord, WeatherData
+from backend.data.models import TempPressurePredictionRecord, WeatherData
 
 router = APIRouter(prefix="/predict", tags=["Temperature & Pressure Forecast"])
 
@@ -195,7 +195,7 @@ def run_active_prediction(db: Session = Depends(get_db)):
         
         target_time = datetime.utcnow() + timedelta(hours=3)
         
-        record = PredictionRecord(
+        record = TempPressurePredictionRecord(
             created_at=datetime.utcnow(),
             forecast_type="3H",
             target_year=target_time.year,
@@ -280,7 +280,7 @@ def predict_temperature_pressure(request: TempPressPredictionRequest, db: Sessio
         created_at_utc = datetime.utcnow()
         sl_tz_offset = timedelta(hours=5, minutes=30)
         
-        record = PredictionRecord(
+        record = TempPressurePredictionRecord(
             created_at=created_at_utc,
             forecast_type="3H_MANUAL",
             target_year=target_time.year,
@@ -421,7 +421,7 @@ def predict_live_weather(db: Session = Depends(get_db)):
         created_at_utc = datetime.utcnow()
         sl_tz_offset = timedelta(hours=5, minutes=30)
         
-        record = PredictionRecord(
+        record = TempPressurePredictionRecord(
             created_at=created_at_utc,
             forecast_type="3H_LIVE",
             target_year=target_time.year,

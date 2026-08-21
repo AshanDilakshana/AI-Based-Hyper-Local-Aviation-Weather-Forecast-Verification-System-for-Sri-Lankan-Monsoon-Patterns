@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from datetime import datetime
 from backend.data.database import get_db
-from backend.data.models import WeatherData, PredictionRecord, VerifiedForecast
+from backend.data.models import WeatherData, PredictionRecord, VerifiedForecast, TempPressurePredictionRecord
 
 router = APIRouter(prefix="/api", tags=["Dashboard API"])
 
@@ -35,7 +35,8 @@ def get_latest_forecast(db: Session = Depends(get_db)):
     """Fetch the latest prediction and the latest observation."""
     try:
         latest_ob = db.query(WeatherData).order_by(WeatherData.timestamp_utc.desc()).first()
-        latest_pred = db.query(PredictionRecord).order_by(PredictionRecord.created_at.desc()).first()
+        latest_wind_pred = db.query(PredictionRecord).order_by(PredictionRecord.created_at.desc()).first()
+        latest_temp_pred = db.query(TempPressurePredictionRecord).order_by(TempPressurePredictionRecord.created_at.desc()).first()
         
         response = {}
         
@@ -50,25 +51,27 @@ def get_latest_forecast(db: Session = Depends(get_db)):
                 "visibility": latest_ob.visibility if latest_ob.visibility is not None else 0,
             }
             
-        if latest_pred:
-            # Reconstruct the target time from the prediction record components
+        if latest_temp_pred or latest_wind_pred:
+            # We prioritize temp_pred time if available
+            pred_record = latest_temp_pred if latest_temp_pred else latest_wind_pred
+            
             try:
                 target_dt = datetime(
-                    latest_pred.target_year, 
-                    latest_pred.target_month, 
-                    latest_pred.target_date, 
-                    int(latest_pred.target_time_utc[:2]), 
-                    int(latest_pred.target_time_utc[2:])
+                    pred_record.target_year, 
+                    pred_record.target_month, 
+                    pred_record.target_date, 
+                    int(pred_record.target_time_utc[:2]), 
+                    int(pred_record.target_time_utc[2:])
                 )
                 forecast_time_iso = target_dt.isoformat()
             except:
-                forecast_time_iso = latest_pred.created_at.isoformat() if latest_pred.created_at else ""
+                forecast_time_iso = pred_record.created_at.isoformat() if pred_record.created_at else ""
                 
             response["prediction"] = {
-                "predicted_temperature": latest_pred.predicted_temperature_c if latest_pred.predicted_temperature_c is not None else 0,
-                "predicted_pressure": latest_pred.predicted_pressure_hpa if latest_pred.predicted_pressure_hpa is not None else 0,
+                "predicted_temperature": latest_temp_pred.predicted_temperature_c if latest_temp_pred and latest_temp_pred.predicted_temperature_c is not None else 0,
+                "predicted_pressure": latest_temp_pred.predicted_pressure_hpa if latest_temp_pred and latest_temp_pred.predicted_pressure_hpa is not None else 0,
                 "forecast_report_time": forecast_time_iso,
-                "input_report_time": latest_pred.created_at.isoformat() if latest_pred.created_at else ""
+                "input_report_time": pred_record.created_at.isoformat() if pred_record.created_at else ""
             }
             
         return response
@@ -95,7 +98,8 @@ def get_verification_history(db: Session = Depends(get_db)):
             pass
             
         # Let's dynamically match predictions with observations that occurred at the target time
-        predictions = db.query(PredictionRecord).order_by(PredictionRecord.created_at.desc()).limit(20).all()
+        # Fetch Imash's predictions
+        predictions = db.query(TempPressurePredictionRecord).order_by(TempPressurePredictionRecord.created_at.desc()).limit(20).all()
         
         for p in predictions:
             try:
@@ -105,8 +109,6 @@ def get_verification_history(db: Session = Depends(get_db)):
                 )
                 
                 # Find the actual observation closest to this target time
-                # In SQLite, we can just fetch the observation matching this year, month, date, time_utc
-                # or just the closest one by timestamp
                 actual = db.query(WeatherData).filter(
                     WeatherData.year == p.target_year,
                     WeatherData.month == p.target_month,

@@ -3,29 +3,29 @@ node_modules/
 dist/
 build/
 *.log
-
 # ML / Keras
 *.h5
 *.keras
-
 # Python serialized
 *.pkl
-
 # Excel files
 *.xls
 *.xlsx
 *.csv
 frontend/
 public/fonts/
-
 # Database files
 *.db
 *.sqlite3
-
 # VS Code
 .vscode/
-
 # Backend static files (e.g. downloaded charts)
 backend/static/
 data/
-frontend/
+# ==========================================
+# Aviation Weather Forecast System - .gitignore
+# ==========================================
+# ------------------------------------------
+# Python & Bytecode
+
+.pyc
