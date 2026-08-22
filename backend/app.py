@@ -10,7 +10,7 @@ app = Flask(__name__)
 CORS(app)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.abspath(os.path.join(BASE_DIR, '../Models/saved_models'))
+MODEL_PATH = os.path.abspath(os.path.join(BASE_DIR, '../Models/cloud_visibility_models'))
 
 try:
     with open(os.path.join(MODEL_PATH, 'xgb_cloud_model.pkl'), 'rb') as f:
