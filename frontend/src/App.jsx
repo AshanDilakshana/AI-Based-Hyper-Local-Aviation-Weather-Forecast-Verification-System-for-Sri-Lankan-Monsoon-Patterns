@@ -3,7 +3,6 @@ import axios from 'axios';
 import './index.css';
 import LiveWeatherPanel from './components/LiveWeatherPanel';
 import ForecastingPanel from './components/ForecastingPanel';
-import AircraftVisualizer from './components/AircraftVisualizer';
 import { PlaneTakeoff } from 'lucide-react';
 
 const API_BASE = 'http://localhost:8000';
@@ -33,7 +32,7 @@ function App() {
     <>
       <header className="header">
         <h1><PlaneTakeoff size={36} style={{ verticalAlign: 'middle', marginRight: '12px' }}/> Aviation Weather AI</h1>
-        <p>Hyper-Local Wind Forecast System - BIA</p>
+        <p>QNH, Dewpoint & RH Forecasting System - BIA</p>
       </header>
 
       <main className="dashboard-container">
@@ -47,15 +46,7 @@ function App() {
             apiBase={API_BASE} 
             onForecastComplete={(data) => setForecast(data)} 
           />
-          {forecast && (
-            <AircraftVisualizer 
-              windDir={liveData?.wind_dir || 0} 
-              crosswind={forecast.crosswind_kts}
-              headwind={forecast.headwind_kts}
-              status={forecast.status}
-              runwayHeading={40} // Default RWY 04
-            />
-          )}
+
         </div>
       </main>
     </>

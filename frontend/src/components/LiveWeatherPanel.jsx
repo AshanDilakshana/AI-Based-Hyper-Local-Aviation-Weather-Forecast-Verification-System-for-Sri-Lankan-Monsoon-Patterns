@@ -1,4 +1,4 @@
-import { Wind, Thermometer, Droplets, Gauge } from 'lucide-react';
+import { Thermometer, Droplets, Gauge } from 'lucide-react';
 
 export default function LiveWeatherPanel({ data, onRefresh }) {
   if (!data) {
@@ -36,8 +36,8 @@ export default function LiveWeatherPanel({ data, onRefresh }) {
         <span className="data-value">{data.rh_percent}%</span>
       </div>
       <div className="data-row">
-        <span className="data-label"><Wind size={16} style={{verticalAlign: 'text-bottom'}}/> Wind</span>
-        <span className="data-value">{data.wind_dir}° at {data.wind_speed_kts} Kts</span>
+        <span className="data-label"><Thermometer size={16} style={{verticalAlign: 'text-bottom'}}/> Dewpoint</span>
+        <span className="data-value">{data.dew_point_c}°C</span>
       </div>
     </div>
   );

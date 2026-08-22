@@ -5,7 +5,7 @@ import os
 # Ensure backend modules can be imported
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 
-from backend.api.routers import wind_router, mock_metrology
+from backend.api.routers import mock_metrology
 from backend.data.database import engine, Base
 from backend.data import models
 
@@ -32,8 +32,7 @@ app.add_middleware(
 # Include Route Modules (Different team members' models)
 # ---------------------------------------------------------
 
-# Ashan's Wind Prediction Models (1h & 3h)
-app.include_router(wind_router.router)
+
 
 # Mock Metrology API
 app.include_router(mock_metrology.router)
@@ -49,5 +48,5 @@ def read_root():
     return {
         "message": "Welcome to the Aviation Weather Forecast API.",
         "docs": "Visit /docs for the Swagger UI.",
-        "active_models": ["Wind Prediction"]
+        "active_models": ["QNH & Dewpoint Prediction"]
     }

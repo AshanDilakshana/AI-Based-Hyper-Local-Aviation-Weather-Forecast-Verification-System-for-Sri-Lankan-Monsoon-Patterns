@@ -71,8 +71,7 @@ def get_current_mock_weather():
         "date": clean_int(row.get('Date')),
         "time_utc": str(row.get('Time(UTC)')),
         "metar_speci": str(row.get('METAR /SPECI')),
-        "wind_dir": clean_float(row.get('Wind Dir.')),
-        "wind_speed_kts": clean_float(row.get('Wind speed(Kts)')),
+
         "visibility": clean_float(row.get('Visibility')),
         "weather": str(row.get('Weather')),
         "clouds": str(row.get('Clouds')),

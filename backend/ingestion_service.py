@@ -51,8 +51,6 @@ def seed_database():
                 month=clean_int(row.get('Month')),
                 date=clean_int(row.get('Date')),
                 time_utc=str(row.get('Time(UTC)')).zfill(4),
-                wind_dir=clean_float(row.get('Wind Dir.')),
-                wind_speed_kts=clean_float(row.get('Wind speed(Kts)')),
                 visibility=clean_float(row.get('Visibility')),
                 weather=str(row.get('Weather')),
                 clouds=str(row.get('Clouds')),
