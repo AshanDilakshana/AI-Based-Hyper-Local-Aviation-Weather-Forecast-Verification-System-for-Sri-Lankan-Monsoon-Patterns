@@ -19,7 +19,7 @@ class QNHUnifiedPipeline:
         conn.close()
         return df
 
-    def run_pipeline(self) -> pd.DataFrame:
+    def run_pipeline(self, is_training: bool = True) -> pd.DataFrame:
         """Executes the full preprocessing and feature engineering pipeline."""
         print("Loading raw data from database...")
         df_raw = self.load_data()
@@ -30,7 +30,7 @@ class QNHUnifiedPipeline:
         
         print("Engineering features...")
         engineer = QNHFeatureEngineer(df_clean)
-        df_features = engineer.engineer_features()
+        df_features = engineer.engineer_features(is_training=is_training)
         
         print(f"Pipeline completed. Output shape: {df_features.shape}")
         return df_features
