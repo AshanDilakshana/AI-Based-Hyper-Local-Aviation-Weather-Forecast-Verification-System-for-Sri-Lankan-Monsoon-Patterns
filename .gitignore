@@ -63,3 +63,9 @@ Thumbs.db
 
 # Logs
 *.log
+
+# User Specific / Excluded
+frontend/
+.vscode/
+check_db.py
+pyrightconfig.json
