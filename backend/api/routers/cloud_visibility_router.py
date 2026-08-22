@@ -47,7 +47,7 @@ router = APIRouter(
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 MODEL_PATH = os.path.abspath(
-    os.path.join(BASE_DIR, "../../../Models/saved_models")
+    os.path.join(BASE_DIR, "../../../Models/cloud_visibility_models")
 )
 
 
@@ -137,6 +137,41 @@ def predict_cloud_visibility(
 
 
     try:
+
+        # =================================================
+        # FETCH LIVE DATA FROM DATABASE
+        # =================================================
+        import sqlite3
+        try:
+            db_path = os.path.abspath(os.path.join(PROJECT_ROOT, 'weather_data.db'))
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT month, time_utc, wind_dir, wind_speed_kts, dry_temp_c, dew_point_c, rh_percent, qnh_hpa
+                FROM weather_data 
+                ORDER BY timestamp_utc DESC LIMIT 1
+            ''')
+            row = cursor.fetchone()
+            conn.close()
+
+            if row:
+                # Override payload with live database values
+                data.month = float(row[0]) if row[0] is not None else data.month
+                
+                time_utc_str = str(row[1]) if row[1] is not None else ""
+                data.hour = float(int(time_utc_str) // 100) if time_utc_str.isdigit() else data.hour
+                
+                data.wind_dir = float(row[2]) if row[2] is not None else data.wind_dir
+                data.wind = float(row[3]) if row[3] is not None else data.wind
+                data.temp = float(row[4]) if row[4] is not None else data.temp
+                data.dew = float(row[5]) if row[5] is not None else data.dew
+                data.rh = float(row[6]) if row[6] is not None else data.rh
+                data.qnh = float(row[7]) if row[7] is not None else data.qnh
+                
+                print(f"[INFO] Fetched live data from DB for prediction: Temp={data.temp}, Wind={data.wind}")
+        except Exception as db_e:
+            print(f"[WARNING] Could not fetch live data from DB, using payload fallback: {db_e}")
+
 
         # =================================================
         # FEATURE ENGINEERING
