@@ -91,8 +91,16 @@ def predict_qnh_dewpoint_3h():
         pred_qnh = qnh_3h_model.predict(input_qnh_df)[0]
         pred_dewpoint = dewpoint_3h_model.predict(input_dew_df)[0]
         
-        # Retrieve current temperature from the latest dewpoint row (it has dry_temp_c)
+        # -------------------------------------------------------------
+        # TODO: TEMPERATURE INTEGRATION (FRIEND'S MODEL)
+        # -------------------------------------------------------------
+        # Currently, the future temperature (T) is needed for the RH calculation.
+        # Since the Temperature model is pending integration, we use the 
+        # current live temperature (dry_temp_c) as a temporary placeholder.
+        # Once connected, replace 'current_temp' with 'predicted_temp_3h'.
+        
         current_temp = latest_dew_row['dry_temp_c'].values[0] if 'dry_temp_c' in latest_dew_row else pred_dewpoint + 5
+        # -------------------------------------------------------------
         
         # August-Roche-Magnus formula for derived RH
         a = 17.67
