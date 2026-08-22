@@ -119,6 +119,17 @@ def run_auto_prediction_and_save():
         target_time = datetime.utcnow() + timedelta(hours=3)
         created_at_utc = datetime.utcnow()
 
+        # Thermodynamic Hazard Precursor Logic
+        current_temp = float(df['dry_temp_c'].iloc[0])
+        temp_roc_per_hr = (predicted_temp - current_temp) / 3.0
+        
+        # VCBI 75th percentile pressure is ~1012.4, so 1012.0 is a solid "High" threshold.
+        # A drop of 1.0C over 3 hours (-0.33/hr) is significant given std dev of 1.87.
+        is_rapid_cooling = temp_roc_per_hr <= -0.33
+        is_high_stable_pressure = predicted_press >= 1012.0 and abs(predicted_press - current_pressure) <= 0.5
+        
+        status_val = "HAZARD: RADIATION FOG" if (is_rapid_cooling and is_high_stable_pressure) else "SAFE"
+
         new_record = TempPressurePredictionRecord(
             created_at=created_at_utc,
             forecast_type="3H_AUTO",
@@ -128,7 +139,7 @@ def run_auto_prediction_and_save():
             target_time_utc=target_time.strftime("%H%M"),
             predicted_temperature_c=round(predicted_temp, 2),
             predicted_pressure_hpa=round(predicted_press, 2),
-            status="SAFE",
+            status=status_val,
             is_verified=0
         )
         db.add(new_record)

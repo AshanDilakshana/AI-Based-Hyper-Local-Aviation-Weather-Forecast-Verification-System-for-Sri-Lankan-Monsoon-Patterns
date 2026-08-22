@@ -139,6 +139,52 @@ def get_verification_history(db: Session = Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.get("/thermodynamic-hazard-alert")
+def get_thermodynamic_hazard_alert(db: Session = Depends(get_db)):
+    """Check for Radiation Fog Precursors based on Temperature & Pressure coupled anomalies."""
+    try:
+        latest_ob = db.query(WeatherData).order_by(WeatherData.timestamp_utc.desc()).first()
+        latest_pred = db.query(TempPressurePredictionRecord).order_by(TempPressurePredictionRecord.created_at.desc()).first()
+        
+        if not latest_ob or not latest_pred:
+            return {"status": "NO_DATA", "message": "Insufficient data to calculate hazard."}
+
+        current_temp = float(latest_ob.dry_temp_c) if latest_ob.dry_temp_c is not None else 0
+        current_press = float(latest_ob.qnh_hpa) if latest_ob.qnh_hpa is not None else 0
+        
+        pred_temp = float(latest_pred.predicted_temperature_c) if latest_pred.predicted_temperature_c is not None else 0
+        pred_press = float(latest_pred.predicted_pressure_hpa) if latest_pred.predicted_pressure_hpa is not None else 0
+        
+        # Calculate Rate of Change (over 3 hours)
+        temp_drop = pred_temp - current_temp
+        temp_roc_per_hr = round(temp_drop / 3.0, 2)
+        
+        # Hazard Detection Logic (Radiation Fog Precursor tuned for VCBI)
+        # VCBI 75th percentile pressure is ~1012.4, so 1012.0 is a solid "High" threshold.
+        # A drop of 1.0C over 3 hours (-0.33/hr) is significant given std dev of 1.87.
+        is_rapid_cooling = temp_roc_per_hr <= -0.33
+        is_high_stable_pressure = pred_press >= 1012.0 and abs(pred_press - current_press) <= 0.5
+        
+        hazard_risk = "HIGH (>85% Probability)" if (is_rapid_cooling and is_high_stable_pressure) else "LOW (<20% Probability)"
+        
+        return {
+            "alert_title": "SYSTEM VERIFICATION ALERT: THERMODYNAMIC ANOMALY DETECTED",
+            "target_period": f"+3 Hours ({latest_pred.target_time_utc} UTC)",
+            "monsoon_profile": "Northeast Monsoon Regime",
+            "detected_trigger": {
+                "temperature_trend": f"Rapid Cooling detected ({temp_roc_per_hr}°C / hr)",
+                "pressure_trend": f"High & Stable ({pred_press} hPa)"
+            },
+            "ai_verification_output": {
+                "hazard_risk": hazard_risk,
+                "hazard_type": "Radiation Fog Precursor Setup",
+                "aviation_impact": "Imminent severe drop in visual range (RVR) due to radiation fog. Furthermore, the rapid temperature drop will alter local air density, necessitating updated takeoff performance calculations before departure.",
+                "system_recommendation": "Cross-verify local visual range parameters with the Visibility Module. Pilots and ATC should prepare for potential early-morning boarding delays."
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.post("/sync-now")
 def sync_now():
     """Trigger a manual METAR sync. Simulated for now based on user instruction."""

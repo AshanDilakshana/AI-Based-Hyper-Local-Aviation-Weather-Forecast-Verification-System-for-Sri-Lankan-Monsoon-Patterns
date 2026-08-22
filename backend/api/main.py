@@ -64,6 +64,13 @@ try:
 except ImportError:
     print("Warning: temperature_pressure_router not found locally. Skipping.")
 
+# Dashboard Router
+try:
+    from backend.api.routers import dashboard_router
+    app.include_router(dashboard_router.router)
+except ImportError:
+    print("Warning: dashboard_router not found locally. Skipping.")
+
 
 # Placeholders for other team members' routers (Visibility, Clouds, etc.)
 try:
