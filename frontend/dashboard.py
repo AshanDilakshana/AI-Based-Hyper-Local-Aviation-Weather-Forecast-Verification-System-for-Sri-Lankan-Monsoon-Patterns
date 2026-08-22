@@ -1,50 +1,15 @@
 import os
-import pickle
 import re
+import sqlite3
 import requests
 import streamlit as st
 
-st.set_page_config(page_title="BIA Takeoff Safety Dashboard", layout="wide")
-st.title("🛫 BIA Control - Takeoff Weather Verification")
+st.set_page_config(page_title="BIA Control - Industrial Takeoff Verification", layout="wide")
+st.title("🛫 BIA Control - Industrial Takeoff Verification")
 st.markdown("---")
 
-# Load weather encoder safely to show text weather names in sidebar dropdown
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-ENCODER_PATH = os.path.abspath(os.path.join(BASE_DIR, '../models/saved_models/weather_encoder.pkl'))
-
-weather_options = ['NONE', 'RA', 'TS', 'SHRA', 'BR', 'DZ', 'HZ']
-try:
-    with open(ENCODER_PATH, 'rb') as f:
-        le_weather = pickle.load(f)
-    weather_options = list(le_weather.classes_)
-except Exception:
-    pass
-
-st.sidebar.header("Current Weather Observations")
-
-# 1. Base Meteorological Inputs
-dry_temp = st.sidebar.number_input("Dry Temperature (°C)", value=31.0, format="%.2f")
-dew_temp = st.sidebar.number_input("Dew Point (°C)", value=24.0, format="%.2f")
-rh_pct = st.sidebar.number_input("Relative Humidity (%)", value=66.0)
-pressure = st.sidebar.number_input("Pressure (QNH hPa)", value=1007.40, format="%.2f")
-wind_speed = st.sidebar.number_input("Wind Speed (Kts)", value=12.0, format="%.2f")
-
-# 2. Advanced Feature Inputs
-month = st.sidebar.slider("Month of the Year", min_value=1, max_value=12, value=6)
-
-metar_time = st.sidebar.number_input(
-    "Time (UTC format - e.g., 1344, 0052, 2310)", 
-    min_value=0, 
-    max_value=2359, 
-    value=1200, 
-    step=1,
-    help="Enter the exact 4-digit UTC time from the METAR record."
-)
-
-wind_dir = st.sidebar.number_input("Wind Direction (Degrees)", value=180.0, format="%.2f")
-selected_weather = st.sidebar.selectbox("Current METAR Weather Condition", options=weather_options)
-
-st.sidebar.markdown("---")
+DB_PATH = os.path.abspath(os.path.join(BASE_DIR, '../weather_data.db'))
 
 # Direction mapping for aviation METAR remarks
 DIR_MAP = {
@@ -108,46 +73,46 @@ def explain_cloud(cloud_code):
 
 def explain_visibility(visibility):
     vis_int = int(float(visibility))
-    return f"predicted visibility is {vis_int} meters."
+    return f"Predicted visibility is {vis_int} meters."
 
-if st.sidebar.button("Generate Takeoff Forecast"):
-    weather_encoded = weather_options.index(selected_weather) if selected_weather in weather_options else 0
-    calculated_hour = int(metar_time // 100)
-    
+
+st.sidebar.header("📡 Live Aviation Data Feed")
+st.sidebar.info("Live data will be automatically fetched from the database when a forecast is generated.")
+
+st.markdown("### Industrial Prediction Engine")
+st.write("This automated system uses the latest synchronized METAR readings from the database to generate hyper-local Cloud and Visibility forecasts for BIA take-off operations.")
+
+if st.button("Generate Live Takeoff Forecast", type="primary"):
+    # Dummy payload since the FastAPI backend automatically fetches the recent row from DB
     payload = {
-        "temp": dry_temp, 
-        "dew": dew_temp, 
-        "rh": rh_pct, 
-        "qnh": pressure, 
-        "wind": wind_speed,
-        "month": month, 
-        "hour": calculated_hour,
-        "wind_dir": wind_dir, 
-        "weather_encoded": weather_encoded
+        "temp": 0, "dew": 0, "rh": 0, "qnh": 0, "wind": 0,
+        "month": 1, "hour": 12, "wind_dir": 0, "weather_encoded": 0
     }
     
     try:
-        response = requests.post("http://127.0.0.1:5000/predict", json=payload)
-        result = response.json()
+        # Updated to FastAPI port 8000
+        response = requests.post("http://127.0.0.1:8000/predict", json=payload)
         
-        if "error" in result:
-            st.error(f"Backend Error: {result['error']}")
-        else:
-            vis_val = result['visibility_prediction']
-            cloud_status = result['cloud_status']
-
-            st.subheader("Verification Result")
-            st.markdown("---")
+        if response.status_code == 200:
+            result = response.json()
             
-            st.markdown("#### Visibility Details")
-            st.write(f"Predicted Visibility: **{vis_val} m**")
-            st.write(f"*Meaning:* {explain_visibility(vis_val)}")
+            vis_val = result.get('visibility_prediction', 0)
+            cloud_status = result.get('cloud_status', 'UNKNOWN')
 
-            st.markdown("---")
+            st.success("Forecast generated successfully based on live data!")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.info("#### 🌫️ Visibility Details")
+                st.write(f"Predicted Visibility: **{vis_val} m**")
+                st.write(f"*Analysis:* {explain_visibility(vis_val)}")
+            
+            with col2:
+                st.warning("#### ☁️ Cloud Details")
+                st.write(f"Predicted Cloud Condition: **{cloud_status}**")
+                st.write(f"*Analysis:* {explain_cloud(cloud_status)}")
+        else:
+            st.error(f"Backend Error: {response.text}")
 
-            st.markdown("####  Cloud Details")
-            st.write(f"Predicted Cloud Condition: **{cloud_status}**")
-            st.write(f"*Meaning:* {explain_cloud(cloud_status)}")
-
-    except Exception:
-        st.error("Error: Backend is not running. Please start app.py first.")
+    except Exception as e:
+        st.error(f"Error: Backend is not running on port 8000. Please start main.py. Details: {e}")
