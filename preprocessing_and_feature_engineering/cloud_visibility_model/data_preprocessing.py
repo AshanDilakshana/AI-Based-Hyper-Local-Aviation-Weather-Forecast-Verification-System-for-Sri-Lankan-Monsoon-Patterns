@@ -6,8 +6,8 @@ import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-INPUT_PATH = os.path.abspath(os.path.join(BASE_DIR, '../../data/BIA_METAR_DATA_(2019_2024).xlsx'))
-OUTPUT_PATH = os.path.abspath(os.path.join(BASE_DIR, '../../data/aviation_weather_features.csv'))
+INPUT_PATH = os.path.abspath(os.path.join(BASE_DIR, '../../backend/data/BIA_METAR_DATA_(2019_2024).xlsx'))
+OUTPUT_PATH = os.path.abspath(os.path.join(BASE_DIR, '../../backend/data/aviation_weather_features.csv'))
 
 def preprocess_metar_data():
     print(" Loading original METAR dataset...")
