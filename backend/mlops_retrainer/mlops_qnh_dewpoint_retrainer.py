@@ -8,7 +8,7 @@ sys.path.append(PROJECT_ROOT)
 from Models.qnh_models.3h_prediction_model.train_unified_3h import train_qnh_3h_model
 from Models.dewpoint_models.3h_prediction_model.train_unified_3h import train_dewpoint_3h_model
 
-def retrain_models():
+def run_qnh_dewpoint_retraining():
     """
     Automated MLOps Retraining for QNH and Dewpoint Models.
     This can be scheduled to run nightly or weekly.
@@ -36,7 +36,7 @@ def retrain_models():
     }
 
 if __name__ == "__main__":
-    results = retrain_models()
+    results = run_qnh_dewpoint_retraining()
     print("\n--- Retraining Results ---")
     for model, status in results.items():
         print(f"{model}: {status}")
