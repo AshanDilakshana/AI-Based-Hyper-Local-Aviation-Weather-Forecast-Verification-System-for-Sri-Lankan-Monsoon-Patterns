@@ -107,3 +107,4 @@ TEmpory/
 frontend/
 frontend 2/
 Reletion analysis/
+*.pyc
