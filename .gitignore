@@ -29,3 +29,5 @@ data/
 # Python & Bytecode
 
 .pyc
+check_db.py
+Reletion analysis/
