@@ -1,6 +1,7 @@
 import os
 import sys
 import requests
+import math
 import re
 from datetime import datetime
 from sqlalchemy.orm import Session
@@ -23,19 +24,24 @@ def log_event(db_session, level, component, message, details=None):
     print(f"[{level}] {component}: {message}")
 
 def calculate_rh(temp, dewp):
+    """
+    Calculates Relative Humidity (%) using the Magnus-Tetens formula.
+    """
     if temp is None or dewp is None:
         return None
-    # Magnus-Tetens approximation
-    e = 6.11 * (10 ** (7.5 * temp / (237.3 + temp)))
-    es = 6.11 * (10 ** (7.5 * dewp / (237.3 + dewp)))
-    return round((es / e) * 100, 2)
+    try:
+        beta = (17.625 * dewp) / (243.04 + dewp)
+        alpha = (17.625 * temp) / (243.04 + temp)
+        rh = 100 * math.exp(beta - alpha)
+        return round(rh, 2)
+    except Exception:
+        return None
 
 def extract_visibility_from_raw(raw_ob):
     """
     Extracts visibility (e.g., 9999) from raw METAR.
     It usually follows the wind group (e.g., 22012KT).
     """
-    # Regex to find KT followed by space and then digits
     match = re.search(r'KT\s+(\d{4})', raw_ob)
     if match:
         return float(match.group(1))
@@ -49,7 +55,6 @@ def extract_weather_and_clouds(raw_ob):
     clouds = []
     weather = []
     
-    # Common cloud and weather prefixes
     cloud_prefixes = ('FEW', 'SCT', 'BKN', 'OVC', 'NSC', 'CAVOK', 'SKC')
     weather_codes = ('RA', 'HZ', 'BR', 'FG', 'TS', 'DZ', 'VCTS', 'SHRA')
     
@@ -65,20 +70,48 @@ def extract_weather_and_clouds(raw_ob):
         " ".join(weather) if weather else None
     )
 
-def fetch_and_store_live_metar(hours=2):
-    print(f"[{datetime.utcnow()}] Fetching live METAR data for VCBI (Last {hours} hours)...")
-    
-    url = f"https://aviationweather.gov/api/data/metar?ids=VCBI&format=json&hours={hours}"
-    
+def parse_metar_time(time_str):
+    if not time_str:
+        return datetime.utcnow()
+    for fmt in ("%Y-%m-%dT%H:%M:%S.%fZ", "%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%d %H:%M:%S"):
+        try:
+            return datetime.strptime(time_str, fmt)
+        except ValueError:
+            pass
+    try:
+        from dateutil import parser
+        return parser.parse(time_str).replace(tzinfo=None)
+    except Exception:
+        return datetime.utcnow()
+
+def fetch_and_store_live_metar(hours=None):
+    """
+    Fetches METAR data from AviationWeather API for VCBI.
+    Automatically detects time gap since last database record (up to 48 hours)
+    so no data is lost even if the laptop was asleep or offline!
+    """
     # Initialize DB first so we can log errors
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
     
+    # Auto-detect gap since last observation if hours is not specified
+    if hours is None:
+        try:
+            last_rec = db.query(WeatherData).order_by(WeatherData.timestamp_utc.desc()).first()
+            if last_rec and last_rec.timestamp_utc:
+                gap_hours = (datetime.utcnow() - last_rec.timestamp_utc).total_seconds() / 3600.0
+                hours = max(2, min(48, math.ceil(gap_hours + 2)))
+            else:
+                hours = 24
+        except Exception:
+            hours = 24
+            
+    print(f"[{datetime.now()}] Fetching METAR data for VCBI (Last {hours} hours)...")
+    url = f"https://aviationweather.gov/api/data/metar?ids=VCBI&format=json&hours={hours}"
     try:
         response = requests.get(url, timeout=15)
         response.raise_for_status()
         data = response.json()
-        
         if not data or len(data) == 0:
             log_event(db, "WARNING", f"Live_METAR_Fetcher_{hours}H", "No data returned from API.")
             return
@@ -136,7 +169,6 @@ def fetch_and_store_live_metar(hours=2):
             records_added += 1
             
         db.commit()
-        
         if records_added > 0:
             log_event(db, "SUCCESS", f"Live_METAR_Fetcher_{hours}H", f"Added {records_added} new live METAR record(s).")
         else:

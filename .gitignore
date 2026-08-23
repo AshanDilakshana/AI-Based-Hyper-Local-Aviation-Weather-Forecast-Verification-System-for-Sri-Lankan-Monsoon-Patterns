@@ -1,8 +1,16 @@
+# ==========================================
+# Aviation Weather Forecast System - .gitignore
+# ==========================================
+
 # --- Data Files ---
 BIA_METAR_DATA_(2019_2024).xlsx
 backend/data/*.csv
 backend/data/*.parquet
+/backend/data/documents
+data/
 *.csv
+*.xls
+*.xlsx
 
 # --- Machine Learning Models ---
 backend/models/*.pkl
@@ -10,6 +18,8 @@ backend/models/*.json
 backend/models/*.joblib
 *.pkl
 *.joblib
+*.h5
+*.keras
 
 # --- Plots & Visualizations ---
 *.png
@@ -19,11 +29,13 @@ backend/models/*.joblib
 # --- Python & Environments ---
 __pycache__/
 *.py[cod]
+*.pyc
 *$py.class
 *.so
 venv/
 env/
 .venv/
+.env
 
 # --- Jupyter Notebooks ---
 .ipynb_checkpoints/
@@ -33,41 +45,7 @@ node_modules/
 frontend/node_modules/
 dist/
 build/
-# --- Data Files ---
-BIA_METAR_DATA_(2019_2024).xlsx
-backend/data/*.csv
-backend/data/*.parquet
-*.csv
-
-# --- Machine Learning Models ---
-backend/models/*.pkl
-backend/models/*.json
-backend/models/*.joblib
-*.pkl
-*.joblib
-
-# --- Plots & Visualizations ---
-*.png
-*.jpg
-*.jpeg
-
-# --- Python & Environments ---
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-venv/
-env/
-.venv/
-
-# --- Jupyter Notebooks ---
-.ipynb_checkpoints/
-
-# --- Frontend (Node/React) ---
-node_modules/
-frontend/node_modules/
-dist/
-build/
+public/fonts/
 
 # --- OS & Editor ---
 .DS_Store
@@ -82,13 +60,14 @@ lightning_logs/
 *.db
 *.sqlite3
 
+# --- Specific Files & Scripts ---
 predict_demo.py
 *.json
 branch_structure.json
 temp_auto_push.bat
 temp_interactive_push.bat
 config.bat
-/backend/data/documents
+backend/static/
 
 # --- Ignored Folders (Kept Locally Only) ---
 TEmpory/

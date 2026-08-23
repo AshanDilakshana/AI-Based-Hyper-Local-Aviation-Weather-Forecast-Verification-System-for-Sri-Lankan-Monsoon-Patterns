@@ -2,6 +2,7 @@ import os
 import sys
 from apscheduler.schedulers.background import BackgroundScheduler
 import time
+from datetime import datetime, timedelta
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
 from backend.mlops_retrainer.mlops_Wind_retrainer import run_wind_models_retraining
@@ -14,22 +15,25 @@ def smart_live_metar_fetch(sched):
     Fetches METAR data. If no new data is found (records_added == 0),
     it schedules a one-off retry job to run in 5 minutes.
     """
-    records_added = fetch_and_store_live_metar(hours=2)
-    
-    if records_added == 0:
-        print(f"[{datetime.now()}] No new data found. Rescheduling fetch in 5 minutes...")
-        run_date = datetime.now() + timedelta(minutes=5)
-        sched.add_job(
-            smart_live_metar_fetch,
-            'date',
-            run_date=run_date,
-            args=[sched],
-            id='live_metar_retry_job',
-            name='Live METAR Retry Fetcher (5m)',
-            replace_existing=True
-        )
-    else:
-        print(f"[{datetime.now()}] Successfully fetched {records_added} new records.")
+    try:
+        records_added = fetch_and_store_live_metar(hours=2)
+        
+        if records_added == 0:
+            print(f"[{datetime.now()}] No new data found. Rescheduling fetch in 5 minutes...")
+            run_date = datetime.now() + timedelta(minutes=5)
+            sched.add_job(
+                smart_live_metar_fetch,
+                'date',
+                run_date=run_date,
+                args=[sched],
+                id='live_metar_retry_job',
+                name='Live METAR Retry Fetcher (5m)',
+                replace_existing=True
+            )
+        else:
+            print(f"[{datetime.now()}] Successfully fetched {records_added} new records.")
+    except Exception as e:
+        print(f"[{datetime.now()}] Error fetching live METAR: {e}")
 
 def scheduled_retraining_job():
     print(f"[{datetime.now()}] Starting scheduled MLOps retraining pipeline...")
@@ -41,11 +45,11 @@ def scheduled_retraining_job():
     # (imash,sachiii,vijjj): Add your model retraining functions here!
     # (Use try...except so missing files don't crash the scheduler)
     # ---------------------------------------------------------
-    # try:
-    #     from backend.mlops_retrainer_plugin import retrain_temperature_pressure_pipeline
-    #     retrain_temperature_pressure_pipeline()
-    # except ImportError:
-    #     pass
+    try:
+        from backend.mlops_retrainer import retrain_temperature_pressure_pipeline
+        retrain_temperature_pressure_pipeline()
+    except ImportError:
+        pass
     # ---------------------------------------------------------
     
     
@@ -57,12 +61,12 @@ def scheduled_retraining_job():
     # (imash,sachiii,vijjj): Call your model loading functions here 
     # so they update in RAM automatically after monthly retraining!
     # ---------------------------------------------------------
-    # try:
-    #     from backend.api.routers.temperature_pressure_router import load_Temp_Press_models
-    #     load_Temp_Press_models()
-    # except ImportError:
-    #     pass
-    #
+    try:
+        from backend.api.routers.temperature_pressure_router import load_Temp_Press_models
+        load_Temp_Press_models()
+    except ImportError:
+        pass
+    
     # try:
     #     from backend.api.routers.visibility_router import load_Visibility_models
     #     load_Visibility_models()
@@ -87,7 +91,7 @@ def start_scheduler():
     """
     scheduler = BackgroundScheduler()
     
-    # Run retraining on the 1st day of every month at midnight
+    # Monthly retraining
     scheduler.add_job(
         scheduled_retraining_job,
         'cron',
@@ -122,6 +126,17 @@ def start_scheduler():
         replace_existing=True
     )
     
+    # Initial fetch 5 seconds after server startup
+    scheduler.add_job(
+        smart_live_metar_fetch,
+        'date',
+        run_date=datetime.now() + timedelta(seconds=5),
+        args=[scheduler],
+        id='initial_startup_fetch',
+        name='Initial Startup METAR Fetch',
+        replace_existing=True
+    )
+    
     scheduler.start()
     print("✅ MLOps Background Scheduler started. Next run: 1st of the month at 00:00.")
     print("✅ Smart Live METAR Fetcher scheduled to run every 32 minutes (retries every 5m if delayed).")
@@ -129,9 +144,6 @@ def start_scheduler():
     
     # Return the scheduler instance so it can be managed if needed
     return scheduler
-
-
-    
 
 if __name__ == "__main__":
     scheduler = start_scheduler()

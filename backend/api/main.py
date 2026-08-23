@@ -1,9 +1,18 @@
-from fastapi import FastAPI
-import sys
 import os
+import sys
+
+# Suppress TensorFlow logging and oneDNN warnings BEFORE any TF import occurs
+os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, HTTPException
+from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 
 # Ensure backend modules can be imported
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
+
 
 from backend.api.routers import wind_router, live_metrology, forecast_router, logs_router, pilot_router
 from backend.data.database import engine, Base
@@ -12,14 +21,25 @@ from backend.data import models
 # Create database tables
 Base.metadata.create_all(bind=engine)
 
-from backend.scheduler import start_scheduler
-
 from fastapi.staticfiles import StaticFiles
+
+try:
+    from backend.scheduler import start_scheduler
+except ImportError:
+    def start_scheduler():
+        print("Scheduler not found locally.")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    print("Starting background scheduler...")
+    start_scheduler()
+    yield
 
 app = FastAPI(
     title="Aviation Weather Forecast API",
-    description="Main API gateway for multiple aviation weather models.",
-    version="1.0.0"
+    description="Main API gateway for aviation weather models.",
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 # Mount static directory for generated documents
@@ -36,7 +56,6 @@ def on_startup():
     start_scheduler()
 
 from fastapi.middleware.cors import CORSMiddleware
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -46,8 +65,9 @@ app.add_middleware(
 )
 
 # ---------------------------------------------------------
-# Include Route Modules (Different team members' models)
+# Include Route Modules 
 # ---------------------------------------------------------
+
 
 # Live Metrology API
 app.include_router(live_metrology.router)
@@ -69,12 +89,19 @@ app.include_router(wind_router.router)
 # Example placeholders for other team members:
 # (Safely imported so that missing files locally don't crash the main server)
 
-# Imash - Temperature & Pressure
-# try:
-#     from backend.api.routers import temperature_pressure_router
-#     app.include_router(temperature_pressure_router.router)
-# except ImportError:
-#     print("Warning: temperature_pressure_router not found locally. Skipping.")
+# Imash - Temperature & Pressure (ACTIVE)
+try:
+    from backend.api.routers import temperature_pressure_router
+    app.include_router(temperature_pressure_router.router)
+except ImportError:
+    print("Warning: temperature_pressure_router not found locally. Skipping.")
+
+# Dashboard Router
+try:
+    from backend.api.routers import dashboard_router
+    app.include_router(dashboard_router.router)
+except ImportError:
+    print("Warning: dashboard_router not found locally. Skipping.")
 
 # Sachiii - Visibility (Placeholder)
 # try:
@@ -95,74 +122,61 @@ def read_root():
     return {
         "message": "Welcome to the Aviation Weather Forecast API.",
         "docs": "Visit /docs for the Swagger UI.",
-        "active_models": ["Wind Prediction"]
+        "active_models": ["Temperature & Pressure"]
     }
 
-
-
-#retrain models from api request
-
+# ---------------------------------------------------------
+# MLOps Retraining Endpoint
+# ---------------------------------------------------------
 from fastapi import HTTPException
-from backend.mlops_retrainer.mlops_Wind_retrainer import run_wind_models_retraining
-from backend.api.routers.wind_router import load_Wind_models
-# ---------------------------------------------------------
-# (imash,sachiii,vijjj): Import your model loading functions here!
-# ---------------------------------------------------------
-# try:
-#     from backend.api.routers.temperature_pressure_router import load_Temp_Press_models
-#     from backend.mlops_retrainer_plugin import retrain_temperature_pressure_pipeline
-# except ImportError:
-#     pass
-
-# try:
-#     from backend.api.routers.visibility_router import load_Visibility_models
-# except ImportError:
-#     pass
-
-# try:
-#     from backend.api.routers.clouds_router import load_Clouds_models
-# except ImportError:
-#     pass
-# ---------------------------------------------------------
 
 @app.post("/models/retrain")
 def manual_retrain_models():
     """
-    Manually triggers the MLOps retraining pipeline.
+    Manually triggers the MLOps retraining pipeline for all available models.
     """
+    results = {}
+    
+    # 1. Retrain core models (Wind)
     try:
-        # 1. Retrain core models (Wind)
-        results = run_wind_models_retraining()
-        
-        # 2. Safely trigger other team members' retraining if available
-        # try:
-        #     temp_success, temp_msg = retrain_temperature_pressure_pipeline()
-        #     results["Temperature_Pressure_Model"] = temp_msg
-        # except NameError:
-        #     pass # retrain_temperature_pressure_pipeline not imported
-            
-        # 3. Hot-reload models into memory
+        from backend.mlops_retrainer.mlops_Wind_retrainer import run_wind_models_retraining
+        from backend.api.routers.wind_router import load_Wind_models
+        results["Wind_Model"] = run_wind_models_retraining()
         load_Wind_models() 
-        
-        # ---------------------------------------------------------
-        # (imash,sachiii,vijjj): Call your model loading functions here 
-        # so they update in RAM after retraining!
-        # ---------------------------------------------------------
-        # try:
-        #     load_Temp_Press_models()
-        # except NameError:
-        #     pass
-            
-        # try:
-        #     load_Visibility_models()
-        # except NameError:
-        #     pass
-            
-        # try:
-        #     load_Clouds_models()
-        # except NameError:
-        #     pass
-        
-        return {"message": "Retraining complete", "results": results}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        results["Wind_Model"] = f"Failed: {str(e)}"
+        
+    # 2. Imash's Temperature & Pressure Retraining (ACTIVE)
+    try:
+        from backend.mlops_retrainer import retrain_temperature_pressure_pipeline
+        success, msg = retrain_temperature_pressure_pipeline()
+        results["Temperature_Pressure_Model"] = msg
+    except ImportError:
+        results["Temperature_Pressure_Model"] = "Skipped (not found)"
+
+    # Hot-reload Temperature & Pressure models into memory
+    try:
+        from backend.api.routers.temperature_pressure_router import load_Temp_Press_models
+        load_Temp_Press_models()
+    except ImportError:
+        pass
+
+    # ---------------------------------------------------------
+    # (sachiii,vijjj): Call your model loading functions here 
+    # so they update in RAM after retraining!
+    # ---------------------------------------------------------
+    # try:
+    #     load_Visibility_models()
+    # except NameError:
+    #     pass
+        
+    # try:
+    #     load_Clouds_models()
+    # except NameError:
+    #     pass
+
+    return {"message": "Retraining complete", "results": results}
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

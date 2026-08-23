@@ -38,10 +38,44 @@ class PredictionRecord(Base):
     target_date = Column(Integer)
     target_time_utc = Column(String)
     
-    # Results
-    predicted_wind_speed_kts = Column(Float)
-    headwind_kts = Column(Float)
-    crosswind_kts = Column(Float)
+    # Local Times (Not in current SQLite schema)
+    # created_at_local = Column(DateTime, nullable=True)
+    # target_time_local = Column(String, nullable=True)
+    
+    # Results (Team's Wind models)
+    predicted_wind_speed_kts = Column(Float, nullable=True)
+    headwind_kts = Column(Float, nullable=True)
+    crosswind_kts = Column(Float, nullable=True)
+    
+    status = Column(String) # SAFE, WARNING, DANGER
+    
+    # Errors (Not in current SQLite schema)
+    # error_message = Column(String, nullable=True)
+    # error_value = Column(Float, nullable=True)
+
+class TempPressurePredictionRecord(Base):
+    __tablename__ = "temp_pressure_prediction_records"
+
+    id = Column(Integer, primary_key=True, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Target Information for Verification
+    forecast_type = Column(String) # '1H' or '3H'
+    target_year = Column(Integer)
+    target_month = Column(Integer)
+    target_date = Column(Integer)
+    target_time_utc = Column(String)
+    
+    # Results (Imash's models)
+    predicted_temperature_c = Column(Float, nullable=True)
+    predicted_pressure_hpa = Column(Float, nullable=True)
+    
+    # Verification & Error Rate Tracking
+    actual_temperature_c = Column(Float, nullable=True)
+    actual_pressure_hpa = Column(Float, nullable=True)
+    temperature_error = Column(Float, nullable=True)
+    pressure_error = Column(Float, nullable=True)
+    is_verified = Column(Integer, default=0) # 0: Pending, 1: Verified
     
     status = Column(String) # SAFE, WARNING, DANGER
 
@@ -56,8 +90,6 @@ class SystemLogs(Base):
     component = Column(String) # e.g., MLOps, API
     message = Column(String)
     details = Column(String, nullable=True) # Optional JSON string for extra data like MAE comparison
-
-
 
 
 class VerifiedForecast(Base):
