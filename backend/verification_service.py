@@ -38,12 +38,13 @@ def verify_past_temp_pressure_predictions():
         ).all()
 
         for rec in unverified_records:
-            # Find the actual observation matching target date and time
+            # Find the actual observation matching target date and HOUR (since minutes won't match exactly)
+            target_hour = rec.target_time_utc[:2] if rec.target_time_utc else "00"
             actual = db.query(WeatherData).filter(
                 WeatherData.year == rec.target_year,
                 WeatherData.month == rec.target_month,
                 WeatherData.date == rec.target_date,
-                WeatherData.time_utc == rec.target_time_utc
+                WeatherData.time_utc.like(f"{target_hour}%")
             ).first()
 
             if actual and actual.dry_temp_c is not None and actual.qnh_hpa is not None:
@@ -58,7 +59,7 @@ def verify_past_temp_pressure_predictions():
 
         db.commit()
         if verified_count > 0:
-            print(f"[{datetime.now()}] ✅ Successfully verified {verified_count} past prediction records.")
+            print(f"[{datetime.now()}] SUCCESS: Verified {verified_count} past prediction records.")
     except Exception as e:
         print(f"[{datetime.now()}] Error during prediction verification: {e}")
         db.rollback()

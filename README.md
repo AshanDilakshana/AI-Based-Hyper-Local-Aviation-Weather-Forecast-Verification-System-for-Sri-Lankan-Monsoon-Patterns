@@ -40,6 +40,12 @@ Based on statistical analysis of 120,000+ historical records, the system trigger
 
 This specific coupled anomaly indicates clear skies and calm winds—the exact environment required for severe radiation fog and sudden RVR (Runway Visual Range) drops.
 
+### 5. MLOps & Continuous Training Pipeline
+To ensure the model adapts to changing climate patterns over time, a **Continuous Training (CT) Pipeline** is integrated:
+* **Automated Monthly Retraining:** A background scheduler triggers the `retrain_temperature_pressure_pipeline` periodically.
+* **On-Demand Retraining:** Exposed via a `/models/retrain` FastAPI endpoint.
+* **Hot-Reloading:** Once retraining is complete, the backend dynamically hot-reloads the updated `Random Forest` and `LSTM` weights into memory without dropping the server.
+
 ---
 
 ## 💻 Tech Stack & Architecture
