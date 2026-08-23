@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
 from backend.mlops_retrainer.mlops_Wind_retrainer import run_wind_models_retraining
+from backend.mlops_retrainer.mlops_cloud_visibility_retrainer import run_cloud_visibility_retraining
 from backend.live_metar_fetcher import fetch_and_store_live_metar
 
 from datetime import datetime, timedelta
@@ -39,7 +40,17 @@ def scheduled_retraining_job():
     print(f"[{datetime.now()}] Starting scheduled MLOps retraining pipeline...")
     
     # 1. Ashan's Wind Models Retraining
-    run_wind_models_retraining()
+    try:
+        run_wind_models_retraining()
+    except Exception as e:
+        print(f"[{datetime.now()}] Wind Models Retraining failed: {e}")
+        
+    # 2. Cloud & Visibility Models Retraining
+    try:
+        success, msg = run_cloud_visibility_retraining()
+        print(f"[{datetime.now()}] MLOps Retraining: {msg}")
+    except Exception as e:
+        print(f"[{datetime.now()}] Cloud/Visibility Models Retraining failed: {e}")
     
     # ---------------------------------------------------------
     # (imash,sachiii,vijjj): Add your model retraining functions here!
@@ -54,8 +65,18 @@ def scheduled_retraining_job():
     
     
     # Hot-reload the models into memory so the API uses the newly trained versions
-    from backend.api.routers.wind_router import load_Wind_models
-    load_Wind_models()
+    try:
+        from backend.api.routers.wind_router import load_Wind_models
+        load_Wind_models()
+    except Exception as e:
+        pass
+        
+    try:
+        from backend.api.routers.cloud_visibility_router import load_models
+        load_models()
+        print(f"[{datetime.now()}] Cloud & Visibility models hot-reloaded successfully.")
+    except Exception as e:
+        pass
     
     # ---------------------------------------------------------
     # (imash,sachiii,vijjj): Call your model loading functions here 
@@ -81,6 +102,7 @@ def scheduled_retraining_job():
     # ---------------------------------------------------------
     
     print(f"[{datetime.now()}] Scheduled retraining complete and models hot-reloaded.")
+
 
 
 def start_scheduler():
@@ -144,6 +166,7 @@ def start_scheduler():
     
     # Return the scheduler instance so it can be managed if needed
     return scheduler
+
 
 if __name__ == "__main__":
     scheduler = start_scheduler()

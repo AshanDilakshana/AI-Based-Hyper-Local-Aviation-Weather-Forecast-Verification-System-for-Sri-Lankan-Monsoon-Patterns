@@ -81,7 +81,6 @@ app.include_router(logs_router.router)
 # Pilot Flight Planning & Document API
 app.include_router(pilot_router.router)
 
-
 # Ashan's Wind Prediction Models (1h & 3h)
 app.include_router(wind_router.router)
 
@@ -103,14 +102,15 @@ try:
 except ImportError:
     print("Warning: dashboard_router not found locally. Skipping.")
 
-# Sachiii - Visibility (Placeholder)
-# try:
-#     from backend.api.routers import visibility_router
-#     app.include_router(visibility_router.router)
-# except ImportError:
-#     pass # Ignored until visibility_router is merged
+# Sachiii - Cloud & Visibility Prediction Models (ACTIVE)
+try:
+    from backend.api.routers import cloud_visibility_router
+    app.include_router(cloud_visibility_router.router)
+except ImportError:
+    print("Warning: cloud_visibility_router not found locally. Skipping.")
 
-# Vijjj - Clouds (Placeholder)
+
+# Vijjj - rh/qnh (Placeholder)
 # try:
 #     from backend.api.routers import clouds_router
 #     app.include_router(clouds_router.router)
@@ -122,8 +122,10 @@ def read_root():
     return {
         "message": "Welcome to the Aviation Weather Forecast API.",
         "docs": "Visit /docs for the Swagger UI.",
-        "active_models": ["Temperature & Pressure"]
+        "active_models": ["Temperature & Pressure", "Cloud Status", "Visibility"]
     }
+
+
 
 # ---------------------------------------------------------
 # MLOps Retraining Endpoint
@@ -165,6 +167,22 @@ def manual_retrain_models():
     # (sachiii,vijjj): Call your model loading functions here 
     # so they update in RAM after retraining!
     # ---------------------------------------------------------
+    
+    # Sachiii - Cloud & Visibility Retraining (ACTIVE)
+    try:
+        from backend.mlops_retrainer.mlops_cloud_visibility_retrainer import run_cloud_visibility_retraining
+        success, msg = run_cloud_visibility_retraining()
+        results["Cloud_Visibility_Model"] = msg
+    except ImportError:
+        results["Cloud_Visibility_Model"] = "Skipped (not found)"
+
+    # Hot-reload Cloud & Visibility models into memory
+    try:
+        from backend.api.routers.cloud_visibility_router import load_models
+        load_models()
+    except ImportError:
+        pass
+
     # try:
     #     load_Visibility_models()
     # except NameError:
