@@ -148,8 +148,8 @@ def manual_retrain_models():
         
     # 2. Imash's Temperature & Pressure Retraining (ACTIVE)
     try:
-        from backend.mlops_retrainer import retrain_temperature_pressure_pipeline
-        success, msg = retrain_temperature_pressure_pipeline()
+        from backend.mlops_retrainer.mlops_retrainer_temperature import retrain_temperature_pressure
+        success, msg, _ = retrain_temperature_pressure()
         results["Temperature_Pressure_Model"] = msg
     except ImportError:
         results["Temperature_Pressure_Model"] = "Skipped (not found)"
