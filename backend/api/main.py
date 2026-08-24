@@ -140,9 +140,11 @@ def read_root():
         "active_models": ["Temperature & Pressure", "Cloud Status", "Visibility", "QNH, Dewpoint & RH Prediction"]
     }
 
+
 # ---------------------------------------------------------
 # MLOps Retraining Endpoint
 # ---------------------------------------------------------
+
 from fastapi import HTTPException
 from backend.mlops_retrainer.mlops_qnh_dewpoint_retrainer import run_qnh_dewpoint_retraining
 from backend.api.routers.qnh_dewpoint_router import load_QNH_Dewpoint_models

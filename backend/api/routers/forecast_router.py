@@ -101,3 +101,65 @@ def update_forecast(forecast_id: int, forecast: VerifiedForecastCreate, db: Sess
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to update verified forecast: {str(e)}")
+
+from backend.api.schemas import WindPredictionRequest
+from backend.data.models import WeatherData
+
+@router.get("/ai-predict-all")
+def get_all_ai_predictions(db: Session = Depends(get_db)):
+    """
+    Get predictions from all AI models (Wind, Temp, Cloud, QNH, etc.) in a single call.
+    """
+    
+    # Fetch the latest record from DB to construct the request payload
+    latest_weather = db.query(WeatherData).order_by(WeatherData.id.desc()).first()
+    if not latest_weather:
+        raise HTTPException(status_code=404, detail="No historical weather data found to make predictions.")
+        
+    wind_req = WindPredictionRequest(
+        temperature=latest_weather.dry_temp_c,
+        dew_point=latest_weather.dew_point_c,
+        humidity=latest_weather.rh_percent,
+        wind_dir=latest_weather.wind_dir,
+        runway_heading=40, # Default BIA runway 04
+        time_utc=str(latest_weather.time_utc).zfill(4) if latest_weather.time_utc else "0000",
+        qnh_hpa=latest_weather.qnh_hpa
+    )
+
+    # 1. Wind Hybrid Model Prediction (Ashan)
+    try:
+        from backend.api.routers.wind_router import predict_wind_hybrid_3h
+        wind_prediction = predict_wind_hybrid_3h(wind_req)
+    except Exception as e:
+        wind_prediction = {"error": f"Wind model failed: {str(e)}"}
+
+    # ---------------------------------------------------------
+    # TODO: (imash) Plug in Temperature & Pressure model here
+    # ---------------------------------------------------------
+    # from backend.api.routers.temperature_pressure_router import predict_temp_press
+    # temp_prediction = predict_temp_press(req_payload)
+    temp_prediction = {"status": "Pending Integration", "dry_temp_c": None, "pressure": None}
+
+    # ---------------------------------------------------------
+    # TODO: (sachiii) Plug in Cloud & Visibility model here
+    # ---------------------------------------------------------
+    # from backend.api.routers.cloud_visibility_router import predict_cloud_vis
+    # cloud_visibility_prediction = predict_cloud_vis(req_payload)
+    cloud_visibility_prediction = {"status": "Pending Integration", "clouds": None, "visibility": None}
+
+    # ---------------------------------------------------------
+    # TODO: (viji) Plug in QNH & Dewpoint model here
+    # ---------------------------------------------------------
+    # from backend.api.routers.qnh_dewpoint_router import predict_qnh_dewpoint
+    # qnh_dewpoint_prediction = predict_qnh_dewpoint(req_payload)
+    qnh_dewpoint_prediction = {"status": "Pending Integration", "qnh_hpa": None, "dew_point_c": None}
+
+
+    return {
+        "timestamp_utc": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "wind_forecast": wind_prediction,
+        "temperature_pressure_forecast": temp_prediction,
+        "cloud_visibility_forecast": cloud_visibility_prediction,
+        "qnh_dewpoint_forecast": qnh_dewpoint_prediction,
+    }
+
