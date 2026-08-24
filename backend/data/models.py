@@ -18,6 +18,9 @@ class WeatherData(Base):
     weather = Column(String, nullable=True)
     clouds = Column(String, nullable=True)
     
+    wind_dir = Column(Float, nullable=True)
+    wind_speed_kts = Column(Float, nullable=True)
+    
     dry_temp_c = Column(Float, nullable=True)
     dew_point_c = Column(Float, nullable=True)
     rh_percent = Column(Float, nullable=True)
