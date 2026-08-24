@@ -66,6 +66,13 @@ vis_mapping = None
 # LOAD MODELS
 # =========================================================
 
+def load_models():
+    """
+    Loads or reloads the models into memory.
+    Called on startup and after automated retraining.
+    """
+    global cloud_model, cloud_mapping, vis_model, vis_mapping
+    
     # -----------------------------------------------------
     # Load Cloud Model with Fallback
     # -----------------------------------------------------
@@ -123,6 +130,9 @@ vis_mapping = None
                 print("[ERROR] No Backup Visibility model found.")
         except Exception as backup_e:
             print(f"[ERROR] Failed to load backup Visibility model: {backup_e}")
+
+# Initial load on module import
+load_models()
 
 
 # =========================================================
