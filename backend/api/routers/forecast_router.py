@@ -134,25 +134,57 @@ def get_all_ai_predictions(db: Session = Depends(get_db)):
         wind_prediction = {"error": f"Wind model failed: {str(e)}"}
 
     # ---------------------------------------------------------
-    # TODO: (imash) Plug in Temperature & Pressure model here
+    # (imash) Temperature & Pressure Model Integration
     # ---------------------------------------------------------
-    # from backend.api.routers.temperature_pressure_router import predict_temp_press
-    # temp_prediction = predict_temp_press(req_payload)
-    temp_prediction = {"status": "Pending Integration", "dry_temp_c": None, "pressure": None}
+    try:
+        from backend.api.schemas import TempPressPredictionRequest
+        from backend.api.routers.temperature_pressure_router import predict_temperature_pressure
+        
+        temp_req = TempPressPredictionRequest(
+            temperature=latest_weather.dry_temp_c,
+            humidity=latest_weather.rh_percent,
+            pressure=latest_weather.qnh_hpa,
+            dew_point=latest_weather.dew_point_c,
+            wind_speed=latest_weather.wind_speed_kts,
+            wind_direction=latest_weather.wind_dir,
+            visibility=latest_weather.visibility
+        )
+        temp_prediction = predict_temperature_pressure(temp_req, db)
+    except Exception as e:
+        temp_prediction = {"error": f"Temp/Pressure model failed: {str(e)}"}
 
     # ---------------------------------------------------------
-    # TODO: (sachiii) Plug in Cloud & Visibility model here
+    # (sachiii) Cloud & Visibility Model Integration
     # ---------------------------------------------------------
-    # from backend.api.routers.cloud_visibility_router import predict_cloud_vis
-    # cloud_visibility_prediction = predict_cloud_vis(req_payload)
-    cloud_visibility_prediction = {"status": "Pending Integration", "clouds": None, "visibility": None}
+    try:
+        from backend.api.schemas import CloudVisibilityRequest
+        from backend.api.routers.cloud_visibility_router import predict_cloud_visibility
+        
+        hour_val = float(str(latest_weather.time_utc)[:2]) if latest_weather.time_utc and len(str(latest_weather.time_utc)) >= 2 else 12.0
+        
+        cloud_req = CloudVisibilityRequest(
+            temp=latest_weather.dry_temp_c,
+            dew=latest_weather.dew_point_c,
+            rh=latest_weather.rh_percent,
+            qnh=latest_weather.qnh_hpa,
+            wind=latest_weather.wind_speed_kts,
+            month=latest_weather.month,
+            hour=hour_val,
+            wind_dir=latest_weather.wind_dir,
+            weather_encoded=0.0
+        )
+        cloud_visibility_prediction = predict_cloud_visibility(cloud_req)
+    except Exception as e:
+        cloud_visibility_prediction = {"error": f"Cloud model failed: {str(e)}"}
 
     # ---------------------------------------------------------
-    # TODO: (viji) Plug in QNH & Dewpoint model here
+    # (viji) QNH & Dewpoint Model Integration
     # ---------------------------------------------------------
-    # from backend.api.routers.qnh_dewpoint_router import predict_qnh_dewpoint
-    # qnh_dewpoint_prediction = predict_qnh_dewpoint(req_payload)
-    qnh_dewpoint_prediction = {"status": "Pending Integration", "qnh_hpa": None, "dew_point_c": None}
+    try:
+        from backend.api.routers.qnh_dewpoint_router import predict_qnh_dewpoint_3h
+        qnh_dewpoint_prediction = predict_qnh_dewpoint_3h()
+    except Exception as e:
+        qnh_dewpoint_prediction = {"error": f"QNH/Dewpoint model failed: {str(e)}"}
 
 
     return {
