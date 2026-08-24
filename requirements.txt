@@ -6,4 +6,13 @@ openpyxl
 flask
 flask-cors
 joblib
-
+fastapi
+uvicorn
+sqlalchemy
+pydantic
+lightgbm
+torch
+lightning
+pytorch-forecasting
+Pillow
+reportlab
