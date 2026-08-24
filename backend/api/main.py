@@ -100,7 +100,8 @@ def read_root():
 
 
 
-#retrain models from api request
+#import part
+# #retrain models from api request
 
 from fastapi import HTTPException
 from backend.mlops_retrainer.mlops_Wind_retrainer import run_wind_models_retraining
