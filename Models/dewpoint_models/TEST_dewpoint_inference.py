@@ -7,16 +7,16 @@ from datetime import timedelta
 
 # Add project root to path for imports
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '../../..'))
+PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '../..'))
 sys.path.append(PROJECT_ROOT)
 
-from preprocessing_and_feature_engineering.qnh_prediction_model.unified_pipeline import QNHUnifiedPipeline
+from preprocessing_and_feature_engineering.dewpoint_prediction_model.unified_pipeline import DewpointUnifiedPipeline
 
 def run_manual_test():
-    print("Running Manual Inference for QNH 3H Model...")
+    print("Running Manual Inference for Dewpoint 3H Model...")
     
     db_path = os.path.join(PROJECT_ROOT, 'weather_data.db')
-    pipeline = QNHUnifiedPipeline(db_path)
+    pipeline = DewpointUnifiedPipeline(db_path)
     
     # 1. Get processed data
     try:
@@ -26,8 +26,6 @@ def run_manual_test():
         return
 
     # 2. Get the latest available row for inference
-    # Note: unified_pipeline shifts target_qnh_3h back. For real inference, 
-    # we don't care about the target, just the current features.
     latest_row = df.iloc[[-1]].copy()
     
     # The actual time of the latest row before shift
@@ -40,7 +38,7 @@ def run_manual_test():
     X_latest = latest_row[features]
     
     # 3. Load Model
-    model_path = os.path.join(SCRIPT_DIR, 'qnh_3h_lgbm.pkl')
+    model_path = os.path.join(SCRIPT_DIR, 'dewpoint_3h_lgbm.pkl')
     if not os.path.exists(model_path):
         print("Model not found. Please train it first.")
         return
@@ -55,7 +53,7 @@ def run_manual_test():
     
     print(f"Latest Data Time: {latest_timestamp.strftime('%Y-%m-%d %H:%M:%S UTC')}")
     print(f"Target Time: {target_time.strftime('%Y-%m-%d %H:%M:%S UTC')}")
-    print(f"Predicted QNH: {prediction:.2f} hPa")
+    print(f"Predicted Dewpoint: {prediction:.2f} °C")
     
     # 5. Save to database
     conn = sqlite3.connect(db_path)
@@ -63,7 +61,7 @@ def run_manual_test():
     cursor.execute('''
         INSERT INTO dewpoint_qnh_predictions (target_time_utc, model_type, predicted_value, status)
         VALUES (?, ?, ?, ?)
-    ''', (target_time.strftime('%Y-%m-%d %H:%M:%S'), 'QNH_3H', prediction, 'PENDING LIVE DATA'))
+    ''', (target_time.strftime('%Y-%m-%d %H:%M:%S'), 'Dewpoint_3H', prediction, 'PENDING LIVE DATA'))
     conn.commit()
     conn.close()
     
