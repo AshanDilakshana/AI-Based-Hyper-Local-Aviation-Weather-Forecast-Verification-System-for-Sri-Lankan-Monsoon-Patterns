@@ -176,8 +176,8 @@ def manual_retrain_models():
         try:
             from backend.api.routers.temperature_pressure_router import load_Temp_Press_models
             load_Temp_Press_models()
-        except ImportError:
-            pass
+        except Exception as e:
+            results["Temperature_Pressure_Reload"] = f"Failed to reload: {str(e)}"
 
         # 3. Sachiii - Cloud & Visibility Retraining (ACTIVE)
         try:
@@ -191,8 +191,8 @@ def manual_retrain_models():
         try:
             from backend.api.routers.cloud_visibility_router import load_models
             load_models()
-        except ImportError:
-            pass
+        except Exception as e:
+            results["Cloud_Visibility_Reload"] = f"Failed to reload: {str(e)}"
 
         # 4.viji's QNH/Dewpoint Retraining
         try:
@@ -204,8 +204,8 @@ def manual_retrain_models():
         # Hot-reload QNH & Dewpoint models into memory
         try:
             load_QNH_Dewpoint_models()
-        except NameError:
-            pass
+        except Exception as e:
+            results["QNH_Dewpoint_Reload"] = f"Failed to reload: {str(e)}"
 
         return {"message": "Retraining complete", "results": results}
     except Exception as e:
