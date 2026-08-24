@@ -19,22 +19,50 @@ def load_QNH_Dewpoint_models():
     Called on startup and after automated retraining.
     """
     global qnh_3h_model, dewpoint_3h_model
+    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+    
+    # Paths (Aligned with the new training script paths)
+    qnh_primary = os.path.join(base_dir, 'Models', 'qnh_models', 'qnh_3h_lgbm.pkl')
+    qnh_backup = os.path.join(base_dir, 'Models', 'qnh_models', 'qnh_3h_lgbm_backup.pkl')
+    
+    dewpoint_primary = os.path.join(base_dir, 'Models', 'dewpoint_models', 'dewpoint_3h_lgbm.pkl')
+    dewpoint_backup = os.path.join(base_dir, 'Models', 'dewpoint_models', 'dewpoint_3h_lgbm_backup.pkl')
+    
+    # Load QNH Model
     try:
-        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-        
-        qnh_model_path = os.path.join(base_dir, 'Models', 'qnh_models', '3h prediction model', 'qnh_3h_lightgbm.pkl')
-        dewpoint_model_path = os.path.join(base_dir, 'Models', 'dewpoint_models', '3h prediction model', 'dewpoint_3h_lightgbm.pkl')
-        
-        if os.path.exists(qnh_model_path):
-            qnh_3h_model = joblib.load(qnh_model_path)
-            print("Loaded QNH 3H Model.")
-            
-        if os.path.exists(dewpoint_model_path):
-            dewpoint_3h_model = joblib.load(dewpoint_model_path)
-            print("Loaded Dewpoint 3H Model.")
-            
+        if os.path.exists(qnh_primary):
+            qnh_3h_model = joblib.load(qnh_primary)
+            print("Loaded Primary QNH 3H Model.")
+        else:
+            raise FileNotFoundError(f"Primary QNH model not found at {qnh_primary}")
     except Exception as e:
-        print(f"Error loading QNH/Dewpoint models: {e}")
+        print(f"Failed to load primary QNH model: {e}. Attempting backup...")
+        try:
+            if os.path.exists(qnh_backup):
+                qnh_3h_model = joblib.load(qnh_backup)
+                print("Loaded Backup QNH 3H Model.")
+            else:
+                print("No Backup QNH model found.")
+        except Exception as backup_e:
+            print(f"Failed to load backup QNH model: {backup_e}")
+            
+    # Load Dewpoint Model
+    try:
+        if os.path.exists(dewpoint_primary):
+            dewpoint_3h_model = joblib.load(dewpoint_primary)
+            print("Loaded Primary Dewpoint 3H Model.")
+        else:
+            raise FileNotFoundError(f"Primary Dewpoint model not found at {dewpoint_primary}")
+    except Exception as e:
+        print(f"Failed to load primary Dewpoint model: {e}. Attempting backup...")
+        try:
+            if os.path.exists(dewpoint_backup):
+                dewpoint_3h_model = joblib.load(dewpoint_backup)
+                print("Loaded Backup Dewpoint 3H Model.")
+            else:
+                print("No Backup Dewpoint model found.")
+        except Exception as backup_e:
+            print(f"Failed to load backup Dewpoint model: {backup_e}")
 
 # Load models initially when router is imported
 load_QNH_Dewpoint_models()

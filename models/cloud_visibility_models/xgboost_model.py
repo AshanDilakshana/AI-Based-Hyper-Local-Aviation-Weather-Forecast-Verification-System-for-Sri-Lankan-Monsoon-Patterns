@@ -120,14 +120,112 @@ if __name__ == "__main__":
         'model': cloud_model,
         'mapping': cloud_mapping
     }
-    with open(os.path.join(save_path, 'xgb_cloud_model.pkl'), 'wb') as f:
-        pickle.dump(cloud_bundle, f)
-        
     vis_bundle = {
         'model': vis_model,
         'mapping': vis_mapping
     }
-    with open(os.path.join(save_path, 'xgb_visibility_model.pkl'), 'wb') as f:
-        pickle.dump(vis_bundle, f)
+    
+    import shutil
+    from datetime import datetime
+    
+    def log_retraining_to_db(db_path, model_name, old_metric, new_metric, status, timestamp):
+        try:
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS model_retraining_logs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    timestamp TEXT,
+                    model_name TEXT,
+                    old_mae REAL,
+                    new_mae REAL,
+                    status TEXT
+                )
+            ''')
+            cursor.execute('''
+                INSERT INTO model_retraining_logs (timestamp, model_name, old_mae, new_mae, status)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (timestamp, model_name, old_metric, new_metric, status))
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            print(f"Failed to log retraining to database: {e}")
+            
+    # Cloud Model Promotion (Metric: Accuracy, Higher is better)
+    cloud_model_path = os.path.join(save_path, 'xgb_cloud_model.pkl')
+    cloud_backup_path = os.path.join(save_path, 'xgb_cloud_model_backup.pkl')
+    cloud_status = "Promoted (First Time)"
+    old_cloud_acc = None
+    
+    if os.path.exists(cloud_model_path):
+        print("\nExisting Cloud model found. Evaluating...")
+        try:
+            with open(cloud_model_path, "rb") as f:
+                old_cloud_bundle = pickle.load(f)
+            old_cloud_model = old_cloud_bundle['model']
+            
+            old_c_preds = old_cloud_model.predict(X_test_c)
+            old_cloud_acc = accuracy_score(y_test_c, old_c_preds)
+            print(f"Old Cloud Model Accuracy: {old_cloud_acc * 100:.2f}%")
+            
+            if cloud_acc > old_cloud_acc:
+                print("New Cloud model is BETTER. Promoting and backing up old model...")
+                shutil.copy2(cloud_model_path, cloud_backup_path)
+                with open(cloud_model_path, 'wb') as f:
+                    pickle.dump(cloud_bundle, f)
+                cloud_status = "Promoted (Better Accuracy)"
+            else:
+                print("New Cloud model is WORSE or EQUAL. Discarding...")
+                cloud_status = "Discarded (Worse Accuracy)"
+        except Exception as e:
+            print(f"Error evaluating old Cloud model: {e}. Overwriting...")
+            if os.path.exists(cloud_model_path): shutil.copy2(cloud_model_path, cloud_backup_path)
+            with open(cloud_model_path, 'wb') as f:
+                pickle.dump(cloud_bundle, f)
+            cloud_status = "Promoted (Old Model Corrupted)"
+    else:
+        with open(cloud_model_path, 'wb') as f:
+            pickle.dump(cloud_bundle, f)
+            
+    # Visibility Model Promotion (Metric: MAE, Lower is better)
+    vis_model_path = os.path.join(save_path, 'xgb_visibility_model.pkl')
+    vis_backup_path = os.path.join(save_path, 'xgb_visibility_model_backup.pkl')
+    vis_status = "Promoted (First Time)"
+    old_vis_mae = None
+    
+    if os.path.exists(vis_model_path):
+        print("\nExisting Visibility model found. Evaluating...")
+        try:
+            with open(vis_model_path, "rb") as f:
+                old_vis_bundle = pickle.load(f)
+            old_vis_model = old_vis_bundle['model']
+            
+            old_v_preds = old_vis_model.predict(X_test_v)
+            old_vis_mae = mean_absolute_error(y_test_v, old_v_preds)
+            print(f"Old Visibility Model MAE: {old_vis_mae:.4f}")
+            
+            if vis_mae < old_vis_mae:
+                print("New Visibility model is BETTER. Promoting and backing up old model...")
+                shutil.copy2(vis_model_path, vis_backup_path)
+                with open(vis_model_path, 'wb') as f:
+                    pickle.dump(vis_bundle, f)
+                vis_status = "Promoted (Better MAE)"
+            else:
+                print("New Visibility model is WORSE or EQUAL. Discarding...")
+                vis_status = "Discarded (Worse MAE)"
+        except Exception as e:
+            print(f"Error evaluating old Visibility model: {e}. Overwriting...")
+            if os.path.exists(vis_model_path): shutil.copy2(vis_model_path, vis_backup_path)
+            with open(vis_model_path, 'wb') as f:
+                pickle.dump(vis_bundle, f)
+            vis_status = "Promoted (Old Model Corrupted)"
+    else:
+        with open(vis_model_path, 'wb') as f:
+            pickle.dump(vis_bundle, f)
+            
+    # Database Logging
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    log_retraining_to_db(db_path, "Cloud_XGBoost", old_cloud_acc, cloud_acc, cloud_status, timestamp)
+    log_retraining_to_db(db_path, "Visibility_XGBoost", old_vis_mae, vis_mae, vis_status, timestamp)
 
-    print(f"[SUCCESS] XGBoost models saved to {save_path}!")
+    print(f"\n[SUCCESS] MLOps Auto-Retraining completed for Cloud & Visibility models!")

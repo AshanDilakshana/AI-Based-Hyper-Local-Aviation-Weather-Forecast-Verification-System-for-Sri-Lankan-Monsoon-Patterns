@@ -5,6 +5,9 @@ import pandas as pd
 import lightgbm as lgb
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
+import sqlite3
+from datetime import datetime
+import shutil
 
 # Add project root to path for imports
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -12,6 +15,29 @@ PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '../..'))
 sys.path.append(PROJECT_ROOT)
 
 from preprocessing_and_feature_engineering.dewpoint_prediction_model.unified_pipeline import DewpointUnifiedPipeline
+
+def log_retraining_to_db(db_path, model_name, old_mae, new_mae, status, timestamp):
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS model_retraining_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp TEXT,
+                model_name TEXT,
+                old_mae REAL,
+                new_mae REAL,
+                status TEXT
+            )
+        ''')
+        cursor.execute('''
+            INSERT INTO model_retraining_logs (timestamp, model_name, old_mae, new_mae, status)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (timestamp, model_name, old_mae, new_mae, status))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Failed to log retraining to database: {e}")
 
 def train_dewpoint_3h_model():
     print("Starting Dewpoint 3H Prediction Model Training...")
@@ -39,31 +65,56 @@ def train_dewpoint_3h_model():
     print(f"Testing Data Shape: {X_test.shape}")
     
     # LightGBM Model
-    print("Training LightGBM Regressor...")
-    model = lgb.LGBMRegressor(n_estimators=1000, learning_rate=0.01, num_leaves=31, random_state=42)
-    model.fit(X_train, y_train)
+    print("Training LightGBM Regressor (New Model)...")
+    new_model = lgb.LGBMRegressor(n_estimators=1000, learning_rate=0.01, num_leaves=31, random_state=42)
+    new_model.fit(X_train, y_train)
     
-    # Evaluate
-    preds = model.predict(X_test)
-    r2 = r2_score(y_test, preds)
-    mae = mean_absolute_error(y_test, preds)
-    rmse = mean_squared_error(y_test, preds) ** 0.5
+    # Evaluate New Model
+    new_preds = new_model.predict(X_test)
+    new_mae = mean_absolute_error(y_test, new_preds)
     
-    print("\n" + "="*50)
-    print("       DEWPOINT 3H FORECAST MODEL METRICS")
-    print("="*50)
-    print(f"R-squared (R2): {r2:.4f}")
-    print(f"Mean Absolute Error (MAE): {mae:.4f}")
-    print(f"Root Mean Squared Error (RMSE): {rmse:.4f}")
-    print("="*50)
+    print(f"New Model MAE: {new_mae:.4f}")
     
-    # Save Model and Test Assets
+    # Model Promotion Logic
     model_path = os.path.join(SCRIPT_DIR, 'dewpoint_3h_lgbm.pkl')
+    backup_path = os.path.join(SCRIPT_DIR, 'dewpoint_3h_lgbm_backup.pkl')
     assets_path = os.path.join(SCRIPT_DIR, 'dewpoint_3h_test_assets.pkl')
     
-    joblib.dump(model, model_path)
-    joblib.dump((X_test, y_test, features), assets_path)
-    print(f"Model saved to: {model_path}")
+    old_mae = None
+    promotion_status = "Promoted (First Time)"
+    
+    if os.path.exists(model_path):
+        print("Existing model found. Evaluating old model...")
+        try:
+            old_model = joblib.load(model_path)
+            old_preds = old_model.predict(X_test)
+            old_mae = mean_absolute_error(y_test, old_preds)
+            print(f"Old Model MAE: {old_mae:.4f}")
+            
+            if new_mae < old_mae:
+                print("New model is BETTER. Promoting new model and backing up the old one.")
+                shutil.copy2(model_path, backup_path)
+                joblib.dump(new_model, model_path)
+                joblib.dump((X_test, y_test, features), assets_path)
+                promotion_status = "Promoted (Better MAE)"
+            else:
+                print("New model is WORSE or EQUAL. Discarding new model.")
+                promotion_status = "Discarded (Worse MAE)"
+        except Exception as e:
+            print(f"Error loading/evaluating old model: {e}. Overwriting anyway.")
+            shutil.copy2(model_path, backup_path) if os.path.exists(model_path) else None
+            joblib.dump(new_model, model_path)
+            joblib.dump((X_test, y_test, features), assets_path)
+            promotion_status = "Promoted (Old Model Corrupted)"
+    else:
+        print("No existing model found. Saving as primary model.")
+        joblib.dump(new_model, model_path)
+        joblib.dump((X_test, y_test, features), assets_path)
+    
+    # Log to Database
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    log_retraining_to_db(db_path, "Dewpoint_3H", old_mae, new_mae, promotion_status, timestamp)
+    print(f"Retraining complete. Status: {promotion_status}")
 
 if __name__ == "__main__":
     train_dewpoint_3h_model()
