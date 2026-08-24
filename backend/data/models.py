@@ -14,8 +14,6 @@ class WeatherData(Base):
     date = Column(Integer)
     time_utc = Column(String)
     
-    wind_dir = Column(Float, nullable=True)
-    wind_speed_kts = Column(Float, nullable=True)
     visibility = Column(Float, nullable=True)
     weather = Column(String, nullable=True)
     clouds = Column(String, nullable=True)
@@ -25,8 +23,7 @@ class WeatherData(Base):
     rh_percent = Column(Float, nullable=True)
     qnh_hpa = Column(Float, nullable=True)
 
-class PredictionRecord(Base):
-    __tablename__ = "prediction_records"
+
 
     id = Column(Integer, primary_key=True, index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -78,6 +75,7 @@ class TempPressurePredictionRecord(Base):
     is_verified = Column(Integer, default=0) # 0: Pending, 1: Verified
     
     status = Column(String) # SAFE, WARNING, DANGER
+
 
 
 

@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
 from backend.mlops_retrainer.mlops_Wind_retrainer import run_wind_models_retraining
 from backend.mlops_retrainer.mlops_cloud_visibility_retrainer import run_cloud_visibility_retraining
+from backend.mlops_retrainer.mlops_qnh_dewpoint_retrainer import run_qnh_dewpoint_retraining
 from backend.live_metar_fetcher import fetch_and_store_live_metar
 
 from datetime import datetime, timedelta
@@ -39,6 +40,7 @@ def smart_live_metar_fetch(sched):
 def scheduled_retraining_job():
     print(f"[{datetime.now()}] Starting scheduled MLOps retraining pipeline...")
     
+
     # 1. Ashan's Wind Models Retraining
     try:
         run_wind_models_retraining()
@@ -99,6 +101,24 @@ def scheduled_retraining_job():
     #     load_Clouds_models()
     # except ImportError:
     #     pass
+    # ---------------------------------------------------------
+    # (viji): Add your model retraining functions here!
+    # ---------------------------------------------------------
+    try:
+        run_qnh_dewpoint_retraining()
+    except Exception as e:
+        print(f"Error retraining QNH/Dewpoint: {e}")
+    # ---------------------------------------------------------
+    
+    # ---------------------------------------------------------
+    # (viji): Call your model loading functions here 
+    # so they update in RAM automatically after monthly retraining!
+    # ---------------------------------------------------------
+    try:
+        from backend.api.routers.qnh_dewpoint_router import load_QNH_Dewpoint_models
+        load_QNH_Dewpoint_models()
+    except ImportError:
+        pass
     # ---------------------------------------------------------
     
     print(f"[{datetime.now()}] Scheduled retraining complete and models hot-reloaded.")

@@ -2,7 +2,6 @@
 # Aviation Weather Forecast System - .gitignore
 # ==========================================
 
-
 # --- Data Files ---
 BIA_METAR_DATA_(2019_2024).xlsx
 data/BIA_METAR_DATA_(2019_2024).xlsx
@@ -108,8 +107,3 @@ TEmpory/
 frontend/
 frontend 2/
 Reletion analysis/
-
-.pyc
-check_db.py
-
-
