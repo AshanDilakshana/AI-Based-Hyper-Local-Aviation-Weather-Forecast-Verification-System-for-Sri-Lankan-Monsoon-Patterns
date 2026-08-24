@@ -16,3 +16,4 @@ lightning
 pytorch-forecasting
 Pillow
 reportlab
+requests
