@@ -23,7 +23,8 @@ class WeatherData(Base):
     rh_percent = Column(Float, nullable=True)
     qnh_hpa = Column(Float, nullable=True)
 
-
+class PredictionRecord(Base):
+    __tablename__ = "prediction_records"
 
     id = Column(Integer, primary_key=True, index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
