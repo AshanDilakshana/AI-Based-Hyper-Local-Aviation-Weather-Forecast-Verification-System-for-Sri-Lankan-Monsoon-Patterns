@@ -5,8 +5,8 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '../..'))
 sys.path.append(PROJECT_ROOT)
 
-from Models.qnh_models.3h_prediction_model.train_unified_3h import train_qnh_3h_model
-from Models.dewpoint_models.3h_prediction_model.train_unified_3h import train_dewpoint_3h_model
+from Models.qnh_models.train_unified_3h import train_qnh_3h_model
+from Models.dewpoint_models.train_unified_3h import train_dewpoint_3h_model
 
 def run_qnh_dewpoint_retraining():
     """
