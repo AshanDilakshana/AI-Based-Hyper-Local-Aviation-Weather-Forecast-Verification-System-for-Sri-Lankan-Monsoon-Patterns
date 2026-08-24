@@ -89,12 +89,20 @@ def train_for_mlops(df: pd.DataFrame, target_col: str):
     y = df[target_col]
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
+    #    param_grid = {
+    #     'n_estimators': [300, 500, 1000],
+    #     'max_depth': [5, 7, 9],
+    #     'learning_rate': [0.01, 0.05],
+    #     'subsample': [0.8, 1.0],
+    #     'colsample_bytree': [0.8, 1.0]
+    # } low affect
+
     param_grid = {
-        'n_estimators': [100, 300],
-        'max_depth': [5, 7],
-        'learning_rate': [0.05, 0.1],
-        'subsample': [0.8],
-        'colsample_bytree': [0.8]
+        'n_estimators': [300, 500, 1000],
+        'max_depth': [5, 7, 9],
+        'learning_rate': [0.01, 0.05],
+        'subsample': [0.8, 1.0],
+        'colsample_bytree': [0.8, 1.0]
     }
     base_model = xgb.XGBRegressor(objective='reg:squarederror', random_state=42)
     search = GridSearchCV(base_model, param_grid, scoring='neg_mean_absolute_error', cv=3, n_jobs=-1)
