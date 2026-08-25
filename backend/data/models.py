@@ -14,11 +14,12 @@ class WeatherData(Base):
     date = Column(Integer)
     time_utc = Column(String)
     
-    wind_dir = Column(Float, nullable=True)
-    wind_speed_kts = Column(Float, nullable=True)
     visibility = Column(Float, nullable=True)
     weather = Column(String, nullable=True)
     clouds = Column(String, nullable=True)
+    
+    wind_dir = Column(Float, nullable=True)
+    wind_speed_kts = Column(Float, nullable=True)
     
     dry_temp_c = Column(Float, nullable=True)
     dew_point_c = Column(Float, nullable=True)
@@ -78,6 +79,7 @@ class TempPressurePredictionRecord(Base):
     is_verified = Column(Integer, default=0) # 0: Pending, 1: Verified
     
     status = Column(String) # SAFE, WARNING, DANGER
+
 
 
 

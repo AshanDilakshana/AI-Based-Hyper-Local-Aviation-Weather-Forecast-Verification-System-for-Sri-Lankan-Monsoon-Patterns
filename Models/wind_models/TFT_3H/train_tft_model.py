@@ -16,7 +16,7 @@ from tft_dataset_builder import load_and_prepare_data, create_tft_dataset
 
 def train_model():
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    db_path = os.path.abspath(os.path.join(current_dir, '../../weather_data.db'))
+    db_path = os.path.abspath(os.path.join(current_dir, '../../../weather_data.db'))
     
     print("1. Loading Data...")
     df = load_and_prepare_data(db_path)
@@ -30,8 +30,10 @@ def train_model():
     
     # Optimized for Apple M1 Pro (Increased batch size and worker threads)
     batch_size = 256 
-    train_dataloader = training_dataset.to_dataloader(train=True, batch_size=batch_size, num_workers=4, persistent_workers=True)
-    val_dataloader = validation_dataset.to_dataloader(train=False, batch_size=batch_size * 2, num_workers=4, persistent_workers=True)
+    # train_dataloader = training_dataset.to_dataloader(train=True, batch_size=batch_size, num_workers=4, persistent_workers=True)
+    # val_dataloader = validation_dataset.to_dataloader(train=False, batch_size=batch_size * 2, num_workers=4, persistent_workers=True)
+    train_dataloader = training_dataset.to_dataloader(train=True, batch_size=batch_size, num_workers=0, persistent_workers=False)
+    val_dataloader = validation_dataset.to_dataloader(train=False, batch_size=batch_size * 2, num_workers=0, persistent_workers=False)
     
     print("3. Defining TFT Model...")
     tft = TemporalFusionTransformer.from_dataset(

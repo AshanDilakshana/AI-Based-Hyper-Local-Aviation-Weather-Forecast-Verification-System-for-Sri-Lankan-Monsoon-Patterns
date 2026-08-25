@@ -159,11 +159,9 @@ def get_thermodynamic_hazard_alert(db: Session = Depends(get_db)):
         temp_drop = pred_temp - current_temp
         temp_roc_per_hr = round(temp_drop / 3.0, 2)
         
-        # Hazard Detection Logic (Radiation Fog Precursor tuned for VCBI)
-        # VCBI 75th percentile pressure is ~1012.4, so 1012.0 is a solid "High" threshold.
-        # A drop of 1.0C over 3 hours (-0.33/hr) is significant given std dev of 1.87.
-        is_rapid_cooling = temp_roc_per_hr <= -0.33
-        is_high_stable_pressure = pred_press >= 1012.0 and abs(pred_press - current_press) <= 0.5
+        # Hazard Detection Logic (Radiation Fog Precursor)
+        is_rapid_cooling = temp_roc_per_hr <= -0.5
+        is_high_stable_pressure = pred_press >= 1010.0 and abs(pred_press - current_press) <= 1.0
         
         hazard_risk = "HIGH (>85% Probability)" if (is_rapid_cooling and is_high_stable_pressure) else "LOW (<20% Probability)"
         

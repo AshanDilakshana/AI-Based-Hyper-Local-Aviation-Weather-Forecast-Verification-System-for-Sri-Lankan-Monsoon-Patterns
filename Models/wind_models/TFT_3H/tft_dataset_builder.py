@@ -121,7 +121,7 @@ def create_tft_dataset(df, max_encoder_length=24, max_prediction_length=3):
 
 if __name__ == "__main__":
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    db_path = os.path.abspath(os.path.join(current_dir, '../../weather_data.db'))
+    db_path = os.path.abspath(os.path.join(current_dir, '../../../weather_data.db'))
     
     print("Loading data from DB...")
     df = load_and_prepare_data(db_path)

@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import Optional
 
+
 class TempPressPredictionRequest(BaseModel):
     temperature: float
     humidity: float
@@ -42,3 +43,4 @@ class CloudVisibilityRequest(BaseModel):
 class CloudVisibilityResponse(BaseModel):
     visibility_prediction: int = Field(..., description="Predicted visibility in meters")
     cloud_status: str = Field(..., description="Predicted cloud status/coverage string")
+

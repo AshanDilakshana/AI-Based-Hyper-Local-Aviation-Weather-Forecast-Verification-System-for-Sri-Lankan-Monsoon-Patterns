@@ -14,7 +14,7 @@ MODEL_DIR = BASE_DIR  # Save models in the random_forest folder
 
 import sqlite3
 
-db_path = os.path.join(PROJECT_DIR, "weather_data_.db")
+db_path = os.path.join(PROJECT_DIR, "weather_data.db")
 conn = sqlite3.connect(db_path)
 df = pd.read_sql_query("SELECT * FROM weather_data", conn)
 conn.close()

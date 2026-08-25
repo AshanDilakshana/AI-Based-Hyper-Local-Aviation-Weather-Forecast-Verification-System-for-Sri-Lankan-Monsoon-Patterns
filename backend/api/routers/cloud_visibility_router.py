@@ -66,50 +66,73 @@ vis_mapping = None
 # LOAD MODELS
 # =========================================================
 
-try:
+def load_models():
+    """
+    Loads or reloads the models into memory.
+    Called on startup and after automated retraining.
+    """
+    global cloud_model, cloud_mapping, vis_model, vis_mapping
+    
+    # -----------------------------------------------------
+    # Load Cloud Model with Fallback
+    # -----------------------------------------------------
+    cloud_primary = os.path.join(MODEL_PATH, "xgb_cloud_model.pkl")
+    cloud_backup = os.path.join(MODEL_PATH, "xgb_cloud_model_backup.pkl")
+
+    try:
+        if os.path.exists(cloud_primary):
+            with open(cloud_primary, "rb") as f:
+                cloud_bundle = pickle.load(f)
+            cloud_model = cloud_bundle["model"]
+            cloud_mapping = cloud_bundle["mapping"]
+            print("[SUCCESS] Loaded Primary Cloud XGBoost Model.")
+        else:
+            raise FileNotFoundError(f"Primary Cloud model not found at {cloud_primary}")
+    except Exception as e:
+        print(f"[WARNING] Failed to load primary Cloud model: {e}. Attempting backup...")
+        try:
+            if os.path.exists(cloud_backup):
+                with open(cloud_backup, "rb") as f:
+                    cloud_bundle = pickle.load(f)
+                cloud_model = cloud_bundle["model"]
+                cloud_mapping = cloud_bundle["mapping"]
+                print("[SUCCESS] Loaded Backup Cloud XGBoost Model.")
+            else:
+                print("[ERROR] No Backup Cloud model found.")
+        except Exception as backup_e:
+            print(f"[ERROR] Failed to load backup Cloud model: {backup_e}")
 
     # -----------------------------------------------------
-    # Load Cloud Model
+    # Load Visibility Model with Fallback
     # -----------------------------------------------------
+    visibility_primary = os.path.join(MODEL_PATH, "xgb_visibility_model.pkl")
+    visibility_backup = os.path.join(MODEL_PATH, "xgb_visibility_model_backup.pkl")
 
-    cloud_model_path = os.path.join(
-        MODEL_PATH,
-        "xgb_cloud_model.pkl"
-    )
+    try:
+        if os.path.exists(visibility_primary):
+            with open(visibility_primary, "rb") as f:
+                vis_bundle = pickle.load(f)
+            vis_model = vis_bundle["model"]
+            vis_mapping = vis_bundle["mapping"]
+            print("[SUCCESS] Loaded Primary Visibility XGBoost Model.")
+        else:
+            raise FileNotFoundError(f"Primary Visibility model not found at {visibility_primary}")
+    except Exception as e:
+        print(f"[WARNING] Failed to load primary Visibility model: {e}. Attempting backup...")
+        try:
+            if os.path.exists(visibility_backup):
+                with open(visibility_backup, "rb") as f:
+                    vis_bundle = pickle.load(f)
+                vis_model = vis_bundle["model"]
+                vis_mapping = vis_bundle["mapping"]
+                print("[SUCCESS] Loaded Backup Visibility XGBoost Model.")
+            else:
+                print("[ERROR] No Backup Visibility model found.")
+        except Exception as backup_e:
+            print(f"[ERROR] Failed to load backup Visibility model: {backup_e}")
 
-    with open(cloud_model_path, "rb") as f:
-        cloud_bundle = pickle.load(f)
-
-    cloud_model = cloud_bundle["model"]
-    cloud_mapping = cloud_bundle["mapping"]
-
-
-    # -----------------------------------------------------
-    # Load Visibility Model
-    # -----------------------------------------------------
-
-    visibility_model_path = os.path.join(
-        MODEL_PATH,
-        "xgb_visibility_model.pkl"
-    )
-
-    with open(visibility_model_path, "rb") as f:
-        vis_bundle = pickle.load(f)
-
-    vis_model = vis_bundle["model"]
-    vis_mapping = vis_bundle["mapping"]
-
-
-    print(
-        "[SUCCESS] Cloud and Visibility XGBoost models loaded successfully!"
-    )
-
-
-except Exception as e:
-
-    print(
-        f"[ERROR] Model Loading Error in FastAPI Router: {e}"
-    )
+# Initial load on module import
+load_models()
 
 
 # =========================================================

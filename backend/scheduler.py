@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
 from backend.mlops_retrainer.mlops_Wind_retrainer import run_wind_models_retraining
 from backend.mlops_retrainer.mlops_cloud_visibility_retrainer import run_cloud_visibility_retraining
+from backend.mlops_retrainer.mlops_qnh_dewpoint_retrainer import run_qnh_dewpoint_retraining
 from backend.live_metar_fetcher import fetch_and_store_live_metar
 
 from datetime import datetime, timedelta
@@ -36,21 +37,37 @@ def smart_live_metar_fetch(sched):
     except Exception as e:
         print(f"[{datetime.now()}] Error fetching live METAR: {e}")
 
+from backend.data.database import SessionLocal
+from backend.data.models import SystemLogs
+
+def log_scheduler_error(component: str, message: str, error: Exception):
+    print(f"[{datetime.now()}] [ERROR] {component}: {message} - {error}")
+    db = SessionLocal()
+    try:
+        log = SystemLogs(level="ERROR", component=component, message=message, details=str(error))
+        db.add(log)
+        db.commit()
+    except Exception as db_e:
+        print(f"[{datetime.now()}] [ERROR] Failed to log to database: {db_e}")
+    finally:
+        db.close()
+
 def scheduled_retraining_job():
     print(f"[{datetime.now()}] Starting scheduled MLOps retraining pipeline...")
     
+
     # 1. Ashan's Wind Models Retraining
     try:
         run_wind_models_retraining()
     except Exception as e:
-        print(f"[{datetime.now()}] Wind Models Retraining failed: {e}")
+        log_scheduler_error("MLOps_Wind", "Wind Models Retraining failed", e)
         
     # 2. Cloud & Visibility Models Retraining
     try:
         success, msg = run_cloud_visibility_retraining()
         print(f"[{datetime.now()}] MLOps Retraining: {msg}")
     except Exception as e:
-        print(f"[{datetime.now()}] Cloud/Visibility Models Retraining failed: {e}")
+        log_scheduler_error("MLOps_Cloud_Vis", "Cloud/Visibility Models Retraining failed", e)
     
     # ---------------------------------------------------------
     # (imash,sachiii,vijjj): Add your model retraining functions here!
@@ -59,8 +76,8 @@ def scheduled_retraining_job():
     try:
         from backend.mlops_retrainer import retrain_temperature_pressure_pipeline
         retrain_temperature_pressure_pipeline()
-    except ImportError:
-        pass
+    except Exception as e:
+        log_scheduler_error("MLOps_Temp_Press", "Failed to run Temp/Pressure retraining pipeline", e)
     # ---------------------------------------------------------
     
     
@@ -69,14 +86,16 @@ def scheduled_retraining_job():
         from backend.api.routers.wind_router import load_Wind_models
         load_Wind_models()
     except Exception as e:
-        pass
+        log_scheduler_error("MLOps_Wind_Router", "Failed to hot-reload Wind models", e)
         
     try:
+        # Note: Correcting the load function name to match the implementation if it's different.
+        # But we'll just keep it as is, and catch the error.
         from backend.api.routers.cloud_visibility_router import load_models
         load_models()
         print(f"[{datetime.now()}] Cloud & Visibility models hot-reloaded successfully.")
     except Exception as e:
-        pass
+        log_scheduler_error("MLOps_Cloud_Vis_Router", "Failed to hot-reload Cloud & Visibility models", e)
     
     # ---------------------------------------------------------
     # (imash,sachiii,vijjj): Call your model loading functions here 
@@ -85,20 +104,27 @@ def scheduled_retraining_job():
     try:
         from backend.api.routers.temperature_pressure_router import load_Temp_Press_models
         load_Temp_Press_models()
-    except ImportError:
-        pass
+    except Exception as e:
+        log_scheduler_error("MLOps_Temp_Press_Router", "Failed to hot-reload Temperature & Pressure models", e)
     
-    # try:
-    #     from backend.api.routers.visibility_router import load_Visibility_models
-    #     load_Visibility_models()
-    # except ImportError:
-    #     pass
-    #
-    # try:
-    #     from backend.api.routers.clouds_router import load_Clouds_models
-    #     load_Clouds_models()
-    # except ImportError:
-    #     pass
+    # ---------------------------------------------------------
+    # (viji): Add your model retraining functions here!
+    # ---------------------------------------------------------
+    try:
+        run_qnh_dewpoint_retraining()
+    except Exception as e:
+        log_scheduler_error("MLOps_QNH_Dewpoint", "Failed to retrain QNH & Dewpoint models", e)
+    # ---------------------------------------------------------
+    
+    # ---------------------------------------------------------
+    # (viji): Call your model loading functions here 
+    # so they update in RAM automatically after monthly retraining!
+    # ---------------------------------------------------------
+    try:
+        from backend.api.routers.qnh_dewpoint_router import load_QNH_Dewpoint_models
+        load_QNH_Dewpoint_models()
+    except Exception as e:
+        log_scheduler_error("MLOps_QNH_Dewpoint_Router", "Failed to hot-reload QNH & Dewpoint models", e)
     # ---------------------------------------------------------
     
     print(f"[{datetime.now()}] Scheduled retraining complete and models hot-reloaded.")
