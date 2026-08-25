@@ -149,69 +149,58 @@ from fastapi import HTTPException
 from backend.mlops_retrainer.mlops_qnh_dewpoint_retrainer import run_qnh_dewpoint_retraining
 from backend.api.routers.qnh_dewpoint_router import load_QNH_Dewpoint_models
 
+from backend.celery_worker import run_full_retraining_pipeline, celery_app
+
 @app.post("/models/retrain")
 def manual_retrain_models():
     """
-    Manually triggers the MLOps retraining pipeline for all available models.
+    Triggers the MLOps retraining pipeline in the background using Celery.
     """
     try:
-        results = {}
-        
-        # 1. Retrain core models (Wind)
-        try:
-            from backend.mlops_retrainer.mlops_Wind_retrainer import run_wind_models_retraining
-            from backend.api.routers.wind_router import load_Wind_models
-            results["Wind_Model"] = run_wind_models_retraining()
-            load_Wind_models() 
-        except Exception as e:
-            results["Wind_Model"] = f"Failed: {str(e)}"
-            
-        # 2. Imash's Temperature & Pressure Retraining (ACTIVE)
-        try:
-            from backend.mlops_retrainer.mlops_retrainer_temperature import retrain_temperature_pressure
-            success, msg, _ = retrain_temperature_pressure()
-            results["Temperature_Pressure_Model"] = msg
-        except ImportError:
-            results["Temperature_Pressure_Model"] = "Skipped (not found)"
-
-        # Hot-reload Temperature & Pressure models into memory
-        try:
-            from backend.api.routers.temperature_pressure_router import load_Temp_Press_models
-            load_Temp_Press_models()
-        except Exception as e:
-            results["Temperature_Pressure_Reload"] = f"Failed to reload: {str(e)}"
-
-        # 3. Sachiii - Cloud & Visibility Retraining (ACTIVE)
-        try:
-            from backend.mlops_retrainer.mlops_cloud_visibility_retrainer import run_cloud_visibility_retraining
-            success, msg = run_cloud_visibility_retraining()
-            results["Cloud_Visibility_Model"] = msg
-        except ImportError:
-            results["Cloud_Visibility_Model"] = "Skipped (not found)"
-
-        # Hot-reload Cloud & Visibility models into memory
-        try:
-            from backend.api.routers.cloud_visibility_router import load_models
-            load_models()
-        except Exception as e:
-            results["Cloud_Visibility_Reload"] = f"Failed to reload: {str(e)}"
-
-        # 4.viji's QNH/Dewpoint Retraining
-        try:
-            qnh_dew_res = run_qnh_dewpoint_retraining()
-            results.update(qnh_dew_res)
-        except Exception as e:
-            results["QNH_Dewpoint_Model"] = f"Failed: {str(e)}"
-            
-        # Hot-reload QNH & Dewpoint models into memory
-        try:
-            load_QNH_Dewpoint_models()
-        except Exception as e:
-            results["QNH_Dewpoint_Reload"] = f"Failed to reload: {str(e)}"
-
-        return {"message": "Retraining complete", "results": results}
+        task = run_full_retraining_pipeline.delay()
+        return {"message": "Retraining started in background", "task_id": task.id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/models/retrain/status/{task_id}")
+def get_retrain_status(task_id: str):
+    """
+    Check the status of a background retraining task.
+    """
+    task_result = celery_app.AsyncResult(task_id)
+    
+    # If the task is finished and successful, hot-reload the models into memory
+    if task_result.status == 'SUCCESS':
+        try:
+            try:
+                from backend.api.routers.wind_router import load_Wind_models
+                load_Wind_models()
+            except ImportError: pass
+            
+            try:
+                from backend.api.routers.temperature_pressure_router import load_Temp_Press_models
+                load_Temp_Press_models()
+            except ImportError: pass
+            
+            try:
+                from backend.api.routers.cloud_visibility_router import load_models as load_Cloud_models
+                load_Cloud_models()
+            except ImportError: pass
+            
+            try:
+                from backend.api.routers.qnh_dewpoint_router import load_QNH_Dewpoint_models
+                load_QNH_Dewpoint_models()
+            except ImportError: pass
+            
+        except Exception as e:
+            print(f"Warning: Failed to hot-reload some models after retraining: {e}")
+
+    return {
+        "task_id": task_id,
+        "status": task_result.status,
+        "result": task_result.result if task_result.status == 'SUCCESS' else None,
+        "error": str(task_result.info) if task_result.status == 'FAILURE' else None
+    }
 
 if __name__ == "__main__":
     import uvicorn

@@ -53,81 +53,13 @@ def log_scheduler_error(component: str, message: str, error: Exception):
         db.close()
 
 def scheduled_retraining_job():
-    print(f"[{datetime.now()}] Starting scheduled MLOps retraining pipeline...")
-    
-
-    # 1. Ashan's Wind Models Retraining
+    print(f"[{datetime.now()}] Triggering scheduled MLOps retraining pipeline via Celery...")
     try:
-        run_wind_models_retraining()
+        from backend.celery_worker import run_full_retraining_pipeline
+        task = run_full_retraining_pipeline.delay()
+        print(f"[{datetime.now()}] Retraining task successfully dispatched to Celery background worker (Task ID: {task.id}).")
     except Exception as e:
-        log_scheduler_error("MLOps_Wind", "Wind Models Retraining failed", e)
-        
-    # 2. Cloud & Visibility Models Retraining
-    try:
-        success, msg = run_cloud_visibility_retraining()
-        print(f"[{datetime.now()}] MLOps Retraining: {msg}")
-    except Exception as e:
-        log_scheduler_error("MLOps_Cloud_Vis", "Cloud/Visibility Models Retraining failed", e)
-    
-    # ---------------------------------------------------------
-    # (imash,sachiii,vijjj): Add your model retraining functions here!
-    # (Use try...except so missing files don't crash the scheduler)
-    # ---------------------------------------------------------
-    try:
-        from backend.mlops_retrainer import retrain_temperature_pressure_pipeline
-        retrain_temperature_pressure_pipeline()
-    except Exception as e:
-        log_scheduler_error("MLOps_Temp_Press", "Failed to run Temp/Pressure retraining pipeline", e)
-    # ---------------------------------------------------------
-    
-    
-    # Hot-reload the models into memory so the API uses the newly trained versions
-    try:
-        from backend.api.routers.wind_router import load_Wind_models
-        load_Wind_models()
-    except Exception as e:
-        log_scheduler_error("MLOps_Wind_Router", "Failed to hot-reload Wind models", e)
-        
-    try:
-        # Note: Correcting the load function name to match the implementation if it's different.
-        # But we'll just keep it as is, and catch the error.
-        from backend.api.routers.cloud_visibility_router import load_models
-        load_models()
-        print(f"[{datetime.now()}] Cloud & Visibility models hot-reloaded successfully.")
-    except Exception as e:
-        log_scheduler_error("MLOps_Cloud_Vis_Router", "Failed to hot-reload Cloud & Visibility models", e)
-    
-    # ---------------------------------------------------------
-    # (imash,sachiii,vijjj): Call your model loading functions here 
-    # so they update in RAM automatically after monthly retraining!
-    # ---------------------------------------------------------
-    try:
-        from backend.api.routers.temperature_pressure_router import load_Temp_Press_models
-        load_Temp_Press_models()
-    except Exception as e:
-        log_scheduler_error("MLOps_Temp_Press_Router", "Failed to hot-reload Temperature & Pressure models", e)
-    
-    # ---------------------------------------------------------
-    # (viji): Add your model retraining functions here!
-    # ---------------------------------------------------------
-    try:
-        run_qnh_dewpoint_retraining()
-    except Exception as e:
-        log_scheduler_error("MLOps_QNH_Dewpoint", "Failed to retrain QNH & Dewpoint models", e)
-    # ---------------------------------------------------------
-    
-    # ---------------------------------------------------------
-    # (viji): Call your model loading functions here 
-    # so they update in RAM automatically after monthly retraining!
-    # ---------------------------------------------------------
-    try:
-        from backend.api.routers.qnh_dewpoint_router import load_QNH_Dewpoint_models
-        load_QNH_Dewpoint_models()
-    except Exception as e:
-        log_scheduler_error("MLOps_QNH_Dewpoint_Router", "Failed to hot-reload QNH & Dewpoint models", e)
-    # ---------------------------------------------------------
-    
-    print(f"[{datetime.now()}] Scheduled retraining complete and models hot-reloaded.")
+        log_scheduler_error("MLOps_Scheduler", "Failed to dispatch Celery retraining task", e)
 
 
 

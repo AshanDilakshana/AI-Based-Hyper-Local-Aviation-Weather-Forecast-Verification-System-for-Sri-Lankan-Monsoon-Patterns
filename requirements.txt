@@ -18,3 +18,5 @@ Pillow
 reportlab
 requests
 tensorflow
+celery
+redis
