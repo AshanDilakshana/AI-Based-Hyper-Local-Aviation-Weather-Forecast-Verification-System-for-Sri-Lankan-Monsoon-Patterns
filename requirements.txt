@@ -17,3 +17,4 @@ pytorch-forecasting
 Pillow
 reportlab
 requests
+tensorflow
