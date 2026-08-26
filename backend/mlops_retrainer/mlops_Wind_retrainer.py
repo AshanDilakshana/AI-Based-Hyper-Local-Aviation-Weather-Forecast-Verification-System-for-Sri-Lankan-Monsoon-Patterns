@@ -106,13 +106,24 @@ def retrain_tft_pipeline(tft_dir):
     try:
         log_event(db, "INFO", component, "Started TFT Retraining Process")
         
-        if tft_dir not in sys.path:
-            sys.path.append(tft_dir)
-            
-        import pytorch_forecasting
-        from train_tft_model import train_model
+        import subprocess
+        import json
         
-        best_model_path, best_val_loss = train_model()
+        script_path = os.path.join(tft_dir, "train_tft_model.py")
+        subprocess.run([sys.executable, script_path], check=True, cwd=tft_dir)
+        
+        result_file = os.path.join(tft_dir, "tft_result.json")
+        if os.path.exists(result_file):
+            with open(result_file, "r") as f:
+                res = json.load(f)
+            best_model_path = res.get("best_model_path")
+            best_val_loss = res.get("val_loss_val")
+            try:
+                os.remove(result_file)
+            except Exception:
+                pass
+        else:
+            best_model_path, best_val_loss = None, None
         
         if best_model_path:
             msg = f"TFT Model trained successfully. MAE: {best_val_loss:.2f}"

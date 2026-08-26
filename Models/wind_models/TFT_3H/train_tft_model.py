@@ -57,7 +57,7 @@ def train_model():
     current_dir = os.path.dirname(os.path.abspath(__file__))
     trainer = pl.Trainer(
         max_epochs=25, # Increased for better training
-        accelerator="auto", 
+        accelerator="cpu", # Forced CPU to prevent macOS MPS deadlocks in Celery
         enable_model_summary=True,
         gradient_clip_val=0.1,
         callbacks=[early_stop_callback],
