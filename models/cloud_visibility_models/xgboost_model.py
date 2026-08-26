@@ -106,7 +106,7 @@ if __name__ == "__main__":
     conn.close()
 
     print("\n[TRAINING] Optimizing and Training XGBoost Models (Cloud + Visibility)...")
-    cloud_model, vis_model, cloud_acc, vis_mae, cloud_mapping, vis_mapping, _, _, _, _ = train_for_mlops(df)
+    cloud_model, vis_model, cloud_acc, vis_mae, cloud_mapping, vis_mapping, X_test_c, y_test_c, X_test_v, y_test_v = train_for_mlops(df)
 
     print(f"\n[RESULTS] XGBoost Models:")
     print(f"  -> Cloud Classification Accuracy: {cloud_acc * 100:.2f}%")

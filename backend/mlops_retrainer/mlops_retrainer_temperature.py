@@ -37,36 +37,47 @@ def log_event(db_session, level, component, message, details=None):
 
 
 
-def retrain_temperature_pressure_pipeline():
+def retrain_temperature_pressure():
     """
     Executes the training script for the Temperature and Pressure models
     and returns a tuple: (success_boolean, message, model_key).
     """
     try:
         BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        train_script = os.path.join(BASE_DIR, "Models", "Temperature", "lstm_hybrid", "train_lstm_hybrid.py")
+        train_lstm_script = os.path.join(BASE_DIR, "Models", "Temperature", "lstm_hybrid", "train_lstm_hybrid.py")
+        train_rf_script = os.path.join(BASE_DIR, "Models", "Temperature", "random_forest", "train_quick_rf.py")
         
         print(f"Starting Temperature & Pressure Model Retraining...")
         
-        result = subprocess.run(
-            ["python", train_script], 
+        # 1. Train LSTM Hybrid (Primary)
+        print("Running train_lstm_hybrid.py...")
+        result_lstm = subprocess.run(
+            ["python", train_lstm_script], 
+            capture_output=True, 
+            text=True
+        )
+        
+        # 2. Train Quick RF (Fallback)
+        print("Running train_quick_rf.py...")
+        result_rf = subprocess.run(
+            ["python", train_rf_script], 
             capture_output=True, 
             text=True
         )
         
         model_key = "Temperature_Pressure_Model"
+        msg = ""
         
-        if result.returncode == 0:
-            if '--- HYBRID LSTM + RF PERFORMANCE ---' in result.stdout:
-                metrics = result.stdout.split('--- HYBRID LSTM + RF PERFORMANCE ---')[-1].strip()
+        if result_lstm.returncode == 0 and result_rf.returncode == 0:
+            if '--- HYBRID LSTM + RF PERFORMANCE ---' in result_lstm.stdout:
+                metrics = result_lstm.stdout.split('--- HYBRID LSTM + RF PERFORMANCE ---')[-1].strip()
                 msg = f"Retraining ran successfully. Details: {metrics}"
             else:
-                msg = f"Retraining ran successfully. Output: {result.stdout.strip()}"
-
+                msg = f"Retraining ran successfully."
             print(msg)
             return True, msg, model_key
         else:
-            error_msg = f"Error retraining Temperature/Pressure Models: {result.stderr}"
+            error_msg = f"Error retraining Models.\nLSTM Error: {result_lstm.stderr}\nRF Error: {result_rf.stderr}"
             print(error_msg)
             return False, error_msg, model_key
             
@@ -79,7 +90,7 @@ def retrain_temperature_pressure_pipeline():
 def run_all_retrainings():
     final_results = {}
     
-    success, msg, model_key = retrain_temperature_pressure_pipeline()
+    success, msg, model_key = retrain_temperature_pressure()
     final_results[model_key] = msg
     
     return final_results
