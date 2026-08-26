@@ -29,6 +29,8 @@ data/
 # Python & Bytecode
 
 .pyc
+__pycache__/
+backend/tests/
 check_db.py
 Reletion analysis/
 
