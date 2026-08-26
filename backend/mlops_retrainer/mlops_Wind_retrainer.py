@@ -63,18 +63,27 @@ def retrain_model_pipeline(forecast_hours, target_col, model_dir, model_filename
         old_mae = evaluate_old_model(model_path, X_test, y_test)
         
         if old_mae is None:
-            log_event(db, "INFO", component, f"No existing model found. Saving new model. MAE: {new_mae:.2f}")
-            os.makedirs(model_dir, exist_ok=True)
-            new_model.save_model(model_path)
-            log_event(db, "SUCCESS", component, "New model deployed successfully.")
-            return True, "Model Deployed"
+            if new_mae < 2.3:
+                log_event(db, "INFO", component, f"No existing model found. Saving new model. MAE: {new_mae:.2f}")
+                os.makedirs(model_dir, exist_ok=True)
+                new_model.save_model(model_path)
+                log_event(db, "SUCCESS", component, "New model deployed successfully.")
+                return True, "Model Deployed"
+            else:
+                log_event(db, "WARNING", component, f"No existing model found, but new model rejected (MAE {new_mae:.2f} >= 2.3 limit).")
+                return False, "Model Rejected (Exceeds Absolute Limit)"
             
         details = f"{{\"old_mae\": {old_mae:.2f}, \"new_mae\": {new_mae:.2f}}}"
         
-        
-        # New model is better if error is lower
-        if new_mae < old_mae:
-            log_event(db, "SUCCESS", component, f"New Model is better! (Old MAE: {old_mae:.2f}, New MAE: {new_mae:.2f})", details)
+        # Accept new model if its MAE is better, equal, or up to 0.50 worse than the old model
+        # AND it MUST be less than the absolute limit of 2.3
+        if new_mae <= old_mae + 0.50 and new_mae < 2.3:
+            if new_mae <= old_mae:
+                log_msg = f"New Model is better or equal! (Old MAE: {old_mae:.2f}, New MAE: {new_mae:.2f})"
+            else:
+                log_msg = f"New Model accepted within 0.50 limit. (Old MAE: {old_mae:.2f}, New MAE: {new_mae:.2f})"
+                
+            log_event(db, "SUCCESS", component, log_msg, details)
             
             backup_filename = model_filename.replace('.json', '_backup.json')
             backup_path = os.path.join(model_dir, backup_filename)
@@ -82,13 +91,17 @@ def retrain_model_pipeline(forecast_hours, target_col, model_dir, model_filename
             if os.path.exists(backup_path):
                 os.remove(backup_path)
                 
-            os.rename(model_path, backup_path)
+            if os.path.exists(model_path):
+                os.rename(model_path, backup_path)
             
             new_model.save_model(model_path)
             log_event(db, "INFO", component, "Versioning complete. Old model is now backup.")
             ret = True, "Model Promoted"
         else:
-            log_event(db, "WARNING", component, f"New Model is worse or equal. Rejected. (Old MAE: {old_mae:.2f}, New MAE: {new_mae:.2f})", details)
+            if new_mae >= 2.3:
+                log_event(db, "WARNING", component, f"New Model rejected (Exceeded absolute 2.3 limit). (Old MAE: {old_mae:.2f}, New MAE: {new_mae:.2f})", details)
+            else:
+                log_event(db, "WARNING", component, f"New Model rejected (Exceeded 0.50 tolerance limit). (Old MAE: {old_mae:.2f}, New MAE: {new_mae:.2f})", details)
             ret = False, "Model Rejected"
 
     except Exception as e:
@@ -126,7 +139,8 @@ def retrain_tft_pipeline(tft_dir):
             best_model_path, best_val_loss = None, None
         
         if best_model_path:
-            msg = f"TFT Model trained successfully. MAE: {best_val_loss:.2f}"
+            loss_str = f"{best_val_loss:.2f}" if best_val_loss is not None else "Unknown"
+            msg = f"TFT Model trained successfully. MAE: {loss_str}"
             log_event(db, "SUCCESS", component, msg)
             ret = True, msg
         else:

@@ -88,6 +88,16 @@ def train_model():
     print("--------------------------------------------------")
     
     val_loss_val = best_val_loss.item() if best_val_loss is not None else None
+    
+    # Save result to json so MLOps script can read it
+    import json
+    result_file = os.path.join(current_dir, "tft_result.json")
+    with open(result_file, "w") as f:
+        json.dump({
+            "best_model_path": best_model_path,
+            "val_loss_val": val_loss_val
+        }, f)
+        
     return best_model_path, val_loss_val
 
 if __name__ == "__main__":
