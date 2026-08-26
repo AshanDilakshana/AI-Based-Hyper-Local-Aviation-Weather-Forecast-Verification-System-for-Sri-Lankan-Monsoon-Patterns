@@ -111,3 +111,21 @@ class VerifiedForecast(Base):
     qnh_hpa = Column(Float, nullable=True)
     headwind_kts = Column(Float, nullable=True)
     crosswind_kts = Column(Float, nullable=True)
+
+class ModelsForecast(Base):
+    __tablename__ = "Mdels_focast"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    target_time_utc = Column(DateTime, index=True)
+    model_type = Column(String, index=True)
+    
+    wind_speed_kts = Column(Float, nullable=True)
+    wind_dir = Column(Float, nullable=True)
+    temperature_c = Column(Float, nullable=True)
+    pressure_hpa = Column(Float, nullable=True)
+    visibility = Column(Float, nullable=True)
+    clouds = Column(String, nullable=True)
+    dew_point_c = Column(Float, nullable=True)
+    qnh_hpa = Column(Float, nullable=True)
+
