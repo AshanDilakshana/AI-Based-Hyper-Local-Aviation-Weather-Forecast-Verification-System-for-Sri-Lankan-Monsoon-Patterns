@@ -37,14 +37,14 @@ def log_event(db_session, level, component, message, details=None):
 
 
 
-def retrain_temperature_pressure():
+def retrain_temperature_pressure_pipeline():
     """
     Executes the training script for the Temperature and Pressure models
     and returns a tuple: (success_boolean, message, model_key).
     """
     try:
         BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        train_script = os.path.join(BASE_DIR, "Models", "Temperature", "train_quick_rf.py")
+        train_script = os.path.join(BASE_DIR, "Models", "Temperature", "train_lstm_hybrid.py")
         
         print(f"Starting Temperature & Pressure Model Retraining...")
         
@@ -57,7 +57,12 @@ def retrain_temperature_pressure():
         model_key = "Temperature_Pressure_Model"
         
         if result.returncode == 0:
-            msg = "Successfully retrained Temperature & Pressure Models. Metrics: " + result.stdout.split('--- SEPARATE RANDOM FOREST PERFORMANCE ---')[-1].strip()
+            if '--- HYBRID LSTM + RF PERFORMANCE ---' in result.stdout:
+                metrics = result.stdout.split('--- HYBRID LSTM + RF PERFORMANCE ---')[-1].strip()
+                msg = f"Retraining ran successfully. Details: {metrics}"
+            else:
+                msg = f"Retraining ran successfully. Output: {result.stdout.strip()}"
+
             print(msg)
             return True, msg, model_key
         else:
@@ -74,7 +79,7 @@ def retrain_temperature_pressure():
 def run_all_retrainings():
     final_results = {}
     
-    success, msg, model_key = retrain_temperature_pressure()
+    success, msg, model_key = retrain_temperature_pressure_pipeline()
     final_results[model_key] = msg
     
     return final_results
