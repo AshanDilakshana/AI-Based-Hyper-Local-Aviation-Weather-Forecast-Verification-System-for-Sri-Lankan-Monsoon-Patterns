@@ -73,8 +73,6 @@ def predict_qnh_dewpoint_3h():
     Predict QNH and Dewpoint 3 hours into the future using the latest data
     from the live database, and derive RH using the Magnus formula.
     """
-    global qnh_3h_model, dewpoint_3h_model
-    
     if not qnh_3h_model or not dewpoint_3h_model:
         raise HTTPException(status_code=503, detail="Models not loaded or unavailable.")
         
@@ -135,6 +133,29 @@ def predict_qnh_dewpoint_3h():
         b = 243.5
         rh = 100 * math.exp((a * pred_dewpoint) / (b + pred_dewpoint) - (a * current_temp) / (b + current_temp))
         rh = round(min(100, max(0, rh)), 2)
+        
+        # =================================================
+        # SAVE TO UNIFIED FORECAST TABLE
+        # =================================================
+        from backend.data.database import SessionLocal
+        from backend.data.models import ModelsForecast
+        from datetime import datetime, timedelta
+        
+        db = SessionLocal()
+        try:
+            target_time = datetime.utcnow() + timedelta(hours=3) # 3H forecast
+            unified_record = ModelsForecast(
+                target_time_utc=target_time,
+                model_type='QNH_Dew_3H',
+                qnh_hpa=float(pred_qnh),
+                dew_point_c=float(pred_dewpoint)
+            )
+            db.add(unified_record)
+            db.commit()
+        except Exception as db_e:
+            print(f"[ERROR] Failed to save to ModelsForecast: {db_e}")
+        finally:
+            db.close()
         
         return {
             "timestamp_utc": str(latest_qnh_row['timestamp_utc'].values[0]),

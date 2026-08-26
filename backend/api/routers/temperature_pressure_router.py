@@ -208,6 +208,16 @@ def run_active_prediction(db: Session = Depends(get_db)):
         )
         
         db.add(record)
+        
+        from backend.data.models import ModelsForecast
+        unified_record = ModelsForecast(
+            target_time_utc=target_time,
+            model_type='Temp_Press_3H',
+            temperature_c=predicted_temp,
+            pressure_hpa=predicted_press
+        )
+        db.add(unified_record)
+        
         db.commit()
         db.refresh(record)
         
@@ -292,6 +302,16 @@ def predict_temperature_pressure(request: TempPressPredictionRequest, db: Sessio
             status="SAFE"
         )
         db.add(record)
+        
+        from backend.data.models import ModelsForecast
+        unified_record = ModelsForecast(
+            target_time_utc=target_time,
+            model_type='Temp_Press_3H_Manual',
+            temperature_c=predicted_temp,
+            pressure_hpa=predicted_press
+        )
+        db.add(unified_record)
+        
         db.commit()
         
         return {
@@ -433,6 +453,16 @@ def predict_live_weather(db: Session = Depends(get_db)):
             status="SAFE"
         )
         db.add(record)
+        
+        from backend.data.models import ModelsForecast
+        unified_record = ModelsForecast(
+            target_time_utc=target_time,
+            model_type='Temp_Press_3H_Live',
+            temperature_c=predicted_temp,
+            pressure_hpa=predicted_press
+        )
+        db.add(unified_record)
+        
         db.commit()
         
         return {

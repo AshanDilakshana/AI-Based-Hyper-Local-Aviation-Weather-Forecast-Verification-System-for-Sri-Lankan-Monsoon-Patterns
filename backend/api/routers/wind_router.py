@@ -397,6 +397,16 @@ def predict_wind_hybrid_3h(request: WindPredictionRequest):
             status=status
         )
         db.add(new_record)
+        
+        from backend.data.models import ModelsForecast
+        unified_record = ModelsForecast(
+            target_time_utc=dt_target,
+            model_type='Wind_Hybrid_3H',
+            wind_speed_kts=predicted_wind_speed,
+            wind_dir=current_wind_dir
+        )
+        db.add(unified_record)
+        
         db.commit()
     except Exception as e:
         print(f"Failed to save prediction record: {e}")

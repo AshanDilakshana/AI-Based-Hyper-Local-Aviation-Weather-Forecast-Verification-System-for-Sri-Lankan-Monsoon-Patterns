@@ -293,6 +293,30 @@ def predict_cloud_visibility(
 
 
         # =================================================
+        # SAVE TO UNIFIED FORECAST TABLE
+        # =================================================
+        
+        from backend.data.database import SessionLocal
+        from backend.data.models import ModelsForecast
+        from datetime import datetime, timedelta
+        
+        db = SessionLocal()
+        try:
+            target_time = datetime.utcnow() + timedelta(hours=3) # Assuming 3H forecast
+            unified_record = ModelsForecast(
+                target_time_utc=target_time,
+                model_type='Cloud_Vis_3H',
+                visibility=float(vis_mapping[vis_idx]),
+                clouds=str(cloud_mapping[cloud_idx])
+            )
+            db.add(unified_record)
+            db.commit()
+        except Exception as db_e:
+            print(f"[ERROR] Failed to save to ModelsForecast: {db_e}")
+        finally:
+            db.close()
+
+        # =================================================
         # FINAL RESPONSE
         # =================================================
 
