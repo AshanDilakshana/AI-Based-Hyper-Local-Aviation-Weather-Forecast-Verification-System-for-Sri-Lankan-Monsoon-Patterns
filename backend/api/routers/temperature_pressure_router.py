@@ -208,15 +208,15 @@ def run_active_prediction(db: Session = Depends(get_db)):
         )
         
         db.add(record)
-        
+        target_time = (datetime.utcnow() + timedelta(hours=3)).replace(minute=0, second=0, microsecond=0)
         from backend.data.models import ModelsForecast
-        unified_record = ModelsForecast(
-            target_time_utc=target_time,
-            model_type='Temp_Press_3H',
-            temperature_c=predicted_temp,
-            pressure_hpa=predicted_press
-        )
-        db.add(unified_record)
+        unified_record = db.query(ModelsForecast).filter(ModelsForecast.target_time_utc == target_time).first()
+        if not unified_record:
+            unified_record = ModelsForecast(target_time_utc=target_time)
+            db.add(unified_record)
+            
+        unified_record.temperature_c = predicted_temp
+        unified_record.pressure_hpa = predicted_press
         
         db.commit()
         db.refresh(record)
@@ -302,15 +302,15 @@ def predict_temperature_pressure(request: TempPressPredictionRequest, db: Sessio
             status="SAFE"
         )
         db.add(record)
-        
+        target_time = (datetime.utcnow() + timedelta(hours=3)).replace(minute=0, second=0, microsecond=0)
         from backend.data.models import ModelsForecast
-        unified_record = ModelsForecast(
-            target_time_utc=target_time,
-            model_type='Temp_Press_3H_Manual',
-            temperature_c=predicted_temp,
-            pressure_hpa=predicted_press
-        )
-        db.add(unified_record)
+        unified_record = db.query(ModelsForecast).filter(ModelsForecast.target_time_utc == target_time).first()
+        if not unified_record:
+            unified_record = ModelsForecast(target_time_utc=target_time)
+            db.add(unified_record)
+            
+        unified_record.temperature_c = predicted_temp
+        unified_record.pressure_hpa = predicted_press
         
         db.commit()
         
@@ -453,15 +453,15 @@ def predict_live_weather(db: Session = Depends(get_db)):
             status="SAFE"
         )
         db.add(record)
-        
+        target_time = (datetime.utcnow() + timedelta(hours=3)).replace(minute=0, second=0, microsecond=0)
         from backend.data.models import ModelsForecast
-        unified_record = ModelsForecast(
-            target_time_utc=target_time,
-            model_type='Temp_Press_3H_Live',
-            temperature_c=predicted_temp,
-            pressure_hpa=predicted_press
-        )
-        db.add(unified_record)
+        unified_record = db.query(ModelsForecast).filter(ModelsForecast.target_time_utc == target_time).first()
+        if not unified_record:
+            unified_record = ModelsForecast(target_time_utc=target_time)
+            db.add(unified_record)
+            
+        unified_record.temperature_c = predicted_temp
+        unified_record.pressure_hpa = predicted_press
         
         db.commit()
         

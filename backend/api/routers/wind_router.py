@@ -399,13 +399,14 @@ def predict_wind_hybrid_3h(request: WindPredictionRequest):
         db.add(new_record)
         
         from backend.data.models import ModelsForecast
-        unified_record = ModelsForecast(
-            target_time_utc=dt_target,
-            model_type='Wind_Hybrid_3H',
-            wind_speed_kts=predicted_wind_speed,
-            wind_dir=current_wind_dir
-        )
-        db.add(unified_record)
+        unified_dt_target = (datetime.datetime.utcnow() + datetime.timedelta(hours=3)).replace(minute=0, second=0, microsecond=0)
+        unified_record = db.query(ModelsForecast).filter(ModelsForecast.target_time_utc == unified_dt_target).first()
+        if not unified_record:
+            unified_record = ModelsForecast(target_time_utc=unified_dt_target)
+            db.add(unified_record)
+            
+        unified_record.wind_speed_kts = predicted_wind_speed
+        unified_record.wind_dir = current_wind_dir
         
         db.commit()
     except Exception as e:

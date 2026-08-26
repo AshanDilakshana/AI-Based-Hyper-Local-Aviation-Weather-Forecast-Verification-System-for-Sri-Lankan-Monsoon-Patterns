@@ -302,13 +302,14 @@ def predict_cloud_visibility(
         
         db = SessionLocal()
         try:
-            target_time = datetime.utcnow() + timedelta(hours=3) # Assuming 3H forecast
-            unified_record = ModelsForecast(
-                target_time_utc=target_time,
-                model_type='Cloud_Vis_3H',
-                visibility=float(vis_mapping[vis_idx]),
-                clouds=str(cloud_mapping[cloud_idx])
-            )
+            target_time = (datetime.utcnow() + timedelta(hours=3)).replace(minute=0, second=0, microsecond=0)
+            unified_record = db.query(ModelsForecast).filter(ModelsForecast.target_time_utc == target_time).first()
+            if not unified_record:
+                unified_record = ModelsForecast(target_time_utc=target_time)
+                db.add(unified_record)
+                
+            unified_record.visibility = float(vis_mapping[vis_idx])
+            unified_record.clouds = str(cloud_mapping[cloud_idx])
             db.add(unified_record)
             db.commit()
         except Exception as db_e:

@@ -118,7 +118,6 @@ class ModelsForecast(Base):
     id = Column(Integer, primary_key=True, index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     target_time_utc = Column(DateTime, index=True)
-    model_type = Column(String, index=True)
     
     wind_speed_kts = Column(Float, nullable=True)
     wind_dir = Column(Float, nullable=True)
