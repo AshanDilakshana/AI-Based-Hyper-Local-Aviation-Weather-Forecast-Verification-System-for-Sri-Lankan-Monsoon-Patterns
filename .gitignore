@@ -107,3 +107,21 @@ TEmpory/
 frontend/
 frontend 2/
 Reletion analysis/
+
+
+backend/tests/
+
+
+#ims
+# Local model test scripts
+Models/Temperature/evaluate_model.py
+Models/Temperature/predict_model.py
+
+# Unused model folders
+Models/Temperature/Lstm_model/
+Models/Temperature/autoencoder_model/
+Models/Temperature/gru_model/
+
+# Unused Random Forest scripts
+Models/Temperature/random_forest/eval_configs.py
+Models/Temperature/random_forest/train_Random_Forestl.py

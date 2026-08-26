@@ -14,9 +14,9 @@ from tensorflow.keras.layers import LSTM, Dense, Dropout
 from tensorflow.keras.callbacks import EarlyStopping
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_DIR = os.path.dirname(os.path.dirname(BASE_DIR))
+PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(BASE_DIR)))
 DB_PATH = os.path.join(PROJECT_DIR, "weather_data.db")
-OUTPUT_DIR = os.path.join(BASE_DIR, "lstm_hybrid")
+OUTPUT_DIR = BASE_DIR
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # 1. Load Data

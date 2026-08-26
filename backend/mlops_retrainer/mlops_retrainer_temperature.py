@@ -44,7 +44,7 @@ def retrain_temperature_pressure_pipeline():
     """
     try:
         BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        train_script = os.path.join(BASE_DIR, "Models", "Temperature", "train_lstm_hybrid.py")
+        train_script = os.path.join(BASE_DIR, "Models", "Temperature", "lstm_hybrid", "train_lstm_hybrid.py")
         
         print(f"Starting Temperature & Pressure Model Retraining...")
         
