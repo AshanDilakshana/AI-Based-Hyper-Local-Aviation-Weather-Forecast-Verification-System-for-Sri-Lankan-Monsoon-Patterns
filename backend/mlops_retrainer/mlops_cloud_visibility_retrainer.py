@@ -18,7 +18,7 @@ def get_all_historical_data(db_path):
 def run_cloud_visibility_retraining():
     base_dir = os.path.dirname(os.path.abspath(__file__))
     project_root = os.path.abspath(os.path.join(base_dir, '../../'))
-    db_path = os.path.abspath(os.path.join(project_root, '../weather_data.db'))
+    db_path = os.path.abspath(os.path.join(project_root, 'weather_data.db'))
     model_dir = os.path.join(project_root, 'Models', 'cloud_visibility_models')
     
     print("[INFO] Starting MLOps Retraining for Cloud & Visibility models...")
