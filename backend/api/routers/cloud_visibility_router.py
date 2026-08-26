@@ -321,9 +321,9 @@ def predict_cloud_visibility(
         # =================================================
 
         return CloudVisibilityResponse(
-            visibility_prediction=int(
+            visibility_prediction=int(float(
                 vis_mapping[vis_idx]
-            ),
+            )),
             cloud_status=str(
                 cloud_mapping[cloud_idx]
             )
