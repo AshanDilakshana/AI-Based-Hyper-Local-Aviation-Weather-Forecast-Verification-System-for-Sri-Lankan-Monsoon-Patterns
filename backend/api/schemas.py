@@ -47,12 +47,12 @@ class CloudVisibilityResponse(BaseModel):
 class VerifiedForecastRequest(BaseModel):
     target_time: str
     created_at: str
-    dry_temp_c: float
-    wind_speed_kts: float
-    wind_dir: float
-    rh_percent: float
-    clouds: str
-    visibility: float
-    qnh_hpa: float
-    headwind_kts: float
-    crosswind_kts: float
+    dry_temp_c: float | None = None
+    wind_speed_kts: float | None = None
+    wind_dir: float | None = None
+    rh_percent: float | None = None
+    clouds: str | None = None
+    visibility: float | None = None
+    qnh_hpa: float | None = None
+    headwind_kts: float | None = None
+    crosswind_kts: float | None = None

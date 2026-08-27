@@ -120,7 +120,7 @@ def create_verified_forecast(req: VerifiedForecastRequest, db: Session = Depends
         created_at=created_dt,
         dry_temp_c=req.dry_temp_c,
         wind_speed_kts=req.wind_speed_kts,
-        wind_dir=req.wind_dir,
+        wind_dir=req.wind_dir if req.wind_dir is not None else 0.0,
         rh_percent=req.rh_percent,
         clouds=req.clouds,
         visibility=req.visibility,
@@ -144,7 +144,7 @@ def update_verified_forecast(id: int, req: VerifiedForecastRequest, db: Session 
     vf.created_at = datetime.fromisoformat(req.created_at.replace("Z", "+00:00")).replace(tzinfo=None)
     vf.dry_temp_c = req.dry_temp_c
     vf.wind_speed_kts = req.wind_speed_kts
-    vf.wind_dir = req.wind_dir
+    vf.wind_dir = req.wind_dir if req.wind_dir is not None else 0.0
     vf.rh_percent = req.rh_percent
     vf.clouds = req.clouds
     vf.visibility = req.visibility
