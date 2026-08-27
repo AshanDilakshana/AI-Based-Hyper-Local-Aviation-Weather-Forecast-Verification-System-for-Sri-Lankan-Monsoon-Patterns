@@ -16,7 +16,7 @@ from tft_dataset_builder import load_and_prepare_data, create_tft_dataset
 
 def train_model():
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    db_path = os.path.abspath(os.path.join(current_dir, '../../weather_data.db'))
+    db_path = os.path.abspath(os.path.join(current_dir, '../../../weather_data.db'))
     
     print("1. Loading Data...")
     df = load_and_prepare_data(db_path)
