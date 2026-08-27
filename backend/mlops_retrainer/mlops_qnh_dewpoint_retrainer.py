@@ -5,6 +5,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '../..'))
 sys.path.append(PROJECT_ROOT)
 
+from backend.mlops_retrainer.sync_training_data import sync_training_data
 from Models.qnh_models.train_unified_3h import train_qnh_3h_model
 from Models.dewpoint_models.train_unified_3h import train_dewpoint_3h_model
 
@@ -14,6 +15,9 @@ def run_qnh_dewpoint_retraining():
     This can be scheduled to run nightly or weekly.
     """
     print("Initiating Auto-Retraining for QNH and Dewpoint Models...")
+    
+    # 0. Sync JIT Data
+    sync_training_data()
     
     try:
         print("Retraining QNH 3H Model...")

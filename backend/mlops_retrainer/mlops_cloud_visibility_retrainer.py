@@ -7,6 +7,7 @@ from sklearn.metrics import accuracy_score, mean_absolute_error
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 
+from backend.mlops_retrainer.sync_training_data import sync_training_data
 from Models.cloud_visibility_models.xgboost_model import train_for_mlops
 
 def get_all_historical_data(db_path):
@@ -22,6 +23,9 @@ def run_cloud_visibility_retraining():
     model_dir = os.path.join(project_root, 'Models', 'cloud_visibility_models')
     
     print("[INFO] Starting MLOps Retraining for Cloud & Visibility models...")
+    
+    # 0. Sync JIT Data
+    sync_training_data()
     
     # 1. Fetch Data
     try:

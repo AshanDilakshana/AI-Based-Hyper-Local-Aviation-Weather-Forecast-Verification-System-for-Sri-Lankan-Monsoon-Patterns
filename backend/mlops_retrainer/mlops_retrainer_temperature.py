@@ -37,11 +37,16 @@ def log_event(db_session, level, component, message, details=None):
 
 
 
+from backend.mlops_retrainer.sync_training_data import sync_training_data
+
 def retrain_temperature_pressure():
     """
     Executes the training script for the Temperature and Pressure models
     and returns a tuple: (success_boolean, message, model_key).
     """
+    # 0. Sync JIT Data
+    sync_training_data()
+    
     try:
         BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         train_lstm_script = os.path.join(BASE_DIR, "Models", "Temperature", "lstm_hybrid", "train_lstm_hybrid.py")
