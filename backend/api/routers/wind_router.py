@@ -161,8 +161,11 @@ def get_historical_dataframe(db_session):
 
 def calculate_target_datetime(df_window, forecast_hours):
     last_row = df_window.iloc[-1]
-    time_str = last_row['Time(UTC)']
-    year, month, date = last_row['Year'], last_row['Month'], last_row['Date']
+    time_str = str(last_row['Time(UTC)']).zfill(4) if pd.notnull(last_row['Time(UTC)']) else "0000"
+    year = int(last_row['Year']) if pd.notnull(last_row['Year']) else 2026
+    month = int(last_row['Month']) if pd.notnull(last_row['Month']) else 1
+    date = int(last_row['Date']) if pd.notnull(last_row['Date']) else 1
+    
     dt = datetime.datetime(year, month, date, int(time_str[:2]), int(time_str[2:]))
     dt_target = dt + datetime.timedelta(hours=forecast_hours)
     return dt_target
@@ -187,7 +190,8 @@ def predict_wind_1h(request: WindPredictionRequest):
     expected_cols = pipeline.required_features
     features_ordered = features[expected_cols]
     
-    current_wind_dir = float(df_window.iloc[-1]['Wind Dir'])
+    raw_wind_dir = df_window.iloc[-1]['Wind Dir']
+    current_wind_dir = float(raw_wind_dir) if pd.notnull(raw_wind_dir) else 0.0
 
     predicted_wind_speed = float(model_1h.predict(features_ordered)[0])
     best_heading, crosswind, headwind, runway_name = suggest_best_runway(predicted_wind_speed, current_wind_dir)
@@ -242,7 +246,8 @@ def predict_wind_3h(request: WindPredictionRequest):
     expected_cols = pipeline.required_features
     features_ordered = features[expected_cols]
     
-    current_wind_dir = float(df_window.iloc[-1]['Wind Dir'])
+    raw_wind_dir = df_window.iloc[-1]['Wind Dir']
+    current_wind_dir = float(raw_wind_dir) if pd.notnull(raw_wind_dir) else 0.0
 
     predicted_wind_speed = float(model_3h.predict(features_ordered)[0])
     best_heading, crosswind, headwind, runway_name = suggest_best_runway(predicted_wind_speed, current_wind_dir)
@@ -284,9 +289,9 @@ def predict_wind_tft_3h(request: WindPredictionRequest):
     if request.time_utc is None or request.qnh_hpa is None:
         raise HTTPException(status_code=400, detail="time_utc and qnh_hpa are required for the 3H model.")
 
-    db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../weather_data.db'))
+    from backend.data.database import engine
     try:
-        df_tft = load_and_prepare_data(db_path).tail(96).reset_index(drop=True)
+        df_tft = load_and_prepare_data(engine=engine).tail(96).reset_index(drop=True)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to load data for TFT: {e}")
     
@@ -294,7 +299,8 @@ def predict_wind_tft_3h(request: WindPredictionRequest):
     tft_preds = model_tft_3h.predict(df_tft, mode="prediction", trainer_kwargs={"logger": False})
     predicted_wind_speed = float(tft_preds[0][2].item())
     
-    current_wind_dir = float(df_tft.iloc[-1]['wind_dir'])
+    raw_wind_dir = df_tft.iloc[-1]['wind_dir']
+    current_wind_dir = float(raw_wind_dir) if pd.notnull(raw_wind_dir) else 0.0
 
     best_heading, crosswind, headwind, runway_name = suggest_best_runway(predicted_wind_speed, current_wind_dir)
     status, message = get_alert_status(crosswind, "3 hours ahead (TFT)")
@@ -337,9 +343,9 @@ def predict_wind_hybrid_3h(request: WindPredictionRequest):
         raise HTTPException(status_code=400, detail="time_utc and qnh_hpa are required for the 3H model.")
 
     # TFT Predict
-    db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../weather_data.db'))
+    from backend.data.database import engine
     try:
-        df_tft = load_and_prepare_data(db_path).tail(96).reset_index(drop=True)
+        df_tft = load_and_prepare_data(engine=engine).tail(96).reset_index(drop=True)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to load data for TFT: {e}")
     
@@ -363,7 +369,8 @@ def predict_wind_hybrid_3h(request: WindPredictionRequest):
     # Hybrid Predict (Average)
     predicted_wind_speed = (tft_pred_value + xgb_pred_value) / 2.0
     
-    current_wind_dir = float(df_window.iloc[-1]['Wind Dir'])
+    raw_wind_dir = df_window.iloc[-1]['Wind Dir']
+    current_wind_dir = float(raw_wind_dir) if pd.notnull(raw_wind_dir) else 0.0
 
     best_heading, crosswind, headwind, runway_name = suggest_best_runway(predicted_wind_speed, current_wind_dir)
     status, message = get_alert_status(crosswind, "3 hours ahead (Hybrid)")

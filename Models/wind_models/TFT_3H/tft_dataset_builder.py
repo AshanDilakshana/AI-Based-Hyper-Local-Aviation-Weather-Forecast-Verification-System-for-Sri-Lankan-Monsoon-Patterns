@@ -8,11 +8,13 @@ warnings.filterwarnings("ignore")
 from pytorch_forecasting import TimeSeriesDataSet
 from pytorch_forecasting.data import GroupNormalizer
 
-def load_and_prepare_data(db_path):
+def load_and_prepare_data(db_path=None, engine=None):
     """
-    Connects to the SQLite DB, fetches weather_data, and formats it for PyTorch Forecasting.
+    Connects to the database (Supabase or SQLite), fetches weather_data, and formats it for PyTorch Forecasting.
     """
-    engine = create_engine(f"sqlite:///{db_path}")
+    if engine is None:
+        engine = create_engine(f"sqlite:///{db_path}")
+        
     query = "SELECT * FROM weather_data ORDER BY id ASC"
     df = pd.read_sql(query, engine)
     

@@ -5,18 +5,22 @@ from .data_cleaner import DewpointDataCleaner
 from .feature_engineer import DewpointFeatureEngineer
 
 class DewpointUnifiedPipeline:
-    def __init__(self, db_path: str):
+    def __init__(self, db_path: str = None, engine=None):
         self.db_path = db_path
+        self.engine = engine
 
     def load_data(self) -> pd.DataFrame:
-        """Loads data from the SQLite database."""
-        if not os.path.exists(self.db_path):
-            raise FileNotFoundError(f"Database not found at {self.db_path}")
-            
-        conn = sqlite3.connect(self.db_path)
+        """Loads data from the database."""
         query = "SELECT * FROM weather_data ORDER BY timestamp_utc"
-        df = pd.read_sql_query(query, conn)
-        conn.close()
+        if self.engine is not None:
+            df = pd.read_sql_query(query, self.engine)
+        else:
+            if not os.path.exists(self.db_path):
+                raise FileNotFoundError(f"Database not found at {self.db_path}")
+                
+            conn = sqlite3.connect(self.db_path)
+            df = pd.read_sql_query(query, conn)
+            conn.close()
         return df
 
     def run_pipeline(self, is_training: bool = True) -> pd.DataFrame:

@@ -90,8 +90,10 @@ def predict_qnh_dewpoint_3h():
         from preprocessing_and_feature_engineering.qnh_prediction_model.unified_pipeline import QNHUnifiedPipeline
         from preprocessing_and_feature_engineering.dewpoint_prediction_model.unified_pipeline import DewpointUnifiedPipeline
         
+        from backend.data.database import engine
+        
         # Run QNH Pipeline for inference (is_training=False prevents target NaN dropping)
-        qnh_pipeline = QNHUnifiedPipeline(db_path)
+        qnh_pipeline = QNHUnifiedPipeline(db_path, engine=engine)
         df_qnh_all = qnh_pipeline.run_pipeline(is_training=False)
         
         if df_qnh_all.empty:
@@ -103,7 +105,7 @@ def predict_qnh_dewpoint_3h():
         input_qnh_df = latest_qnh_row[qnh_features]
         
         # Run Dewpoint Pipeline for inference
-        dew_pipeline = DewpointUnifiedPipeline(db_path)
+        dew_pipeline = DewpointUnifiedPipeline(db_path, engine=engine)
         df_dew_all = dew_pipeline.run_pipeline(is_training=False)
         
         if df_dew_all.empty:
