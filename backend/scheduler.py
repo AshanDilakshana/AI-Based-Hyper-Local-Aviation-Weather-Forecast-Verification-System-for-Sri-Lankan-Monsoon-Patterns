@@ -52,6 +52,22 @@ def log_scheduler_error(component: str, message: str, error: Exception):
     finally:
         db.close()
 
+def clean_old_system_logs():
+    """
+    Deletes SystemLogs older than 30 days.
+    """
+    db = SessionLocal()
+    try:
+        cutoff_date = datetime.utcnow() - timedelta(days=30)
+        deleted_count = db.query(SystemLogs).filter(SystemLogs.timestamp_utc < cutoff_date).delete()
+        db.commit()
+        print(f"[{datetime.now()}] ✅ Successfully deleted {deleted_count} system logs older than 30 days (before {cutoff_date}).")
+    except Exception as e:
+        print(f"[{datetime.now()}] [ERROR] Failed to clean old system logs: {e}")
+        db.rollback()
+    finally:
+        db.close()
+
 def scheduled_retraining_job():
     print(f"[{datetime.now()}] Triggering scheduled MLOps retraining pipeline via Celery...")
     try:
@@ -117,10 +133,22 @@ def start_scheduler():
         replace_existing=True
     )
     
+    # Daily cleanup for system logs older than 30 days
+    scheduler.add_job(
+        clean_old_system_logs,
+        'cron',
+        hour=2,
+        minute=0,
+        id='daily_log_cleanup',
+        name='Daily System Log Cleanup (30 Days)',
+        replace_existing=True
+    )
+    
     scheduler.start()
     print("✅ MLOps Background Scheduler started. Next run: 1st of the month at 00:00.")
     print("✅ Smart Live METAR Fetcher scheduled to run every 32 minutes (retries every 5m if delayed).")
     print("✅ Daily METAR Backup Fetcher scheduled to run every day at 01:00 AM.")
+    print("✅ Daily System Log Cleanup scheduled to run every day at 02:00 AM (30-day retention).")
     
     # Return the scheduler instance so it can be managed if needed
     return scheduler
