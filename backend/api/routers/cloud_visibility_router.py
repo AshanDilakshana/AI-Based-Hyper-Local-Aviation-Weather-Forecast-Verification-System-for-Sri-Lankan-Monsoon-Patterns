@@ -164,20 +164,20 @@ def predict_cloud_visibility(
         # =================================================
         # FETCH LIVE DATA FROM DATABASE
         # =================================================
-        import sqlite3
+        from backend.data.database import engine
+        from sqlalchemy import text
         try:
-            db_path = os.path.abspath(os.path.join(PROJECT_ROOT, 'weather_data.db'))
-            conn = sqlite3.connect(db_path)
-            cursor = conn.cursor()
-            cursor.execute('''
-                SELECT month, time_utc, wind_dir, wind_speed_kts, dry_temp_c, dew_point_c, rh_percent, qnh_hpa
-                FROM weather_data 
-                ORDER BY timestamp_utc DESC LIMIT 1
-            ''')
-            row = cursor.fetchone()
-            conn.close()
+            with engine.connect() as conn:
+                result = conn.execute(text('''
+                    SELECT month, time_utc, wind_dir, wind_speed_kts, dry_temp_c, dew_point_c, rh_percent, qnh_hpa, timestamp_utc
+                    FROM weather_data 
+                    ORDER BY timestamp_utc DESC LIMIT 1
+                '''))
+                row = result.fetchone()
+                latest_timestamp_utc = None
 
             if row:
+                latest_timestamp_utc = row[8]
                 # Override payload with live database values
                 data.month = float(row[0]) if row[0] is not None else data.month
                 
@@ -302,7 +302,11 @@ def predict_cloud_visibility(
         
         db = SessionLocal()
         try:
-            target_time = (datetime.utcnow() + timedelta(hours=3)).replace(minute=0, second=0, microsecond=0)
+            if 'latest_timestamp_utc' in locals() and latest_timestamp_utc:
+                target_time = (latest_timestamp_utc + timedelta(hours=3)).replace(minute=0, second=0, microsecond=0)
+            else:
+                target_time = (datetime.utcnow() + timedelta(hours=3)).replace(minute=0, second=0, microsecond=0)
+                
             unified_record = db.query(ModelsForecast).filter(ModelsForecast.target_time_utc == target_time).first()
             if not unified_record:
                 unified_record = ModelsForecast(target_time_utc=target_time)

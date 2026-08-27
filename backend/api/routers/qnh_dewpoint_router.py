@@ -140,10 +140,14 @@ def predict_qnh_dewpoint_3h():
         from backend.data.database import SessionLocal
         from backend.data.models import ModelsForecast
         from datetime import datetime, timedelta
-        
         db = SessionLocal()
         try:
-            target_time = (datetime.utcnow() + timedelta(hours=3)).replace(minute=0, second=0, microsecond=0)
+            from backend.data.models import WeatherData
+            latest_ob = db.query(WeatherData).order_by(WeatherData.timestamp_utc.desc()).first()
+            if latest_ob and latest_ob.timestamp_utc:
+                target_time = (latest_ob.timestamp_utc + timedelta(hours=3)).replace(minute=0, second=0, microsecond=0)
+            else:
+                target_time = (datetime.utcnow() + timedelta(hours=3)).replace(minute=0, second=0, microsecond=0)
             unified_record = db.query(ModelsForecast).filter(ModelsForecast.target_time_utc == target_time).first()
             if not unified_record:
                 unified_record = ModelsForecast(target_time_utc=target_time)

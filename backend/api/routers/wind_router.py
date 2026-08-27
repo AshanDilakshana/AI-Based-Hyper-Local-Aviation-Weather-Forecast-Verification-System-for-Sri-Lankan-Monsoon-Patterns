@@ -128,7 +128,7 @@ def get_alert_status(crosswind: float, timeframe_str: str):
 
 
 from backend.data.database import SessionLocal
-from backend.data.models import WeatherData, PredictionRecord
+from backend.data.models import WeatherData, ModelsForecast
 import sys
 import datetime
 
@@ -198,18 +198,14 @@ def predict_wind_1h(request: WindPredictionRequest):
     
     db = SessionLocal()
     try:
-        new_record = PredictionRecord(
-            forecast_type='1H',
-            target_year=dt_target.year,
-            target_month=dt_target.month,
-            target_date=dt_target.day,
-            target_time_utc=dt_target.strftime("%H%M"),
-            predicted_wind_speed_kts=predicted_wind_speed,
-            headwind_kts=headwind,
-            crosswind_kts=crosswind,
-            status=status
-        )
-        db.add(new_record)
+        unified_dt_target = dt_target.replace(minute=0, second=0, microsecond=0)
+        unified_record = db.query(ModelsForecast).filter(ModelsForecast.target_time_utc == unified_dt_target).first()
+        if not unified_record:
+            unified_record = ModelsForecast(target_time_utc=unified_dt_target)
+            db.add(unified_record)
+            
+        unified_record.wind_speed_kts = predicted_wind_speed
+        unified_record.wind_dir = current_wind_dir
         db.commit()
     except Exception as e:
         print(f"Failed to save prediction record: {e}")
@@ -257,18 +253,14 @@ def predict_wind_3h(request: WindPredictionRequest):
     
     db = SessionLocal()
     try:
-        new_record = PredictionRecord(
-            forecast_type='3H',
-            target_year=dt_target.year,
-            target_month=dt_target.month,
-            target_date=dt_target.day,
-            target_time_utc=dt_target.strftime("%H%M"),
-            predicted_wind_speed_kts=predicted_wind_speed,
-            headwind_kts=headwind,
-            crosswind_kts=crosswind,
-            status=status
-        )
-        db.add(new_record)
+        unified_dt_target = dt_target.replace(minute=0, second=0, microsecond=0)
+        unified_record = db.query(ModelsForecast).filter(ModelsForecast.target_time_utc == unified_dt_target).first()
+        if not unified_record:
+            unified_record = ModelsForecast(target_time_utc=unified_dt_target)
+            db.add(unified_record)
+            
+        unified_record.wind_speed_kts = predicted_wind_speed
+        unified_record.wind_dir = current_wind_dir
         db.commit()
     except Exception as e:
         print(f"Failed to save prediction record: {e}")
@@ -312,18 +304,14 @@ def predict_wind_tft_3h(request: WindPredictionRequest):
     try:
         df_window = get_historical_dataframe(db)
         dt_target = calculate_target_datetime(df_window, forecast_hours=3)
-        new_record = PredictionRecord(
-            forecast_type='TFT_3H',
-            target_year=dt_target.year,
-            target_month=dt_target.month,
-            target_date=dt_target.day,
-            target_time_utc=dt_target.strftime("%H%M"),
-            predicted_wind_speed_kts=predicted_wind_speed,
-            headwind_kts=headwind,
-            crosswind_kts=crosswind,
-            status=status
-        )
-        db.add(new_record)
+        unified_dt_target = dt_target.replace(minute=0, second=0, microsecond=0)
+        unified_record = db.query(ModelsForecast).filter(ModelsForecast.target_time_utc == unified_dt_target).first()
+        if not unified_record:
+            unified_record = ModelsForecast(target_time_utc=unified_dt_target)
+            db.add(unified_record)
+            
+        unified_record.wind_speed_kts = predicted_wind_speed
+        unified_record.wind_dir = current_wind_dir
         db.commit()
     except Exception as e:
         print(f"Failed to save prediction record: {e}")
@@ -385,21 +373,7 @@ def predict_wind_hybrid_3h(request: WindPredictionRequest):
     
     db = SessionLocal()
     try:
-        new_record = PredictionRecord(
-            forecast_type='HYBRID_3H',
-            target_year=dt_target.year,
-            target_month=dt_target.month,
-            target_date=dt_target.day,
-            target_time_utc=dt_target.strftime("%H%M"),
-            predicted_wind_speed_kts=predicted_wind_speed,
-            headwind_kts=headwind,
-            crosswind_kts=crosswind,
-            status=status
-        )
-        db.add(new_record)
-        
-        from backend.data.models import ModelsForecast
-        unified_dt_target = (datetime.datetime.utcnow() + datetime.timedelta(hours=3)).replace(minute=0, second=0, microsecond=0)
+        unified_dt_target = dt_target.replace(minute=0, second=0, microsecond=0)
         unified_record = db.query(ModelsForecast).filter(ModelsForecast.target_time_utc == unified_dt_target).first()
         if not unified_record:
             unified_record = ModelsForecast(target_time_utc=unified_dt_target)

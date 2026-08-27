@@ -24,7 +24,7 @@ import sys
 sys.path.append(BASE_DIR)
 
 from backend.data.database import get_db
-from backend.data.models import TempPressurePredictionRecord, WeatherData
+from backend.data.models import WeatherData
 
 router = APIRouter(prefix="/predict", tags=["Temperature & Pressure Forecast"])
 
@@ -192,23 +192,7 @@ def run_active_prediction(db: Session = Depends(get_db)):
         
         # The latest record we just predicted from
         latest_record = db.query(WeatherData).order_by(WeatherData.timestamp_utc.desc()).first()
-        
-        target_time = datetime.utcnow() + timedelta(hours=3)
-        
-        record = TempPressurePredictionRecord(
-            created_at=datetime.utcnow(),
-            forecast_type="3H",
-            target_year=target_time.year,
-            target_month=target_time.month,
-            target_date=target_time.day,
-            target_time_utc=target_time.strftime("%H%M"),
-            predicted_temperature_c=predicted_temp,
-            predicted_pressure_hpa=predicted_press,
-            status="SAFE"
-        )
-        
-        db.add(record)
-        target_time = (datetime.utcnow() + timedelta(hours=3)).replace(minute=0, second=0, microsecond=0)
+        target_time = (latest_record.timestamp_utc + timedelta(hours=3)).replace(minute=0, second=0, microsecond=0) if latest_record.timestamp_utc else (datetime.utcnow() + timedelta(hours=3)).replace(minute=0, second=0, microsecond=0)
         from backend.data.models import ModelsForecast
         unified_record = db.query(ModelsForecast).filter(ModelsForecast.target_time_utc == target_time).first()
         if not unified_record:
@@ -219,10 +203,8 @@ def run_active_prediction(db: Session = Depends(get_db)):
         unified_record.pressure_hpa = predicted_press
         
         db.commit()
-        db.refresh(record)
         
         return {
-            "id": record.id,
             "forecast_report_time": target_time.isoformat(),
             "predicted_temperature": round(predicted_temp, 2),
             "predicted_pressure": round(predicted_press, 2),
@@ -286,23 +268,8 @@ def predict_temperature_pressure(request: TempPressPredictionRequest, db: Sessio
         classification = classify_vcbi_density_altitude(da)
         impact = get_aviation_performance_impact(classification)
         
-        target_time = datetime.utcnow() + timedelta(hours=3)
-        created_at_utc = datetime.utcnow()
-        sl_tz_offset = timedelta(hours=5, minutes=30)
-        
-        record = TempPressurePredictionRecord(
-            created_at=created_at_utc,
-            forecast_type="3H_MANUAL",
-            target_year=target_time.year,
-            target_month=target_time.month,
-            target_date=target_time.day,
-            target_time_utc=target_time.strftime("%H%M"),
-            predicted_temperature_c=predicted_temp,
-            predicted_pressure_hpa=predicted_press,
-            status="SAFE"
-        )
-        db.add(record)
-        target_time = (datetime.utcnow() + timedelta(hours=3)).replace(minute=0, second=0, microsecond=0)
+        latest_record = db.query(WeatherData).order_by(WeatherData.timestamp_utc.desc()).first()
+        target_time = (latest_record.timestamp_utc + timedelta(hours=3)).replace(minute=0, second=0, microsecond=0) if latest_record and latest_record.timestamp_utc else (datetime.utcnow() + timedelta(hours=3)).replace(minute=0, second=0, microsecond=0)
         from backend.data.models import ModelsForecast
         unified_record = db.query(ModelsForecast).filter(ModelsForecast.target_time_utc == target_time).first()
         if not unified_record:
@@ -440,19 +407,6 @@ def predict_live_weather(db: Session = Depends(get_db)):
         target_time = datetime.utcnow() + timedelta(hours=3)
         created_at_utc = datetime.utcnow()
         sl_tz_offset = timedelta(hours=5, minutes=30)
-        
-        record = TempPressurePredictionRecord(
-            created_at=created_at_utc,
-            forecast_type="3H_LIVE",
-            target_year=target_time.year,
-            target_month=target_time.month,
-            target_date=target_time.day,
-            target_time_utc=target_time.strftime("%H%M"),
-            predicted_temperature_c=predicted_temp,
-            predicted_pressure_hpa=predicted_press,
-            status="SAFE"
-        )
-        db.add(record)
         target_time = (datetime.utcnow() + timedelta(hours=3)).replace(minute=0, second=0, microsecond=0)
         from backend.data.models import ModelsForecast
         unified_record = db.query(ModelsForecast).filter(ModelsForecast.target_time_utc == target_time).first()
