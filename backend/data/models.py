@@ -50,5 +50,6 @@ class ModelsForecast(Base):
     visibility = Column(Float, nullable=True)
     clouds = Column(String, nullable=True)
     dew_point_c = Column(Float, nullable=True)
+    rh_percent = Column(Float, nullable=True)
     qnh_hpa = Column(Float, nullable=True)
 
