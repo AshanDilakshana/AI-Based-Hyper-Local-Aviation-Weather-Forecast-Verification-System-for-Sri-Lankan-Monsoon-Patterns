@@ -7,7 +7,7 @@ import numpy as np
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
 
 from backend.data.database import SessionLocal
-from backend.data.models import WeatherData, TempPressurePredictionRecord
+from backend.data.models import WeatherData, ModelsForecast
 from backend.api.routers.temperature_pressure_router import (
     prepare_features_with_lags,
     prepare_lstm_sequence,
@@ -24,48 +24,6 @@ from backend.api.routers.temperature_pressure_router import (
     load_Temp_Press_models
 )
 
-def verify_past_temp_pressure_predictions():
-    """
-    Checks all unverified prediction records in temp_pressure_prediction_records,
-    finds the corresponding actual observation in weather_data for the target time,
-    calculates temperature and pressure errors, and updates the record.
-    """
-    db = SessionLocal()
-    verified_count = 0
-    try:
-        unverified_records = db.query(TempPressurePredictionRecord).filter(
-            TempPressurePredictionRecord.is_verified == 0
-        ).all()
-
-        for rec in unverified_records:
-            # Find the actual observation matching target date and HOUR (since minutes won't match exactly)
-            target_hour = rec.target_time_utc[:2] if rec.target_time_utc else "00"
-            actual = db.query(WeatherData).filter(
-                WeatherData.year == rec.target_year,
-                WeatherData.month == rec.target_month,
-                WeatherData.date == rec.target_date,
-                WeatherData.time_utc.like(f"{target_hour}%")
-            ).first()
-
-            if actual and actual.dry_temp_c is not None and actual.qnh_hpa is not None:
-                rec.actual_temperature_c = float(actual.dry_temp_c)
-                rec.actual_pressure_hpa = float(actual.qnh_hpa)
-                if rec.predicted_temperature_c is not None:
-                    rec.temperature_error = round(abs(rec.predicted_temperature_c - actual.dry_temp_c), 2)
-                if rec.predicted_pressure_hpa is not None:
-                    rec.pressure_error = round(abs(rec.predicted_pressure_hpa - actual.qnh_hpa), 2)
-                rec.is_verified = 1
-                verified_count += 1
-
-        db.commit()
-        if verified_count > 0:
-            print(f"[{datetime.now()}] SUCCESS: Verified {verified_count} past prediction records.")
-    except Exception as e:
-        print(f"[{datetime.now()}] Error during prediction verification: {e}")
-        db.rollback()
-    finally:
-        db.close()
-    return verified_count
 
 def run_auto_prediction_and_save():
     """
@@ -117,37 +75,19 @@ def run_auto_prediction_and_save():
         except Exception as e:
             pass
 
-        target_time = datetime.utcnow() + timedelta(hours=3)
-        created_at_utc = datetime.utcnow()
-
-        # Thermodynamic Hazard Precursor Logic
-        current_temp = float(df['dry_temp_c'].iloc[0])
-        temp_roc_per_hr = (predicted_temp - current_temp) / 3.0
+        target_time = (datetime.utcnow() + timedelta(hours=3)).replace(minute=0, second=0, microsecond=0)
         
-        # VCBI 75th percentile pressure is ~1012.4, so 1012.0 is a solid "High" threshold.
-        # A drop of 1.0C over 3 hours (-0.33/hr) is significant given std dev of 1.87.
-        is_rapid_cooling = temp_roc_per_hr <= -0.33
-        is_high_stable_pressure = predicted_press >= 1012.0 and abs(predicted_press - current_pressure) <= 0.5
+        unified_record = db.query(ModelsForecast).filter(ModelsForecast.target_time_utc == target_time).first()
+        if not unified_record:
+            unified_record = ModelsForecast(target_time_utc=target_time)
+            db.add(unified_record)
+            
+        unified_record.temperature_c = round(predicted_temp, 2)
+        unified_record.pressure_hpa = round(predicted_press, 2)
         
-        status_val = "HAZARD: RADIATION FOG" if (is_rapid_cooling and is_high_stable_pressure) else "SAFE"
-
-        new_record = TempPressurePredictionRecord(
-            created_at=created_at_utc,
-            forecast_type="3H_AUTO",
-            target_year=target_time.year,
-            target_month=target_time.month,
-            target_date=target_time.day,
-            target_time_utc=target_time.strftime("%H%M"),
-            predicted_temperature_c=round(predicted_temp, 2),
-            predicted_pressure_hpa=round(predicted_press, 2),
-            status=status_val,
-            is_verified=0
-        )
-        db.add(new_record)
         db.commit()
-        db.refresh(new_record)
-        print(f"[{datetime.now()}] Automated forecast saved: Temp={new_record.predicted_temperature_c}C, Press={new_record.predicted_pressure_hpa}hPa (Target: {new_record.target_time_utc} UTC)")
-        return new_record
+        print(f"[{datetime.now()}] Automated forecast saved: Temp={unified_record.temperature_c}C, Press={unified_record.pressure_hpa}hPa (Target: {unified_record.target_time_utc} UTC)")
+        return True
     except Exception as e:
         print(f"[{datetime.now()}] Error during auto prediction: {e}")
         db.rollback()

@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from PIL import Image, ImageDraw, ImageFont
 
 from backend.data.database import get_db
-from backend.data.models import SystemLogs, VerifiedForecast
+from backend.data.models import SystemLogs, ModelsForecast
 
 # Reportlab imports
 from reportlab.lib.pagesizes import A4
@@ -99,7 +99,7 @@ def get_live_map(map_type: str, flight_level: str, area: str, forecast_hour: str
     except requests.exceptions.RequestException as e:
         raise HTTPException(status_code=400, detail="Network timeout while fetching forecast maps. Please retry.")
 
-def generate_briefing_pdf(filepath: str, req: FlightPlanRequest, duration_mins: int, arrival_time: datetime, forecasts: List[VerifiedForecast]):
+def generate_briefing_pdf(filepath: str, req: FlightPlanRequest, duration_mins: int, arrival_time: datetime, forecasts: List[ModelsForecast]):
     doc = SimpleDocTemplate(filepath, pagesize=A4,
                             rightMargin=30, leftMargin=30,
                             topMargin=30, bottomMargin=18)
@@ -140,15 +140,15 @@ def generate_briefing_pdf(filepath: str, req: FlightPlanRequest, duration_mins: 
     
     # Fill rows with forecast data
     for fc in forecasts:
-        utc_time = fc.target_time.strftime("%H%M")
-        slst_time = (fc.target_time + timedelta(hours=5, minutes=30)).strftime("%H%M")
+        utc_time = fc.target_time_utc.strftime("%H%M") if fc.target_time_utc else "-"
+        slst_time = (fc.target_time_utc + timedelta(hours=5, minutes=30)).strftime("%H%M") if fc.target_time_utc else "-"
         
         wind_str = "VRB05"
         if fc.wind_speed_kts is not None and fc.wind_dir is not None:
             wind_str = f"{int(fc.wind_dir):03d}/{int(fc.wind_speed_kts):02d}"
             
-        temp_str = f"{int(fc.dry_temp_c)}" if fc.dry_temp_c is not None else "-"
-        qnh_str = f"{int(fc.qnh_hpa)}" if fc.qnh_hpa is not None else "-"
+        temp_str = f"{int(fc.temperature_c)}" if fc.temperature_c is not None else "-"
+        qnh_str = f"{int(fc.pressure_hpa)}" if fc.pressure_hpa is not None else "-"
         remarks = fc.clouds if fc.clouds else "-"
         
         table_data.append([slst_time, utc_time, wind_str, temp_str, qnh_str, remarks])
@@ -258,19 +258,19 @@ def create_flight_plan(req: FlightPlanRequest, db: Session = Depends(get_db)):
         dep_dt = datetime.fromisoformat(req.departure_time)
         
         # 1. VERIFY FORECAST EXISTS FOR TIMEFRAME
-        # Find verified forecasts from departure time up to +3 hours for the table
+        # Find forecasts from departure time up to +3 hours for the table
         end_dt = dep_dt + timedelta(hours=3)
-        forecasts = db.query(VerifiedForecast).filter(
-            VerifiedForecast.target_time >= dep_dt,
-            VerifiedForecast.target_time <= end_dt
-        ).order_by(VerifiedForecast.target_time.asc()).all()
+        forecasts = db.query(ModelsForecast).filter(
+            ModelsForecast.target_time_utc >= dep_dt,
+            ModelsForecast.target_time_utc <= end_dt
+        ).order_by(ModelsForecast.target_time_utc.asc()).all()
         
         if not forecasts:
             # Check if there is ANY forecast on the same day as a fallback just in case, but strict checking is better
-            fallback = db.query(VerifiedForecast).filter(
-                VerifiedForecast.target_time >= dep_dt - timedelta(hours=6),
-                VerifiedForecast.target_time <= dep_dt + timedelta(hours=6)
-            ).order_by(VerifiedForecast.target_time.asc()).all()
+            fallback = db.query(ModelsForecast).filter(
+                ModelsForecast.target_time_utc >= dep_dt - timedelta(hours=6),
+                ModelsForecast.target_time_utc <= dep_dt + timedelta(hours=6)
+            ).order_by(ModelsForecast.target_time_utc.asc()).all()
             
             if not fallback:
                 raise HTTPException(

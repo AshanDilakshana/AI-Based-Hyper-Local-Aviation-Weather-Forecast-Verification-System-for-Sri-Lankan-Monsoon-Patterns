@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from datetime import datetime
 from backend.data.database import get_db
-from backend.data.models import WeatherData, PredictionRecord, VerifiedForecast, TempPressurePredictionRecord
+from backend.data.models import WeatherData, ModelsForecast
 
 router = APIRouter(prefix="/api", tags=["Dashboard API"])
 
@@ -35,8 +35,7 @@ def get_latest_forecast(db: Session = Depends(get_db)):
     """Fetch the latest prediction and the latest observation."""
     try:
         latest_ob = db.query(WeatherData).order_by(WeatherData.timestamp_utc.desc()).first()
-        latest_wind_pred = db.query(PredictionRecord).order_by(PredictionRecord.created_at.desc()).first()
-        latest_temp_pred = db.query(TempPressurePredictionRecord).order_by(TempPressurePredictionRecord.created_at.desc()).first()
+        latest_pred = db.query(ModelsForecast).order_by(ModelsForecast.created_at.desc()).first()
         
         response = {}
         
@@ -51,27 +50,14 @@ def get_latest_forecast(db: Session = Depends(get_db)):
                 "visibility": latest_ob.visibility if latest_ob.visibility is not None else 0,
             }
             
-        if latest_temp_pred or latest_wind_pred:
-            # We prioritize temp_pred time if available
-            pred_record = latest_temp_pred if latest_temp_pred else latest_wind_pred
-            
-            try:
-                target_dt = datetime(
-                    pred_record.target_year, 
-                    pred_record.target_month, 
-                    pred_record.target_date, 
-                    int(pred_record.target_time_utc[:2]), 
-                    int(pred_record.target_time_utc[2:])
-                )
-                forecast_time_iso = target_dt.isoformat()
-            except:
-                forecast_time_iso = pred_record.created_at.isoformat() if pred_record.created_at else ""
+        if latest_pred:
+            forecast_time_iso = latest_pred.target_time_utc.isoformat() if latest_pred.target_time_utc else ""
                 
             response["prediction"] = {
-                "predicted_temperature": latest_temp_pred.predicted_temperature_c if latest_temp_pred and latest_temp_pred.predicted_temperature_c is not None else 0,
-                "predicted_pressure": latest_temp_pred.predicted_pressure_hpa if latest_temp_pred and latest_temp_pred.predicted_pressure_hpa is not None else 0,
+                "predicted_temperature": latest_pred.temperature_c if latest_pred.temperature_c is not None else 0,
+                "predicted_pressure": latest_pred.pressure_hpa if latest_pred.pressure_hpa is not None else 0,
                 "forecast_report_time": forecast_time_iso,
-                "input_report_time": pred_record.created_at.isoformat() if pred_record.created_at else ""
+                "input_report_time": latest_pred.created_at.isoformat() if latest_pred.created_at else ""
             }
             
         return response
@@ -80,60 +66,40 @@ def get_latest_forecast(db: Session = Depends(get_db)):
 
 @router.get("/verification-history")
 def get_verification_history(db: Session = Depends(get_db)):
-    """Fetch the verification history by joining predictions and actuals."""
+    """Fetch the verification history by matching ModelsForecast with WeatherData dynamically."""
     try:
-        # Check if we have data in the VerifiedForecast table
-        verified = db.query(VerifiedForecast).order_by(VerifiedForecast.target_time.desc()).limit(20).all()
-        
-        # In a fully fleshed out system, this table is populated by a background cron job.
-        # If it's empty, we can just return a simulated history or match on the fly for demonstration.
-        
         results = []
-        for v in verified:
-            # Assuming we need to mock or calculate the prediction vs actual here since 
-            # VerifiedForecast mostly contains actuals, wait, let's look at models.py...
-            # Actually, VerifiedForecast in models.py only has actual metrics:
-            # dry_temp_c, wind_speed_kts, etc. and target_time.
-            # We would need to join PredictionRecord to get the predicted values.
-            pass
-            
-        # Let's dynamically match predictions with observations that occurred at the target time
-        # Fetch Imash's predictions
-        predictions = db.query(TempPressurePredictionRecord).order_by(TempPressurePredictionRecord.created_at.desc()).limit(20).all()
+        # Fetch latest forecasts
+        predictions = db.query(ModelsForecast).order_by(ModelsForecast.created_at.desc()).limit(20).all()
         
         for p in predictions:
-            try:
-                target_dt = datetime(
-                    p.target_year, p.target_month, p.target_date, 
-                    int(p.target_time_utc[:2]), int(p.target_time_utc[2:])
-                )
-                
-                # Find the actual observation closest to this target time
-                actual = db.query(WeatherData).filter(
-                    WeatherData.year == p.target_year,
-                    WeatherData.month == p.target_month,
-                    WeatherData.date == p.target_date,
-                    WeatherData.time_utc == p.target_time_utc
-                ).first()
-                
-                if actual and actual.dry_temp_c is not None and actual.qnh_hpa is not None:
-                    # We have a match!
-                    t_err = abs((p.predicted_temperature_c or 0) - actual.dry_temp_c)
-                    p_err = abs((p.predicted_pressure_hpa or 0) - actual.qnh_hpa)
-                    
-                    results.append({
-                        "forecast_report_time": target_dt.isoformat(),
-                        "predicted_temperature": p.predicted_temperature_c or 0,
-                        "actual_temperature": actual.dry_temp_c,
-                        "temp_error": t_err,
-                        "temp_status": "MATCH" if t_err < 1.0 else "MISMATCH",
-                        "predicted_pressure": p.predicted_pressure_hpa or 0,
-                        "actual_pressure": actual.qnh_hpa,
-                        "pressure_error": p_err,
-                        "pressure_status": "MATCH" if p_err < 2.0 else "MISMATCH"
-                    })
-            except:
+            if not p.target_time_utc:
                 continue
+                
+            # Find the actual observation matching this target time
+            actual = db.query(WeatherData).filter(
+                WeatherData.year == p.target_time_utc.year,
+                WeatherData.month == p.target_time_utc.month,
+                WeatherData.date == p.target_time_utc.day,
+                # Format time_utc as HHMM for matching SQLite string
+                WeatherData.time_utc == p.target_time_utc.strftime("%H%M")
+            ).first()
+            
+            if actual and actual.dry_temp_c is not None and actual.qnh_hpa is not None:
+                t_err = abs((p.temperature_c or 0) - actual.dry_temp_c)
+                p_err = abs((p.pressure_hpa or 0) - actual.qnh_hpa)
+                
+                results.append({
+                    "forecast_report_time": p.target_time_utc.isoformat(),
+                    "predicted_temperature": p.temperature_c or 0,
+                    "actual_temperature": actual.dry_temp_c,
+                    "temp_error": round(t_err, 2),
+                    "temp_status": "MATCH" if t_err < 1.0 else "MISMATCH",
+                    "predicted_pressure": p.pressure_hpa or 0,
+                    "actual_pressure": actual.qnh_hpa,
+                    "pressure_error": round(p_err, 2),
+                    "pressure_status": "MATCH" if p_err < 2.0 else "MISMATCH"
+                })
                 
         return results
     except Exception as e:
@@ -144,7 +110,7 @@ def get_thermodynamic_hazard_alert(db: Session = Depends(get_db)):
     """Check for Radiation Fog Precursors based on Temperature & Pressure coupled anomalies."""
     try:
         latest_ob = db.query(WeatherData).order_by(WeatherData.timestamp_utc.desc()).first()
-        latest_pred = db.query(TempPressurePredictionRecord).order_by(TempPressurePredictionRecord.created_at.desc()).first()
+        latest_pred = db.query(ModelsForecast).order_by(ModelsForecast.created_at.desc()).first()
         
         if not latest_ob or not latest_pred:
             return {"status": "NO_DATA", "message": "Insufficient data to calculate hazard."}
@@ -152,8 +118,8 @@ def get_thermodynamic_hazard_alert(db: Session = Depends(get_db)):
         current_temp = float(latest_ob.dry_temp_c) if latest_ob.dry_temp_c is not None else 0
         current_press = float(latest_ob.qnh_hpa) if latest_ob.qnh_hpa is not None else 0
         
-        pred_temp = float(latest_pred.predicted_temperature_c) if latest_pred.predicted_temperature_c is not None else 0
-        pred_press = float(latest_pred.predicted_pressure_hpa) if latest_pred.predicted_pressure_hpa is not None else 0
+        pred_temp = float(latest_pred.temperature_c) if latest_pred.temperature_c is not None else 0
+        pred_press = float(latest_pred.pressure_hpa) if latest_pred.pressure_hpa is not None else 0
         
         # Calculate Rate of Change (over 3 hours)
         temp_drop = pred_temp - current_temp
@@ -167,7 +133,7 @@ def get_thermodynamic_hazard_alert(db: Session = Depends(get_db)):
         
         return {
             "alert_title": "SYSTEM VERIFICATION ALERT: THERMODYNAMIC ANOMALY DETECTED",
-            "target_period": f"+3 Hours ({latest_pred.target_time_utc} UTC)",
+            "target_period": f"+3 Hours ({latest_pred.target_time_utc.strftime('%H%M')} UTC)" if latest_pred.target_time_utc else "+3 Hours",
             "monsoon_profile": "Northeast Monsoon Regime",
             "detected_trigger": {
                 "temperature_trend": f"Rapid Cooling detected ({temp_roc_per_hr}°C / hr)",
