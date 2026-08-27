@@ -92,18 +92,25 @@ export function WeatherForecasting() {
     if (!liveData) return;
     setGenerating(true);
     
+    // We send an empty body if the backend doesn't strictly need it, 
+    // or we can pass a payload if required by the new unified endpoint.
+    // The unified endpoint `ai-predict-all` usually pulls the latest from DB,
+    // but we can pass the payload just in case.
     const payload = {
       temperature: liveData.dry_temp_c || 28,
       dew_point: liveData.dew_point_c || 24,
       humidity: liveData.rh_percent || 80,
+      wind_speed: liveData.wind_speed_kts || 10,
       wind_dir: liveData.wind_dir || 200,
-      runway_heading: 40,
+      visibility: liveData.visibility || 9999,
       time_utc: liveData.time_utc,
-      qnh_hpa: liveData.qnh_hpa
+      qnh_hpa: liveData.qnh_hpa || 1010
     };
 
     try {
-      const res = await axios.post(`${API_BASE}/wind/predict/hybrid_3h`, payload);
+      // The unified endpoint pulls the latest data directly from the DB,
+      // so it is a GET request and does not need a payload body.
+      const res = await axios.get(`${API_BASE}/forecasts/ai-predict-all`);
       setForecastData(res.data);
     } catch (err) {
       console.error("Error fetching forecast:", err);
@@ -124,12 +131,12 @@ export function WeatherForecasting() {
 
   // Mapped Forecast Metrics (For the Generate 3H section)
   const mappedForecastMetrics = [
-    { label: 'Temperature', value: '--', unit: '°C', tone: 'amber' as const },
-    { label: 'Wind speed', value: forecastData ? `${forecastData.predicted_wind_speed_kts}` : '--', unit: 'kt', tone: 'emerald' as const },
-    { label: 'Humidity', value: '--', unit: '% RH', tone: 'cyan' as const },
-    { label: 'Cloud base', value: '--', unit: '', tone: 'slate' as const },
-    { label: 'Visibility', value: '--', unit: 'm', tone: 'green' as const },
-    { label: 'Pressure', value: '--', unit: 'hPa', tone: 'sky' as const }
+    { label: 'Temperature', value: forecastData?.temperature_pressure_forecast?.prediction?.temperature_C ? `${forecastData.temperature_pressure_forecast.prediction.temperature_C}` : '--', unit: '°C', tone: 'amber' as const },
+    { label: 'Wind speed', value: forecastData?.wind_forecast?.predicted_wind_speed_kts ? `${forecastData.wind_forecast.predicted_wind_speed_kts}` : '--', unit: 'kt', tone: 'emerald' as const },
+    { label: 'Humidity', value: forecastData?.qnh_dewpoint_forecast?.derived_rh_3h ? `${forecastData.qnh_dewpoint_forecast.derived_rh_3h}` : '--', unit: '% RH', tone: 'cyan' as const },
+    { label: 'Cloud base', value: forecastData?.cloud_visibility_forecast?.cloud_status ? forecastData.cloud_visibility_forecast.cloud_status.replace('_', ' ') : '--', unit: '', tone: 'slate' as const },
+    { label: 'Visibility', value: forecastData?.cloud_visibility_forecast?.visibility_prediction ? `${forecastData.cloud_visibility_forecast.visibility_prediction}` : '--', unit: 'm', tone: 'green' as const },
+    { label: 'Pressure', value: forecastData?.qnh_dewpoint_forecast?.predicted_qnh_3h ? `${forecastData.qnh_dewpoint_forecast.predicted_qnh_3h}` : (forecastData?.temperature_pressure_forecast?.prediction?.pressure_hPa ? `${forecastData.temperature_pressure_forecast.prediction.pressure_hPa}` : '--'), unit: 'hPa', tone: 'sky' as const }
   ];
 
   // Mapped Verified Metrics (For Last Forecast Details section)
@@ -215,10 +222,10 @@ export function WeatherForecasting() {
               Headwind
             </h3>
             <p className="mt-2 flex items-baseline gap-1.5">
-              <span className="text-2xl font-bold leading-8 text-white">{forecastData ? forecastData.headwind_kts : '--'}</span>
+              <span className="text-2xl font-bold leading-8 text-white">{forecastData?.wind_forecast?.headwind_kts !== undefined ? forecastData.wind_forecast.headwind_kts : '--'}</span>
               <span className="text-xs text-slate-500">kt</span>
             </p>
-            <p className="mt-3 text-[11px] text-slate-500">{forecastData?.runway ? forecastData.runway : 'Runway: --'}</p>
+            <p className="mt-3 text-[11px] text-slate-500">{forecastData?.wind_forecast?.runway ? forecastData.wind_forecast.runway : 'Runway: --'}</p>
           </article>
           <article className="rounded-xl border border-line bg-panel p-4">
             <h3 className="flex items-center gap-2 text-xs text-slate-400">
@@ -226,7 +233,7 @@ export function WeatherForecasting() {
               Crosswind
             </h3>
             <p className="mt-2 flex items-baseline gap-1.5">
-              <span className="text-2xl font-bold leading-8 text-white">{forecastData ? forecastData.crosswind_kts : '--'}</span>
+              <span className="text-2xl font-bold leading-8 text-white">{forecastData?.wind_forecast?.crosswind_kts !== undefined ? forecastData.wind_forecast.crosswind_kts : '--'}</span>
               <span className="text-xs text-slate-500">kt</span>
             </p>
           </article>
@@ -239,7 +246,7 @@ export function WeatherForecasting() {
       <section className="flex flex-col gap-4">
         <h2 className="text-xl font-bold tracking-tight text-white" id="agent-verification-section">Agent verification</h2>
         <div className="rounded-xl border border-line bg-panel p-5 sm:p-6">
-          <VerificationForm onSaveSuccess={() => { fetchLastVerified(); setEditData(null); }} editData={editData} />
+          <VerificationForm onSaveSuccess={() => { fetchLastVerified(); setEditData(null); }} editData={editData} prefillData={forecastData} />
         </div>
       </section>
 
