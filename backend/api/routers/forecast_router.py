@@ -12,8 +12,6 @@ router = APIRouter(
     tags=["forecasts"],
 )
 
-
-
 from backend.api.schemas import WindPredictionRequest
 from backend.data.models import WeatherData
 
@@ -107,3 +105,60 @@ def get_all_ai_predictions(db: Session = Depends(get_db)):
         "qnh_dewpoint_forecast": qnh_dewpoint_prediction,
     }
 
+
+from backend.api.schemas import VerifiedForecastRequest
+from backend.data.models import VerifiedForecast
+
+@router.post("/verify")
+def create_verified_forecast(req: VerifiedForecastRequest, db: Session = Depends(get_db)):
+    # Parse times
+    target_dt = datetime.fromisoformat(req.target_time.replace("Z", "+00:00")).replace(tzinfo=None)
+    created_dt = datetime.fromisoformat(req.created_at.replace("Z", "+00:00")).replace(tzinfo=None)
+    
+    vf = VerifiedForecast(
+        target_time=target_dt,
+        created_at=created_dt,
+        dry_temp_c=req.dry_temp_c,
+        wind_speed_kts=req.wind_speed_kts,
+        wind_dir=req.wind_dir,
+        rh_percent=req.rh_percent,
+        clouds=req.clouds,
+        visibility=req.visibility,
+        qnh_hpa=req.qnh_hpa,
+        headwind_kts=req.headwind_kts,
+        crosswind_kts=req.crosswind_kts
+    )
+    db.add(vf)
+    db.commit()
+    db.refresh(vf)
+    return {"message": "Verified forecast saved", "id": vf.id}
+
+
+@router.put("/verify/{id}")
+def update_verified_forecast(id: int, req: VerifiedForecastRequest, db: Session = Depends(get_db)):
+    vf = db.query(VerifiedForecast).filter(VerifiedForecast.id == id).first()
+    if not vf:
+        raise HTTPException(status_code=404, detail="Not found")
+    
+    vf.target_time = datetime.fromisoformat(req.target_time.replace("Z", "+00:00")).replace(tzinfo=None)
+    vf.created_at = datetime.fromisoformat(req.created_at.replace("Z", "+00:00")).replace(tzinfo=None)
+    vf.dry_temp_c = req.dry_temp_c
+    vf.wind_speed_kts = req.wind_speed_kts
+    vf.wind_dir = req.wind_dir
+    vf.rh_percent = req.rh_percent
+    vf.clouds = req.clouds
+    vf.visibility = req.visibility
+    vf.qnh_hpa = req.qnh_hpa
+    vf.headwind_kts = req.headwind_kts
+    vf.crosswind_kts = req.crosswind_kts
+    
+    db.commit()
+    return {"message": "Verified forecast updated"}
+
+
+@router.get("/verified/latest")
+def get_latest_verified_forecast(db: Session = Depends(get_db)):
+    vf = db.query(VerifiedForecast).order_by(VerifiedForecast.id.desc()).first()
+    if not vf:
+        raise HTTPException(status_code=404, detail="No verified forecasts found")
+    return vf

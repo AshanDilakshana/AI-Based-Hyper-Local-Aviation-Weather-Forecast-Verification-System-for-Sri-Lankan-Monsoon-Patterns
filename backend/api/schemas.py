@@ -44,3 +44,15 @@ class CloudVisibilityResponse(BaseModel):
     visibility_prediction: int = Field(..., description="Predicted visibility in meters")
     cloud_status: str = Field(..., description="Predicted cloud status/coverage string")
 
+class VerifiedForecastRequest(BaseModel):
+    target_time: str
+    created_at: str
+    dry_temp_c: float
+    wind_speed_kts: float
+    wind_dir: float
+    rh_percent: float
+    clouds: str
+    visibility: float
+    qnh_hpa: float
+    headwind_kts: float
+    crosswind_kts: float

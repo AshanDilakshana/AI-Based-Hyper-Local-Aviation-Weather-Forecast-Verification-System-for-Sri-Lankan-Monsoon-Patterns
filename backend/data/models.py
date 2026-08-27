@@ -53,3 +53,19 @@ class ModelsForecast(Base):
     rh_percent = Column(Float, nullable=True)
     qnh_hpa = Column(Float, nullable=True)
 
+class VerifiedForecast(Base):
+    __tablename__ = "Verified_Forcast"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    target_time = Column(DateTime, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    dry_temp_c = Column(Float, nullable=True)
+    wind_speed_kts = Column(Float, nullable=True)
+    wind_dir = Column(Float, nullable=True)
+    rh_percent = Column(Float, nullable=True)
+    clouds = Column(String, nullable=True)
+    visibility = Column(Float, nullable=True)
+    qnh_hpa = Column(Float, nullable=True)
+    headwind_kts = Column(Float, nullable=True)
+    crosswind_kts = Column(Float, nullable=True)
