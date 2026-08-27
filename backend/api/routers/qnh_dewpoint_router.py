@@ -117,29 +117,13 @@ def predict_qnh_dewpoint_3h():
         pred_qnh = qnh_3h_model.predict(input_qnh_df)[0]
         pred_dewpoint = dewpoint_3h_model.predict(input_dew_df)[0]
         
-        # -------------------------------------------------------------
-        # TODO: TEMPERATURE INTEGRATION (FRIEND'S MODEL)
-        # -------------------------------------------------------------
-        # Currently, the future temperature (T) is needed for the RH calculation.
-        # Since the Temperature model is pending integration, we use the 
-        # current live temperature (dry_temp_c) as a temporary placeholder.
-        # Once connected, replace 'current_temp' with 'predicted_temp_3h'.
-        
-        current_temp = latest_dew_row['dry_temp_c'].values[0] if 'dry_temp_c' in latest_dew_row else pred_dewpoint + 5
-        # -------------------------------------------------------------
-        
-        # August-Roche-Magnus formula for derived RH
-        a = 17.67
-        b = 243.5
-        rh = 100 * math.exp((a * pred_dewpoint) / (b + pred_dewpoint) - (a * current_temp) / (b + current_temp))
-        rh = round(min(100, max(0, rh)), 2)
-        
         # =================================================
-        # SAVE TO UNIFIED FORECAST TABLE
+        # SAVE TO UNIFIED FORECAST TABLE & CALCULATE RH
         # =================================================
         from backend.data.database import SessionLocal
         from backend.data.models import ModelsForecast
         from datetime import datetime, timedelta
+        
         db = SessionLocal()
         try:
             from backend.data.models import WeatherData
@@ -148,13 +132,28 @@ def predict_qnh_dewpoint_3h():
                 target_time = (latest_ob.timestamp_utc + timedelta(hours=3)).replace(minute=0, second=0, microsecond=0)
             else:
                 target_time = (datetime.utcnow() + timedelta(hours=3)).replace(minute=0, second=0, microsecond=0)
+                
             unified_record = db.query(ModelsForecast).filter(ModelsForecast.target_time_utc == target_time).first()
+            
+            # Use predicted temperature if available, otherwise fallback to current
+            if unified_record and unified_record.temperature_c is not None:
+                calc_temp = unified_record.temperature_c
+            else:
+                calc_temp = latest_dew_row['dry_temp_c'].values[0] if 'dry_temp_c' in latest_dew_row else pred_dewpoint + 5
+                
+            # August-Roche-Magnus formula for derived RH
+            a = 17.67
+            b = 243.5
+            rh = 100 * math.exp((a * pred_dewpoint) / (b + pred_dewpoint) - (a * calc_temp) / (b + calc_temp))
+            rh = round(min(100, max(0, rh)), 2)
+        
             if not unified_record:
                 unified_record = ModelsForecast(target_time_utc=target_time)
                 db.add(unified_record)
                 
             unified_record.qnh_hpa = float(pred_qnh)
             unified_record.dew_point_c = float(pred_dewpoint)
+            unified_record.rh_percent = float(rh)
             db.add(unified_record)
             db.commit()
         except Exception as db_e:
