@@ -222,8 +222,13 @@ async def upload_csv_forecasts(file: UploadFile = File(...)):
         # Parse Wind
         wind_dir = 0.0
         wind_speed = 0.0
-        if wind_str:
-            match = re.search(r'(\d{3})(\d{2,3})', str(wind_str))
+        if wind_str and str(wind_str).strip() and str(wind_str).strip().lower() != 'nan':
+            # Handle float representation from pandas (e.g., '3015.0')
+            clean_wind = str(wind_str).split('.')[0].strip()
+            # Pad with leading zeros to make it at least 5 digits (e.g., '3015' -> '03015')
+            clean_wind = clean_wind.zfill(5)
+            
+            match = re.search(r'^(\d{3})(\d{2,3})$', clean_wind)
             if match:
                 wind_dir = float(match.group(1))
                 wind_speed = float(match.group(2))

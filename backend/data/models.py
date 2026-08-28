@@ -83,3 +83,19 @@ class User(Base):
     organisation = Column(String, nullable=True)
     station = Column(String, nullable=True)
     is_active = Column(Boolean, default=True)
+
+class RouteAlternatives(Base):
+    __tablename__ = "route_alternatives"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    region_name = Column(String, unique=True, index=True)
+    airports = Column(String) # Comma-separated list of ICAO codes
+
+class FlightTimeAndFlights(Base):
+    __tablename__ = "flight_time_and_flights"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    flight = Column(String, nullable=True) # e.g. UL604
+    departure_time_local = Column(String, nullable=True) # e.g. 00:25
+    destination = Column(String, index=True) # e.g. MEL
+    time_period_mins = Column(Integer) # Converted to total integer minutes
