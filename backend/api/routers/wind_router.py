@@ -218,6 +218,7 @@ def predict_wind_1h(request: WindPredictionRequest):
 
     return WindPredictionResponse(
         predicted_wind_speed_kts=round(predicted_wind_speed, 2),
+        wind_dir=current_wind_dir,
         headwind_kts=round(headwind, 2),
         crosswind_kts=round(crosswind, 2),
         runway=runway_name,
@@ -274,6 +275,7 @@ def predict_wind_3h(request: WindPredictionRequest):
 
     return WindPredictionResponse(
         predicted_wind_speed_kts=round(predicted_wind_speed, 2),
+        wind_dir=current_wind_dir,
         headwind_kts=round(headwind, 2),
         crosswind_kts=round(crosswind, 2),
         runway=runway_name,
@@ -326,6 +328,7 @@ def predict_wind_tft_3h(request: WindPredictionRequest):
 
     return WindPredictionResponse(
         predicted_wind_speed_kts=round(predicted_wind_speed, 2),
+        wind_dir=current_wind_dir,
         headwind_kts=round(headwind, 2),
         crosswind_kts=round(crosswind, 2),
         runway=runway_name,
@@ -397,6 +400,7 @@ def predict_wind_hybrid_3h(request: WindPredictionRequest):
 
     return WindPredictionResponse(
         predicted_wind_speed_kts=round(predicted_wind_speed, 2),
+        wind_dir=current_wind_dir,
         headwind_kts=round(headwind, 2),
         crosswind_kts=round(crosswind, 2),
         runway=runway_name,

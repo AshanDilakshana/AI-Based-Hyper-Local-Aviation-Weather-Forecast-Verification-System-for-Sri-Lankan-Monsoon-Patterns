@@ -22,6 +22,7 @@ class WindPredictionRequest(BaseModel):
 
 class WindPredictionResponse(BaseModel):
     predicted_wind_speed_kts: float
+    wind_dir: float
     headwind_kts: float
     crosswind_kts: float
     runway: str
