@@ -1,8 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, File, UploadFile
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime, timedelta
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
+import pandas as pd
+import io
+import re
 
 from backend.data.database import get_db
 from backend.data.models import SystemLogs
@@ -158,7 +161,136 @@ def update_verified_forecast(id: int, req: VerifiedForecastRequest, db: Session 
 
 @router.get("/verified/latest")
 def get_latest_verified_forecast(db: Session = Depends(get_db)):
-    vf = db.query(VerifiedForecast).order_by(VerifiedForecast.id.desc()).first()
-    if not vf:
+    record = db.query(VerifiedForecast).order_by(VerifiedForecast.target_time.desc()).first()
+    if not record:
         raise HTTPException(status_code=404, detail="No verified forecasts found")
-    return vf
+    return record
+
+@router.get("/recent-verified")
+def get_recent_verified_forecasts(limit: int = 12, db: Session = Depends(get_db)):
+    records = db.query(VerifiedForecast).order_by(VerifiedForecast.target_time.desc()).limit(limit).all()
+    return records
+
+@router.post("/upload-csv")
+async def upload_csv_forecasts(file: UploadFile = File(...)):
+    if not (file.filename.endswith(".csv") or file.filename.endswith(".xlsx") or file.filename.endswith(".xls")):
+        raise HTTPException(status_code=400, detail="Only CSV or Excel files are allowed.")
+    
+    contents = await file.read()
+    try:
+        if file.filename.endswith(".csv"):
+            df = pd.read_csv(io.BytesIO(contents))
+        else:
+            df = pd.read_excel(io.BytesIO(contents))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error reading file: {e}")
+    
+    # We expect columns roughly like:
+    # 'UTC', 'Wind (deg/kt)', 'Air Temp (deg C)', 'QNH (hPa)', 'Remarks'
+    # There might be a date somewhere, let's assume it's passed somehow or we use today's date if not in rows.
+    # The user said date is in the CSV. Let's look for a 'Date' column or assume target_time is full datetime.
+    
+    # Let's map it dynamically. 
+    parsed_records = []
+    
+    # Get base date from first row or current date if not available
+    # Wait, the user mentioned date is in the CSV. Let's assume there is a 'Date' column, 
+    # OR we just extract datetime. 
+    
+    now = datetime.utcnow()
+    base_date = now.date()
+    
+    for _, row in df.iterrows():
+        # Fallbacks to avoid key errors
+        def get_val(keys):
+            for k in keys:
+                if k in df.columns:
+                    val = row[k]
+                    return val if pd.notna(val) else None
+            return None
+        
+        utc_val = get_val(['UTC', 'Time (UTC)', 'Time', 'time'])
+        if utc_val is None:
+            continue
+            
+        wind_str = str(get_val(['Wind (deg/kt)', 'Wind', 'wind']) or "")
+        temp_val = get_val(['Air Temp (deg C)', 'Temp', 'temp'])
+        qnh_val = get_val(['QNH (hPa)', 'QNH', 'qnh'])
+        remarks_val = get_val(['Remarks', 'remarks'])
+        date_val = get_val(['Date', 'date'])
+        
+        # Parse Wind
+        wind_dir = 0.0
+        wind_speed = 0.0
+        if wind_str:
+            match = re.search(r'(\d{3})(\d{2,3})', str(wind_str))
+            if match:
+                wind_dir = float(match.group(1))
+                wind_speed = float(match.group(2))
+        
+        # Parse Date and Time
+        try:
+            if date_val:
+                dt_str = f"{date_val} {str(utc_val).zfill(4)}"
+                target_time = pd.to_datetime(dt_str, format="%Y-%m-%d %H%M", errors='coerce')
+                if pd.isna(target_time):
+                    target_time = pd.to_datetime(dt_str, errors='coerce')
+            else:
+                # Use today's date and the UTC time
+                time_str = str(int(utc_val)).zfill(4)
+                target_time = datetime.strptime(f"{base_date} {time_str}", "%Y-%m-%d %H%M")
+        except:
+            target_time = now # Fallback
+            
+        parsed_records.append({
+            "target_time": target_time.isoformat() if hasattr(target_time, 'isoformat') else str(target_time),
+            "dry_temp_c": float(temp_val) if temp_val is not None else None,
+            "qnh_hpa": float(qnh_val) if qnh_val is not None else None,
+            "wind_dir": wind_dir,
+            "wind_speed_kts": wind_speed,
+            "remarks": str(remarks_val) if remarks_val is not None else None,
+        })
+        
+    return {"records": parsed_records}
+
+from backend.api.schemas import VerifiedForecastBulkRequest
+@router.post("/bulk-verify")
+def bulk_verify_forecasts(req: VerifiedForecastBulkRequest, db: Session = Depends(get_db)):
+    for forecast in req.forecasts:
+        # Find if it already exists
+        existing = db.query(VerifiedForecast).filter(
+            VerifiedForecast.target_time == forecast.target_time
+        ).first()
+        
+        if existing:
+            # Update existing
+            if forecast.dry_temp_c is not None: existing.dry_temp_c = forecast.dry_temp_c
+            if forecast.wind_speed_kts is not None: existing.wind_speed_kts = forecast.wind_speed_kts
+            if forecast.wind_dir is not None: existing.wind_dir = forecast.wind_dir
+            if forecast.rh_percent is not None: existing.rh_percent = forecast.rh_percent
+            if forecast.clouds is not None: existing.clouds = forecast.clouds
+            if forecast.visibility is not None: existing.visibility = forecast.visibility
+            if forecast.qnh_hpa is not None: existing.qnh_hpa = forecast.qnh_hpa
+            if forecast.headwind_kts is not None: existing.headwind_kts = forecast.headwind_kts
+            if forecast.crosswind_kts is not None: existing.crosswind_kts = forecast.crosswind_kts
+            if hasattr(forecast, 'remarks') and forecast.remarks is not None: existing.remarks = forecast.remarks
+        else:
+            # Insert new
+            new_vf = VerifiedForecast(
+                target_time=forecast.target_time,
+                dry_temp_c=forecast.dry_temp_c,
+                wind_speed_kts=forecast.wind_speed_kts,
+                wind_dir=forecast.wind_dir,
+                rh_percent=forecast.rh_percent,
+                clouds=forecast.clouds,
+                visibility=forecast.visibility,
+                qnh_hpa=forecast.qnh_hpa,
+                headwind_kts=forecast.headwind_kts,
+                crosswind_kts=forecast.crosswind_kts,
+                remarks=getattr(forecast, 'remarks', None)
+            )
+            db.add(new_vf)
+            
+    db.commit()
+    return {"message": f"Successfully processed {len(req.forecasts)} verified forecasts."}
+

@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, List
 
 
 class TempPressPredictionRequest(BaseModel):
@@ -54,6 +54,10 @@ class VerifiedForecastRequest(BaseModel):
     rh_percent: float | None = None
     clouds: str | None = None
     visibility: float | None = None
-    qnh_hpa: float | None = None
-    headwind_kts: float | None = None
-    crosswind_kts: float | None = None
+    qnh_hpa: Optional[float] = None
+    headwind_kts: Optional[float] = None
+    crosswind_kts: Optional[float] = None
+    remarks: Optional[str] = None
+
+class VerifiedForecastBulkRequest(BaseModel):
+    forecasts: List[VerifiedForecastRequest]

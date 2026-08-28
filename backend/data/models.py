@@ -69,3 +69,4 @@ class VerifiedForecast(Base):
     qnh_hpa = Column(Float, nullable=True)
     headwind_kts = Column(Float, nullable=True)
     crosswind_kts = Column(Float, nullable=True)
+    remarks = Column(String, nullable=True)
