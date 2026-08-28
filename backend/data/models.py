@@ -98,4 +98,16 @@ class FlightTimeAndFlights(Base):
     flight = Column(String, nullable=True) # e.g. UL604
     departure_time_local = Column(String, nullable=True) # e.g. 00:25
     destination = Column(String, index=True) # e.g. MEL
-    time_period_mins = Column(Integer) # Converted to total integer minutes
+    time_period_mins = Column(Integer, nullable=True) # e.g. 580
+
+class PilotFlightPlan(Base):
+    __tablename__ = "piolet_flight_plane"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    pilot_reference = Column(String, index=True) # Pilot username/reference ID
+    flight_no = Column(String)
+    departure = Column(String)
+    destination = Column(String)
+    departure_time = Column(DateTime)
+    duration_mins = Column(Integer)
+    created_at = Column(DateTime, default=datetime.utcnow)

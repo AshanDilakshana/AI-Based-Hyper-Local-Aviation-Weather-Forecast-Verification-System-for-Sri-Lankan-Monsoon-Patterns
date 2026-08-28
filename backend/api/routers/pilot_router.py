@@ -6,11 +6,11 @@ import time
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 from sqlalchemy.orm import Session
 
 from backend.data.database import get_db
-from backend.data.models import SystemLogs, VerifiedForecast, RouteAlternatives, FlightTimeAndFlights
+from backend.data.models import SystemLogs, VerifiedForecast, RouteAlternatives, FlightTimeAndFlights, PilotFlightPlan
 
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
@@ -56,6 +56,9 @@ class FlightPlanRequest(BaseModel):
     area: str
     flight_levels: List[str]
     maps: List[str]
+    pilot_reference: Optional[str] = "guest"
+    flight_no: Optional[str] = ""
+    preview_only: bool = False
 
 
 
@@ -182,7 +185,7 @@ def generate_briefing_pdf(filepath: str, req: FlightPlanRequest, duration_mins: 
             pass
             
     # Flight details
-    flight_no = req.area.split('-')[0].strip() if '-' in req.area else '___'
+    flight_no = req.flight_no if req.flight_no else (req.area.split('-')[0].strip() if '-' in req.area else '___')
     flight_info = f"<b>Flight No. : &nbsp;&nbsp;&nbsp; <u><i>{flight_no}</i></u> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Route: {req.departure.upper()} - <u><i>{req.destination.upper()}</i></u></b>"
     elements.append(Paragraph(flight_info, ParagraphStyle(name='CenterLarge', alignment=1, fontSize=14, fontName='Helvetica-Bold')))
     elements.append(Spacer(1, 15))
@@ -508,11 +511,31 @@ def create_flight_plan(req: FlightPlanRequest, db: Session = Depends(get_db)):
         db.add(log_entry)
         db.commit()
         
+        # Save to PilotFlightPlan history ONLY if not previewing
+        if not req.preview_only:
+            try:
+                new_plan = PilotFlightPlan(
+                    pilot_reference=req.pilot_reference,
+                    flight_no=req.flight_no,
+                    departure=req.departure,
+                    destination=req.destination,
+                    departure_time=dep_dt,
+                    duration_mins=duration_mins
+                )
+                db.add(new_plan)
+                db.commit()
+                db.refresh(new_plan)
+            except Exception as e:
+                import traceback
+                error_trace = traceback.format_exc()
+                print(f"Error saving to PilotFlightPlan history: {e}")
+                with open("save_error.log", "w") as f:
+                    f.write(error_trace)
+                db.rollback()
+            
         return {
-            "success": True,
-            "document_url": f"http://localhost:8000/documents/{filename}",
-            "duration_mins": duration_mins,
-            "arrival_time": arrival_dt.isoformat()
+            "message": "Flight plan successfully generated",
+            "document_url": f"http://localhost:8000/documents/{filename}"
         }
     except HTTPException:
         raise
@@ -520,3 +543,73 @@ def create_flight_plan(req: FlightPlanRequest, db: Session = Depends(get_db)):
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/last-flight-plan")
+def get_last_flight_plan(pilot_reference: str, db: Session = Depends(get_db)):
+    plan = db.query(PilotFlightPlan).filter(PilotFlightPlan.pilot_reference == pilot_reference).order_by(PilotFlightPlan.created_at.desc()).first()
+    if plan:
+        return plan
+    return {}
+
+@router.get("/next-flight")
+def get_next_flight(db: Session = Depends(get_db)):
+    now_local = datetime.utcnow() + timedelta(hours=5, minutes=30)
+    current_hm = now_local.strftime("%H:%M")
+    
+    flights = db.query(FlightTimeAndFlights).filter(FlightTimeAndFlights.departure_time_local != None).all()
+    
+    upcoming_flights = []
+    for f in flights:
+        if f.departure_time_local and ":" in f.departure_time_local:
+            if f.departure_time_local >= current_hm:
+                upcoming_flights.append(f)
+                
+    if upcoming_flights:
+        upcoming_flights.sort(key=lambda x: x.departure_time_local)
+        next_flight = upcoming_flights[0]
+    else:
+        valid_flights = [f for f in flights if f.departure_time_local and ":" in f.departure_time_local]
+        if valid_flights:
+            valid_flights.sort(key=lambda x: x.departure_time_local)
+            next_flight = valid_flights[0]
+        else:
+            return {}
+            
+    return {
+        "flight_no": next_flight.flight,
+        "destination": next_flight.destination,
+        "departure_time_local": next_flight.departure_time_local,
+        "duration_mins": next_flight.time_period_mins
+    }
+
+@router.get("/flight-info")
+def get_flight_info_by_dest(destination: str, db: Session = Depends(get_db)):
+    if not destination or len(destination) < 3:
+        return {}
+        
+    dest_upper = destination.upper()
+    flight = db.query(FlightTimeAndFlights).filter(FlightTimeAndFlights.destination == dest_upper).first()
+    
+    if flight:
+        return {
+            "flight_no": flight.flight,
+            "departure_time_local": flight.departure_time_local,
+            "duration_mins": flight.time_period_mins
+        }
+    return {}
+
+@router.get("/flight-info-by-time")
+def get_flight_info_by_time(time_local: str, db: Session = Depends(get_db)):
+    if not time_local:
+        return {}
+        
+    flight = db.query(FlightTimeAndFlights).filter(FlightTimeAndFlights.departure_time_local == time_local).first()
+    
+    if flight:
+        return {
+            "flight_no": flight.flight,
+            "destination": flight.destination,
+            "departure_time_local": flight.departure_time_local,
+            "duration_mins": flight.time_period_mins
+        }
+    return {}
