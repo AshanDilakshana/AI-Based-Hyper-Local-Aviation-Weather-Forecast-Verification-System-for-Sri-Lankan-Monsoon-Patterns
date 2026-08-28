@@ -17,7 +17,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'
 
 
 
-from backend.api.routers import live_metrology, forecast_router, logs_router, pilot_router
+from backend.api.routers import live_metrology, forecast_router, logs_router, pilot_router, auth_router
 from backend.data.database import engine, Base
 from backend.data import models
 
@@ -83,6 +83,9 @@ app.include_router(logs_router.router)
 
 # Pilot Flight Planning & Document API
 app.include_router(pilot_router.router)
+
+# Auth API
+app.include_router(auth_router.router)
 
 
 

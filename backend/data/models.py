@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, Float, String, DateTime
+from sqlalchemy import Column, Integer, Float, String, DateTime, Boolean
 from datetime import datetime
 from backend.data.database import Base
 
@@ -70,3 +70,16 @@ class VerifiedForecast(Base):
     headwind_kts = Column(Float, nullable=True)
     crosswind_kts = Column(Float, nullable=True)
     remarks = Column(String, nullable=True)
+
+class User(Base):
+    __tablename__ = "users"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, index=True) # Also used as reference/Licence Number
+    hashed_password = Column(String)
+    role = Column(String) # 'forecaster' or 'pilot'
+    name = Column(String)
+    email = Column(String, nullable=True)
+    organisation = Column(String, nullable=True)
+    station = Column(String, nullable=True)
+    is_active = Column(Boolean, default=True)
