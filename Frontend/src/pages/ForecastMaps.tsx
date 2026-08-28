@@ -190,7 +190,7 @@ export function ForecastMaps() {
             onClick={applySriLankaWindPreset}
             className="inline-flex items-center gap-2 rounded-lg border border-accent/40 bg-accent/10 px-3 py-2 text-xs font-bold text-sky-300 transition-all hover:bg-accent/30 hover:text-white">
             <ZapIcon className="h-3.5 w-3.5 text-accent-soft" />
-            CMB Wind FL340 +6h
+            VCBI Wind FL340 +6h
           </button>
           <button
             type="button"

@@ -25,4 +25,6 @@ export type Series = {
   value: string;
   color: string;
   points: number[];
+  xLabels?: string[];
+  unit?: string;
 };

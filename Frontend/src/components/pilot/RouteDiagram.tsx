@@ -32,7 +32,7 @@ export function RouteDiagram({ origin, destination, caption }: RouteDiagramProps
 
         <div className="relative mt-3 flex-1" aria-hidden="true">
           <div className="h-px w-full bg-sky-bright/70" />
-          <PlaneIcon className="absolute left-1/2 top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rotate-90 text-sky-bright" />
+          <PlaneIcon className="absolute top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 rotate-45 text-sky-bright animate-flight fill-sky-bright/20" />
         </div>
 
         <div className="text-right">

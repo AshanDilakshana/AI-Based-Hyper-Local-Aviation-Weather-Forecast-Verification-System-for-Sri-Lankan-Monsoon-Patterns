@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { CheckIcon, ShieldCheckIcon } from 'lucide-react';
+import { CheckIcon, ShieldCheckIcon, AlertTriangleIcon } from 'lucide-react';
 import { TextField } from '../components/auth/TextField';
 import { useAuth } from '../contexts/AuthContext';
 import { roleMeta } from '../types/auth';
 
 export function Profile() {
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, deactivateAccount } = useAuth();
   const [form, setForm] = useState({
     name: user?.name ?? '',
     email: user?.email ?? '',
@@ -15,6 +15,7 @@ export function Profile() {
     station: user?.station ?? ''
   });
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState('');
 
   if (!user) return null;
 
@@ -22,12 +23,19 @@ export function Profile() {
   const set = (key: keyof typeof form) => (value: string) => {
     setForm((previous) => ({ ...previous, [key]: value }));
     setSaved(false);
+    setError('');
   };
 
-  const handleSubmit = (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    updateUser(form);
-    setSaved(true);
+    try {
+      await updateUser(form);
+      setSaved(true);
+      setError('');
+    } catch (err: any) {
+      setError(err.message || 'Failed to update profile.');
+      setSaved(false);
+    }
   };
 
   return (
@@ -74,12 +82,19 @@ export function Profile() {
 
         <div className="mt-6 grid gap-5 sm:grid-cols-2">
           <TextField id="profile-name" label="Full name" value={form.name} onChange={set('name')} />
-          <TextField
-            id="profile-email"
-            label="Official email"
-            type="email"
-            value={form.email}
-            onChange={set('email')} />
+          <div>
+            <label htmlFor="profile-email" className="block text-xs font-semibold text-slate-400">
+              Official email
+            </label>
+            <input
+              id="profile-email"
+              type="email"
+              value={form.email}
+              disabled
+              className="mt-2 block w-full rounded-lg border border-line-strong bg-panel px-3 py-2 text-sm text-slate-500 opacity-70 cursor-not-allowed"
+            />
+            <p className="mt-1 text-[11px] text-slate-500">Contact IT support to change your official email address.</p>
+          </div>
           
           <TextField id="profile-phone" label="Contact number" value={form.phone} onChange={set('phone')} />
           <TextField
@@ -102,6 +117,20 @@ export function Profile() {
           
         </div>
 
+        {error && (
+          <div className="mt-4 flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-200" role="alert">
+            <AlertTriangleIcon className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            {error}
+          </div>
+        )}
+
+        {saved && !error && (
+          <div className="mt-4 flex items-start gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-700 dark:text-emerald-200" role="alert">
+            <CheckIcon className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            Profile updated successfully!
+          </div>
+        )}
+
         <div className="mt-6 flex flex-wrap items-center gap-3">
           <button
             type="submit"
@@ -109,31 +138,6 @@ export function Profile() {
             
             Save changes
           </button>
-          <button
-            type="button"
-            onClick={() =>
-            setForm({
-              name: user.name,
-              email: user.email,
-              phone: user.phone,
-              reference: user.reference,
-              organisation: user.organisation,
-              station: user.station
-            })
-            }
-            className="rounded-lg border border-line-strong px-4 py-2.5 text-sm font-semibold text-slate-300 transition-colors hover:border-accent hover:text-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent">
-            
-            Reset
-          </button>
-          {saved ?
-          <p
-            className="inline-flex items-center gap-2 text-xs font-semibold text-emerald-600 dark:text-emerald-300"
-            role="status">
-            
-              <CheckIcon className="h-4 w-4" aria-hidden="true" />
-              Profile updated
-            </p> :
-          null}
         </div>
       </form>
     </div>);

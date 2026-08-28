@@ -1,9 +1,10 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { CalendarDaysIcon, ClockIcon, PlaneTakeoffIcon, SendIcon, XIcon, CheckCircleIcon, Loader2Icon } from 'lucide-react';
+import { CalendarDaysIcon, ClockIcon, PlaneTakeoffIcon, SendIcon, XIcon, CheckCircleIcon, Loader2Icon, InfoIcon } from 'lucide-react';
 import { PageHeading } from '../../components/pilot/PageHeading';
 import { flightLevels, requestMaps, requestPreview } from '../../data/flight';
+import { useAuth } from '../../contexts/AuthContext';
 
 const fieldClass =
   'h-11 w-full rounded-lg border border-lineStrong bg-ink px-3 text-sm text-faint placeholder:text-muted transition-colors duration-150 ease-out focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent';
@@ -25,7 +26,7 @@ const getInitialUTCTime = () => {
 
 export function FlightPlanning() {
   const navigate = useNavigate();
-  const [levels, setLevels] = useState<string[]>(['FL390', 'FL340', 'FL180', 'FL100']);
+  const [levels, setLevels] = useState<string[]>(['FL390', 'FL340']);
   const [maps, setMaps] = useState<string[]>(requestMaps);
   
   // Form State
@@ -33,12 +34,91 @@ export function FlightPlanning() {
   const [destination, setDestination] = useState("WSSS");
   const [departureDate, setDepartureDate] = useState(getInitialUTCDate());
   const [departureTime, setDepartureTime] = useState(getInitialUTCTime());
+  const [flightNo, setFlightNo] = useState("UL604");
   const [area, setArea] = useState("Area D");
   
   // Modal & API State
   const [showModal, setShowModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [flightDuration, setFlightDuration] = useState<string | null>(null);
+
+  const { user } = useAuth();
+
+  React.useEffect(() => {
+    // Fetch next flight based on local time
+    axios.get('http://localhost:8000/pilot/next-flight')
+      .then(res => {
+        if (res.data && res.data.flight_no) {
+          setFlightNo(res.data.flight_no);
+          setDestination(res.data.destination);
+          
+          if (res.data.departure_time_local) {
+            setDepartureTime(res.data.departure_time_local);
+          }
+          
+          if (res.data.duration_mins) {
+            const h = Math.floor(res.data.duration_mins / 60);
+            const m = res.data.duration_mins % 60;
+            setFlightDuration(`${h}h ${m}m`);
+          }
+        }
+      })
+      .catch(err => console.error("Could not fetch next flight:", err));
+  }, []);
+
+  // Fetch real-time flight data when destination changes manually
+  React.useEffect(() => {
+    if (destination && destination.length >= 3) {
+      
+      // Auto-assign Area based on common destination ICAO codes
+      const dest = destination.toUpperCase();
+      const eastDestinations = ['WSSS', 'WMKK', 'VTBS', 'VHHH', 'YSSY', 'YMML'];
+      const westDestinations = ['OMDB', 'OTHH', 'EGLL', 'VABB', 'VIDP', 'OKBK', 'OAKB'];
+      const southDestinations = ['VRMM', 'FIMP', 'FAOR'];
+      
+      if (eastDestinations.includes(dest)) {
+        setArea('Area E');
+      } else if (southDestinations.includes(dest)) {
+        setArea('Area F');
+      } else {
+        setArea('Area D'); // Default for west/others
+      }
+
+      axios.get(`http://localhost:8000/pilot/flight-info?destination=${destination}`)
+        .then(res => {
+          if (res.data && res.data.flight_no) {
+            setFlightNo(res.data.flight_no);
+            if (res.data.duration_mins) {
+              const h = Math.floor(res.data.duration_mins / 60);
+              const m = res.data.duration_mins % 60;
+              setFlightDuration(`${h}h ${m}m`);
+            }
+          }
+        })
+        .catch(err => console.error("Could not fetch flight info:", err));
+    }
+  }, [destination]);
+
+  // Fetch real-time flight data when time changes
+  React.useEffect(() => {
+    if (departureTime && departureTime.length === 5) { // e.g. "03:25"
+      axios.get(`http://localhost:8000/pilot/flight-info-by-time?time_local=${departureTime}`)
+        .then(res => {
+          if (res.data && res.data.flight_no) {
+            setFlightNo(res.data.flight_no);
+            setDestination(res.data.destination);
+            if (res.data.duration_mins) {
+              const h = Math.floor(res.data.duration_mins / 60);
+              const m = res.data.duration_mins % 60;
+              setFlightDuration(`${h}h ${m}m`);
+            }
+          }
+        })
+        .catch(err => console.error("Could not fetch flight info by time:", err));
+    }
+  }, [departureTime]);
 
   // Reference for datetime input
   const dateInputRef = useRef<HTMLInputElement>(null);
@@ -61,9 +141,33 @@ export function FlightPlanning() {
     set(list.includes(value) ? list.filter((item) => item !== value) : [...list, value]);
   };
 
-  const handleSubmit = (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    setShowModal(true);
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await axios.post('http://localhost:8000/pilot/flight-plan', {
+        departure,
+        destination,
+        departure_time: `${departureDate}T${departureTime}`,
+        area,
+        flight_levels: levels,
+        maps,
+        pilot_reference: user?.reference || "guest",
+        flight_no: flightNo,
+        preview_only: true
+      });
+      
+      if (response.data && response.data.document_url) {
+        setPreviewUrl(response.data.document_url);
+        setShowModal(true);
+      }
+    } catch (err: any) {
+      console.error(err);
+      setError(err.response?.data?.detail || "Failed to generate preview document.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const confirmAndGenerate = async () => {
@@ -76,7 +180,10 @@ export function FlightPlanning() {
         departure_time: `${departureDate}T${departureTime}`,
         area,
         flight_levels: levels,
-        maps
+        maps,
+        pilot_reference: user?.reference || "guest",
+        flight_no: flightNo,
+        preview_only: false
       });
       
       if (response.data && response.data.document_url) {
@@ -95,10 +202,11 @@ export function FlightPlanning() {
         window.URL.revokeObjectURL(blobUrl);
         
         setShowModal(false);
+        setPreviewUrl(null);
       }
     } catch (err: any) {
       console.error(err);
-      setError(err.response?.data?.detail || "Failed to generate document.");
+      setError(err.response?.data?.detail || "Failed to generate final document.");
     } finally {
       setIsLoading(false);
     }
@@ -121,18 +229,29 @@ export function FlightPlanning() {
             </div>
             <span className="inline-flex items-center gap-2 rounded-lg border border-accent/60 bg-accent/15 px-3 py-2 text-xs font-semibold text-sky-pale">
               <PlaneTakeoffIcon className="h-[15px] w-[15px]" aria-hidden="true" />
-              CMB / VCBI departure
+              VCBI departure
             </span>
           </div>
 
-          <div className="grid gap-5 pt-6 lg:grid-cols-2">
-            <label className="block">
+          <div className="grid gap-5 pt-6 lg:grid-cols-3">
+            <label className="block sm:max-w-xs">
               <span className="text-xs font-medium text-subtle">Departure airport code</span>
               <input 
                 className={`${fieldClass} mt-1.5`} 
                 value={departure}
                 onChange={(e) => setDeparture(e.target.value.toUpperCase())}
                 placeholder="VCBI" 
+                required
+              />
+            </label>
+
+            <label className="block sm:max-w-xs">
+              <span className="text-xs font-medium text-subtle">Flight Number</span>
+              <input 
+                className={`${fieldClass} mt-1.5`} 
+                value={flightNo}
+                onChange={(e) => setFlightNo(e.target.value.toUpperCase())}
+                placeholder="e.g., UL604" 
                 required
               />
             </label>
@@ -173,8 +292,16 @@ export function FlightPlanning() {
               </p>
             </label>
 
-            <label className="block">
-              <span className="text-xs font-medium text-subtle">Destination airport code</span>
+            <label className="block sm:max-w-xs">
+              <span className="flex items-center justify-between text-xs font-medium text-subtle">
+                <span>Destination airport code</span>
+                {flightDuration && (
+                  <span className="flex items-center gap-1 text-sky-pale">
+                    <InfoIcon className="h-3 w-3" />
+                    Est. Duration: {flightDuration}
+                  </span>
+                )}
+              </span>
               <input 
                 className={`${fieldClass} mt-1.5`} 
                 value={destination}
@@ -184,7 +311,7 @@ export function FlightPlanning() {
               />
             </label>
 
-            <label className="block">
+            <label className="block sm:max-w-xs">
               <span className="text-xs font-medium text-subtle">Area</span>
               <select 
                 className={`${fieldClass} mt-1.5`} 
@@ -197,9 +324,12 @@ export function FlightPlanning() {
               </select>
             </label>
           </div>
+        </section>
 
-          <fieldset className="pt-6">
-            <legend className="text-xs font-medium text-subtle">Flight levels</legend>
+        <section className="rounded-xl border border-line bg-panel p-6">
+          <fieldset>
+            <legend className="text-lg font-bold text-white">Flight levels</legend>
+            <p className="mt-1 text-xs text-subtle mb-4">Select the cruising altitudes for the flight.</p>
             <div className="mt-2 grid grid-cols-2 gap-3 rounded-lg border border-lineStrong bg-ink p-4 sm:grid-cols-3 lg:grid-cols-5">
               {flightLevels.map((level) => (
                 <label key={level} className="flex items-center gap-2 text-sm text-faint cursor-pointer">
@@ -214,9 +344,12 @@ export function FlightPlanning() {
               ))}
             </div>
           </fieldset>
+        </section>
 
-          <fieldset className="pt-6">
-            <legend className="text-xs font-semibold tracking-wide text-subtle">Request maps</legend>
+        <section className="rounded-xl border border-line bg-panel p-6">
+          <fieldset>
+            <legend className="text-lg font-bold text-white">Request maps</legend>
+            <p className="mt-1 text-xs text-subtle mb-4">Select the required meteorological maps.</p>
             <div className="mt-2 space-y-3 rounded-lg border border-line bg-ink p-4">
               {requestMaps.map((map) => (
                 <label key={map} className="flex items-center gap-3 text-sm text-faint cursor-pointer">
@@ -231,8 +364,10 @@ export function FlightPlanning() {
               ))}
             </div>
           </fieldset>
+        </section>
 
-          <div className="mt-6 rounded-lg border border-line bg-ink p-4">
+        <section className="rounded-xl border border-line bg-panel p-6">
+          <div className="rounded-lg border border-line bg-ink p-4">
             <p className="text-xs font-semibold tracking-wide text-muted">Request preview</p>
             <dl className="mt-3 grid gap-4 sm:grid-cols-3">
               <div>
@@ -245,14 +380,15 @@ export function FlightPlanning() {
               </div>
               <div>
                 <dt className="text-xs text-muted">Approval routing</dt>
-                <dd className="mt-0.5 text-sm text-faint">BIA Met Forecast Desk</dd>
+                <dd className="mt-0.5 text-sm text-faint">VCBI Met Forecast Desk</dd>
               </div>
             </dl>
           </div>
 
           <button
             type="submit"
-            className="mt-6 inline-flex h-10 items-center gap-2 rounded-lg bg-accent px-4 text-sm font-bold text-white transition-colors duration-150 ease-out hover:bg-sky-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-bright"
+            disabled={isLoading}
+            className="mt-6 inline-flex h-10 items-center gap-2 rounded-lg bg-accent px-4 text-sm font-bold text-white transition-colors duration-150 ease-out hover:bg-sky-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-bright disabled:opacity-70 disabled:cursor-not-allowed"
           >
             <SendIcon className="h-4 w-4" aria-hidden="true" />
             Review flight request
@@ -263,7 +399,7 @@ export function FlightPlanning() {
       {/* Confirmation Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
-          <div className="w-full max-w-lg rounded-xl border border-line bg-panel shadow-2xl overflow-hidden">
+          <div className="w-full max-w-4xl rounded-xl border border-line bg-panel shadow-2xl overflow-hidden">
             <div className="flex items-center justify-between border-b border-line bg-ink/50 px-6 py-4">
               <h3 className="text-lg font-bold text-white">Confirm Request Details</h3>
               <button 
@@ -275,43 +411,13 @@ export function FlightPlanning() {
             </div>
             
             <div className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="rounded-lg bg-ink p-3 border border-line">
-                  <p className="text-xs text-muted mb-1">Departure</p>
-                  <p className="font-bold text-white">{departure}</p>
-                  <p className="text-xs text-faint mt-1">{departureDate} {departureTime} UTC</p>
+              {previewUrl ? (
+                <iframe src={previewUrl} className="w-full h-[65vh] rounded-md border border-line" title="PDF Preview" />
+              ) : (
+                <div className="flex items-center justify-center h-[65vh] text-muted">
+                  Loading preview...
                 </div>
-                <div className="rounded-lg bg-ink p-3 border border-line">
-                  <p className="text-xs text-muted mb-1">Destination</p>
-                  <p className="font-bold text-white">{destination}</p>
-                  <p className="text-xs text-faint mt-1">Area: {area}</p>
-                </div>
-              </div>
-              
-              <div>
-                <h4 className="text-xs font-semibold text-subtle uppercase mb-2">Requested Levels</h4>
-                <div className="flex flex-wrap gap-2">
-                  {levels.map(lvl => (
-                    <span key={lvl} className="bg-lineStrong text-faint px-2 py-1 rounded text-xs">
-                      {lvl}
-                    </span>
-                  ))}
-                  {levels.length === 0 && <span className="text-xs text-muted">None selected</span>}
-                </div>
-              </div>
-              
-              <div>
-                <h4 className="text-xs font-semibold text-subtle uppercase mb-2">Requested Maps</h4>
-                <div className="flex flex-wrap gap-2">
-                  {maps.map(m => (
-                    <span key={m} className="bg-lineStrong text-faint px-2 py-1 rounded text-xs">
-                      {m}
-                    </span>
-                  ))}
-                  {maps.length === 0 && <span className="text-xs text-muted">None selected</span>}
-                </div>
-              </div>
-
+              )}
               {error && (
                 <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-3 text-red-400 text-sm">
                   {error}
@@ -321,7 +427,10 @@ export function FlightPlanning() {
             
             <div className="flex items-center justify-end gap-3 border-t border-line bg-ink/50 px-6 py-4">
               <button
-                onClick={() => setShowModal(false)}
+                onClick={() => {
+                  setShowModal(false);
+                  setPreviewUrl(null);
+                }}
                 className="px-4 py-2 rounded-lg text-sm font-medium text-faint hover:text-white transition-colors"
                 disabled={isLoading}
               >
@@ -346,6 +455,15 @@ export function FlightPlanning() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Full-screen Loading Overlay */}
+      {isLoading && (
+        <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-black/60 backdrop-blur-md">
+          <PlaneTakeoffIcon className="h-16 w-16 animate-bounce text-sky-400" />
+          <h2 className="mt-6 text-xl font-bold text-white">Generating Flight Briefing</h2>
+          <p className="mt-2 text-sm text-sky-pale animate-pulse">Fetching meteorological data and rendering PDF...</p>
         </div>
       )}
     </div>

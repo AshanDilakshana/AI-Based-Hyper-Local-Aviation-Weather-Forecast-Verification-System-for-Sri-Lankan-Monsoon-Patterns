@@ -24,7 +24,7 @@ export function SignIn() {
   const location = useLocation();
   const state = location.state as LocationState;
 
-  const handleSubmit = (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (password.length < 6) {
       setError('Password must be at least 6 characters.');
@@ -32,17 +32,22 @@ export function SignIn() {
     }
     setError('');
     setSubmitting(true);
-    window.setTimeout(() => {
-      signIn({
+    
+    try {
+      await signIn({
         role,
         name: role === 'pilot' ? 'Capt. N. Fernando' : 'A. Ranasinghe',
         reference,
+        password: password,
         organisation: role === 'pilot' ? operator : 'Department of Meteorology',
         station: role === 'pilot' ? 'VCBI · Bandaranaike Intl.' : station
       });
-      setSubmitting(false);
       navigate(state?.from ?? roleMeta[role].home, { replace: true });
-    }, 700);
+    } catch (err: any) {
+      setError(err.message || 'Login failed. Please check your credentials.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (

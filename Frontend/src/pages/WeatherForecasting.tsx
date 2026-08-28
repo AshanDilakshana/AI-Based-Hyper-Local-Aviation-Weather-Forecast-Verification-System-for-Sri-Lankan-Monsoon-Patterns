@@ -30,6 +30,7 @@ const formatIsoToAviationTime = (isoString: string) => {
 export function WeatherForecasting() {
   const [liveData, setLiveData] = useState<any>(null);
   const [recentData, setRecentData] = useState<any[]>([]);
+  const [recentModels, setRecentModels] = useState<any[]>([]);
   const [forecastData, setForecastData] = useState<any>(null);
   const [lastVerified, setLastVerified] = useState<any>(null);
 
@@ -76,8 +77,19 @@ export function WeatherForecasting() {
     fetchLastVerified();
   }, []);
 
+  const fetchRecentModels = async (duration: 6 | 12) => {
+    try {
+      const limit = duration === 6 ? 6 : 12;
+      const res = await axios.get(`${API_BASE}/forecasts/recent-verified?limit=${limit}`);
+      setRecentModels(res.data);
+    } catch (err) {
+      console.error("Error fetching recent verified forecasts:", err);
+    }
+  };
+
   useEffect(() => {
     fetchRecentData(obsDuration);
+    fetchRecentModels(obsDuration);
   }, [obsDuration]);
 
   const runRefresh = async () => {
@@ -122,7 +134,8 @@ export function WeatherForecasting() {
   // Mapped Current Metrics
   const mappedCurrentMetrics = [
     { label: 'Temperature', value: liveData ? `${liveData.dry_temp_c}` : '--', unit: '°C', tone: 'amber' as const },
-    { label: 'Wind speed', value: liveData ? `${liveData.wind_speed_kts}` : '--', unit: 'kt', footnote: liveData ? `${liveData.wind_dir}°` : '', tone: 'emerald' as const },
+    { label: 'Wind speed', value: liveData ? `${liveData.wind_speed_kts}` : '--', unit: 'kt', tone: 'emerald' as const },
+    { label: 'Wind direction', value: liveData ? `${liveData.wind_dir}` : '--', unit: '°', tone: 'emerald' as const },
     { label: 'Humidity', value: liveData ? `${liveData.rh_percent}` : '--', unit: '% RH', tone: 'cyan' as const },
     { label: 'Cloud base', value: liveData?.clouds ? liveData.clouds.split(' ')[0] : '--', unit: '', tone: 'slate' as const },
     { label: 'Visibility', value: liveData ? `${liveData.visibility}` : '--', unit: 'm', tone: 'green' as const },
@@ -133,6 +146,7 @@ export function WeatherForecasting() {
   const mappedForecastMetrics = [
     { label: 'Temperature', value: forecastData?.temperature_pressure_forecast?.prediction?.temperature_C ? `${forecastData.temperature_pressure_forecast.prediction.temperature_C}` : '--', unit: '°C', tone: 'amber' as const },
     { label: 'Wind speed', value: forecastData?.wind_forecast?.predicted_wind_speed_kts ? `${forecastData.wind_forecast.predicted_wind_speed_kts}` : '--', unit: 'kt', tone: 'emerald' as const },
+    { label: 'Wind direction', value: forecastData?.wind_forecast?.wind_dir ? `${forecastData.wind_forecast.wind_dir}` : '--', unit: '°', tone: 'emerald' as const },
     { label: 'Humidity', value: forecastData?.qnh_dewpoint_forecast?.derived_rh_3h ? `${forecastData.qnh_dewpoint_forecast.derived_rh_3h}` : '--', unit: '% RH', tone: 'cyan' as const },
     { label: 'Cloud base', value: forecastData?.cloud_visibility_forecast?.cloud_status ? forecastData.cloud_visibility_forecast.cloud_status.replace('_', ' ') : '--', unit: '', tone: 'slate' as const },
     { label: 'Visibility', value: forecastData?.cloud_visibility_forecast?.visibility_prediction ? `${forecastData.cloud_visibility_forecast.visibility_prediction}` : '--', unit: 'm', tone: 'green' as const },
@@ -142,7 +156,8 @@ export function WeatherForecasting() {
   // Mapped Verified Metrics (For Last Forecast Details section)
   const verifiedMetrics = [
     { label: 'Temperature', value: lastVerified?.dry_temp_c ? `${lastVerified.dry_temp_c}` : '--', unit: '°C' },
-    { label: 'Wind speed', value: lastVerified?.wind_speed_kts ? `${lastVerified.wind_speed_kts}` : '--', unit: 'kt', detail: lastVerified?.wind_dir ? `${lastVerified.wind_dir}°` : '' },
+    { label: 'Wind speed', value: lastVerified?.wind_speed_kts ? `${lastVerified.wind_speed_kts}` : '--', unit: 'kt' },
+    { label: 'Wind direction', value: lastVerified?.wind_dir ? `${lastVerified.wind_dir}` : '--', unit: '°' },
     { label: 'Humidity', value: lastVerified?.rh_percent ? `${lastVerified.rh_percent}` : '--', unit: '% RH' },
     { label: 'Cloud base', value: lastVerified?.clouds ? lastVerified.clouds : '--', unit: '' },
     { label: 'Visibility', value: lastVerified?.visibility ? `${lastVerified.visibility / 1000}` : '--', unit: 'km' },
@@ -168,11 +183,23 @@ export function WeatherForecasting() {
     rainfall: 'N/A'
   }));
 
+  const mappedRecentModels = recentModels.map(model => ({
+    time: formatIsoToAviationTime(model.target_time),
+    temperature: model.dry_temp_c != null ? `${model.dry_temp_c} °C` : '--',
+    pressure: model.qnh_hpa != null ? `${model.qnh_hpa} hPa` : '--',
+    humidity: model.rh_percent != null ? `${model.rh_percent}%` : '--',
+    windSpeed: model.wind_speed_kts != null ? `${model.wind_speed_kts} kt` : '--',
+    windDirection: model.wind_dir != null ? `${model.wind_dir}°` : '--',
+    visibility: model.visibility != null ? `${model.visibility} m` : '--',
+    cloudCoverage: model.clouds || '--',
+    rainfall: 'N/A'
+  }));
+
   return (
     <div className="flex flex-col gap-6">
       <header>
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent-soft">
-          BIA/CMB weather intelligence
+          VCBI weather intelligence
         </p>
         <h1 className="mt-2 text-3xl font-bold tracking-tight text-white">Weather Forecasting</h1>
         <p className="mt-2 text-sm text-slate-400">
@@ -191,7 +218,7 @@ export function WeatherForecasting() {
 
       <p className="text-sm text-slate-400">Last updated: {lastUpdated}</p>
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-7">
         {mappedCurrentMetrics.map((metric) =>
         <MetricCard key={metric.label} {...metric} />
         )}
@@ -213,31 +240,27 @@ export function WeatherForecasting() {
         <p className="text-sm text-slate-400">Target Time : {lastUpdated}</p>
 
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8">
-          {mappedForecastMetrics.slice(0, 2).map((metric) =>
+          {mappedForecastMetrics.slice(0, 3).map((metric) =>
           <MetricCard key={metric.label} {...metric} />
           )}
-          <article className="rounded-xl border border-line bg-panel p-4">
+          <article className="col-span-2 sm:col-span-1 lg:col-span-1 rounded-xl border border-line bg-panel p-4">
             <h3 className="flex items-center gap-2 text-xs text-slate-400">
-              <ArrowDownIcon className="h-4 w-4" aria-hidden="true" />
-              Headwind
+              <ArrowDownIcon className="h-4 w-4" aria-hidden="true" /> HW <span className="text-slate-600">/</span> <ArrowRightIcon className="h-4 w-4" aria-hidden="true" /> CW
             </h3>
-            <p className="mt-2 flex items-baseline gap-1.5">
-              <span className="text-2xl font-bold leading-8 text-white">{forecastData?.wind_forecast?.headwind_kts !== undefined ? forecastData.wind_forecast.headwind_kts : '--'}</span>
-              <span className="text-xs text-slate-500">kt</span>
-            </p>
+            <div className="mt-2 flex items-center justify-between">
+              <p className="flex items-baseline gap-1.5">
+                <span className="text-2xl font-bold leading-8 text-white">{forecastData?.wind_forecast?.headwind_kts !== undefined ? forecastData.wind_forecast.headwind_kts : '--'}</span>
+                <span className="text-xs text-slate-500">kt</span>
+              </p>
+              <span className="text-slate-600">|</span>
+              <p className="flex items-baseline gap-1.5">
+                <span className="text-2xl font-bold leading-8 text-white">{forecastData?.wind_forecast?.crosswind_kts !== undefined ? forecastData.wind_forecast.crosswind_kts : '--'}</span>
+                <span className="text-xs text-slate-500">kt</span>
+              </p>
+            </div>
             <p className="mt-3 text-[11px] text-slate-500">{forecastData?.wind_forecast?.runway ? forecastData.wind_forecast.runway : 'Runway: --'}</p>
           </article>
-          <article className="rounded-xl border border-line bg-panel p-4">
-            <h3 className="flex items-center gap-2 text-xs text-slate-400">
-              <ArrowRightIcon className="h-4 w-4" aria-hidden="true" />
-              Crosswind
-            </h3>
-            <p className="mt-2 flex items-baseline gap-1.5">
-              <span className="text-2xl font-bold leading-8 text-white">{forecastData?.wind_forecast?.crosswind_kts !== undefined ? forecastData.wind_forecast.crosswind_kts : '--'}</span>
-              <span className="text-xs text-slate-500">kt</span>
-            </p>
-          </article>
-          {mappedForecastMetrics.slice(2).map((metric) =>
+          {mappedForecastMetrics.slice(3).map((metric) =>
           <MetricCard key={metric.label} {...metric} />
           )}
         </div>
@@ -295,6 +318,18 @@ export function WeatherForecasting() {
       </Panel>
 
       <Panel
+        title="Recent forecast outputs"
+        subtitle={`Historical predicted values from the AI model`}
+      >
+        <div className="max-h-[400px] overflow-y-auto">
+          <ObservationTable
+            rows={mappedRecentModels}
+            timeLabel="Target Time"
+            caption="Recent forecast outputs" />
+        </div>
+      </Panel>
+
+      <Panel
         title="Recent weather observations"
         subtitle={`Live observation feed for verification · last updated ${lastUpdated}`}
         action={
@@ -314,10 +349,12 @@ export function WeatherForecasting() {
           </div>
         }>
         
-        <ObservationTable
-          rows={mappedRecentObservations}
-          timeLabel="Time"
-          caption="Recent forecast output by target time" />
+        <div className="max-h-[400px] overflow-y-auto">
+          <ObservationTable
+            rows={mappedRecentObservations}
+            timeLabel="Time"
+            caption="Recent observation output" />
+        </div>
         
       </Panel>
     </div>);

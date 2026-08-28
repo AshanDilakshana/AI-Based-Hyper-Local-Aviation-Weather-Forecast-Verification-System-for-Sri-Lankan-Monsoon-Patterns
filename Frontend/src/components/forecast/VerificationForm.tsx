@@ -1,6 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { CalendarIcon, ClockIcon, CheckCircle2Icon, UploadIcon } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { CalendarIcon, ClockIcon, CheckCircle2Icon, UploadIcon, Loader2 } from 'lucide-react';
 import axios from 'axios';
+import { UploadPreviewModal } from './UploadPreviewModal';
+
+const API_BASE = 'http://localhost:8000';
 
 type FieldState = {
   temperature: string;
@@ -50,6 +53,35 @@ export function VerificationForm({ onSaveSuccess, editData, prefillData }: { onS
   const [saving, setSaving] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [blockTimer, setBlockTimer] = useState(0);
+  const [parsedRecords, setParsedRecords] = useState<any[]>([]);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    setUploading(true);
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    try {
+      const res = await axios.post(`${API_BASE}/forecasts/upload-csv`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      setParsedRecords(res.data.records);
+      setShowUploadModal(true);
+    } catch (err: any) {
+      alert("Error parsing CSV: " + (err.response?.data?.detail || err.message));
+    } finally {
+      setUploading(false);
+      // Reset input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
 
   useEffect(() => {
     if (blockTimer > 0) {
@@ -242,12 +274,21 @@ export function VerificationForm({ onSaveSuccess, editData, prefillData }: { onS
           </div>
         )}
         <div className="flex gap-3">
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            onChange={handleFileUpload} 
+            className="hidden" 
+            accept=".csv, .xlsx, .xls"
+          />
           <button
             type="button"
-            className="inline-flex items-center justify-center min-w-[140px] gap-2 rounded-lg border border-slate-700 bg-panel px-6 py-2.5 text-sm font-bold text-white transition-colors hover:bg-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            className="inline-flex items-center justify-center min-w-[140px] gap-2 rounded-lg border border-slate-700 bg-panel px-6 py-2.5 text-sm font-bold text-white transition-colors hover:bg-slate-800 disabled:opacity-70 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
           >
-            <UploadIcon className="h-4 w-4" />
-            Upload CSV
+            {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <UploadIcon className="h-4 w-4" />}
+            {uploading ? 'Uploading...' : 'Upload CSV'}
           </button>
           <button
             type="button"
@@ -259,6 +300,16 @@ export function VerificationForm({ onSaveSuccess, editData, prefillData }: { onS
           </button>
         </div>
       </div>
+      {showUploadModal && (
+        <UploadPreviewModal 
+          records={parsedRecords} 
+          onClose={() => setShowUploadModal(false)}
+          onSuccess={() => {
+            setShowUploadModal(false);
+            if (onSaveSuccess) onSaveSuccess();
+          }}
+        />
+      )}
     </form>
   );
 }

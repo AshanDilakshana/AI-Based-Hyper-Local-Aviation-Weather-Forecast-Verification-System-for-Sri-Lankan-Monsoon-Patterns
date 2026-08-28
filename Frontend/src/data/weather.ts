@@ -1,9 +1,9 @@
 import type { Metric, Observation, Series } from '../types/weather';
 
 export const STATION = {
-  fir: 'VCCC · Colombo FIR',
+  fir: 'VCBI · Colombo FIR',
   airport: 'Bandaranaike International Airport',
-  codes: 'CMB / VCBI'
+  codes: 'VCBI'
 };
 
 export const LAST_UPDATED = '1103 UTC 11 Tue Aug 2026';

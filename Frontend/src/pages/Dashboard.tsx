@@ -83,10 +83,16 @@ export function Dashboard() {
         const currHumidity = curr.rh_percent;
         const currWind = curr.wind_speed_kts;
 
+        const times = recentAsc.map((r: any) => {
+          const t = r.time_utc.padStart(4, '0');
+          return `${t.slice(0, 2)}:${t.slice(2, 4)}`;
+        });
+
         const trends: Series[] = [
-          { label: 'Temperature', value: `${currTemp}°C`, color: '#FBBF24', points: temps },
-          { label: 'Wind Speed', value: `${currWind} kt`, color: '#22D3EE', points: winds },
-          { label: 'Pressure', value: `${currPressure} hPa`, color: '#38BDF8', points: pressures }
+          { label: 'Temperature', value: `${currTemp}°C`, color: '#FBBF24', points: temps, xLabels: times, unit: '°' },
+          { label: 'Wind Speed', value: `${currWind} kt`, color: '#22D3EE', points: winds, xLabels: times, unit: 'kt' },
+          { label: 'Pressure', value: `${currPressure} hPa`, color: '#38BDF8', points: pressures, xLabels: times, unit: '' },
+          { label: 'Humidity', value: `${currHumidity}% RH`, color: '#10B981', points: humidities, xLabels: times, unit: '%' }
         ];
         
         const historicals: Series[] = [
@@ -117,7 +123,7 @@ export function Dashboard() {
           </p>
           <h1 className="mt-2 text-3xl font-bold tracking-tight text-white">METAR Dashboard</h1>
           <p className="mt-2 text-sm text-slate-400">
-            BIA/CMB hyper-local weather intelligence · {lastUpdated}
+            VCBI hyper-local weather intelligence · {lastUpdated}
           </p>
         </div>
         {user?.role === 'forecaster' ?
@@ -147,7 +153,7 @@ export function Dashboard() {
           </div>
 
           <Panel
-            title="Recent MATAR weather observations"
+            title="Recent METAR weather observations"
             subtitle={`last refreshed ${lastUpdated}`}
             action={
             <SegmentedControl
@@ -157,10 +163,12 @@ export function Dashboard() {
               onChange={setRange} />
             }>
             
-            <ObservationTable
-              rows={recentObservations}
-              timeLabel="Timestamp (UTC)"
-              caption={`Recent METAR observations, ${range}`} />
+            <div className="max-h-[400px] overflow-y-auto">
+              <ObservationTable
+                rows={recentObservations}
+                timeLabel="Timestamp (UTC)"
+                caption={`Recent METAR observations, ${range}`} />
+            </div>
             
           </Panel>
 
@@ -169,18 +177,21 @@ export function Dashboard() {
               <ForecastMap />
             </div>
             <div className="xl:col-span-1 flex flex-col">
-              <Panel title="trend monitor" subtitle="Recent History · Automatic station VCBI" className="h-full">
-                <div className="flex flex-col gap-6">
-                  {trendSeries.map((series) =>
-                  <div key={series.label}>
+              <Panel title="Historical METAR observation trends" subtitle="Recent History · Automatic station VCBI" className="h-full flex flex-col">
+                <div className="flex-1 flex flex-col gap-8 overflow-y-auto pr-2 pt-2 pb-4">
+                  {trendSeries.map((series, index) =>
+                  <div key={series.label} className={index !== trendSeries.length - 1 ? "border-b border-line pb-6" : ""}>
                       <div className="flex items-center justify-between">
                         <span className="text-xs text-slate-400">{series.label}</span>
                         <span className="text-xs font-semibold text-slate-100">{series.value}</span>
                       </div>
-                      <div className="mt-2">
+                      <div className="mt-4">
                         <Sparkline
                         points={series.points}
                         color={series.color}
+                        showAxes={true}
+                        xLabels={series.xLabels}
+                        yFormatter={(v) => `${v}${series.unit}`}
                         ariaLabel={`${series.label} trend, currently ${series.value}`} />
                       </div>
                     </div>
@@ -190,35 +201,7 @@ export function Dashboard() {
             </div>
           </div>
 
-          <Panel
-            title="Historical MATER observation trends"
-            subtitle="API-derived station observations · recent history"
-            action={
-            <p className="flex items-center gap-2 text-xs text-slate-400">
-                <RadioTowerIcon className="h-3.5 w-3.5" aria-hidden="true" />
-                VCBI automatic weather station
-              </p>
-            }>
-            
-            <div className="grid gap-6 md:grid-cols-3">
-              {historicalSeries.map((series) =>
-              <div key={series.label}>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-slate-400">{series.label}</span>
-                    <span className="text-xs font-semibold text-slate-100">{series.value}</span>
-                  </div>
-                  <div className="mt-3">
-                    <Sparkline
-                    points={series.points}
-                    color={series.color}
-                    height={80}
-                    ariaLabel={`${series.label} history, currently ${series.value}`} />
-                  
-                  </div>
-                </div>
-              )}
-            </div>
-          </Panel>
+
         </>
       )}
     </div>

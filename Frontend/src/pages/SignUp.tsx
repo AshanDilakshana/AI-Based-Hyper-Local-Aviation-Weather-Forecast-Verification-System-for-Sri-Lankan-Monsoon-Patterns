@@ -19,10 +19,10 @@ export function SignUp() {
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const { signIn } = useAuth();
+  const { signUp } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (password.length < 6) {
       setError('Password must be at least 6 characters.');
@@ -34,11 +34,22 @@ export function SignUp() {
     }
     setError('');
     setSubmitting(true);
-    window.setTimeout(() => {
-      signIn({ role, name, reference, email, organisation });
-      setSubmitting(false);
+    
+    try {
+      await signUp({ 
+        role, 
+        name, 
+        reference, 
+        password,
+        email, 
+        organisation 
+      });
       navigate(roleMeta[role].home, { replace: true });
-    }, 700);
+    } catch (err: any) {
+      setError(err.message || 'Registration failed.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (

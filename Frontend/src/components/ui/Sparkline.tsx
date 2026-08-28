@@ -5,9 +5,12 @@ type SparklineProps = {
   color: string;
   height?: number;
   ariaLabel: string;
+  showAxes?: boolean;
+  xLabels?: string[];
+  yFormatter?: (val: number) => string;
 };
 
-export function Sparkline({ points, color, height = 48, ariaLabel }: SparklineProps) {
+export function Sparkline({ points, color, height = 48, ariaLabel, showAxes = false, xLabels, yFormatter = (v) => v.toString() }: SparklineProps) {
   const gradientId = useId();
   const width = 100;
   const min = Math.min(...points);
@@ -23,7 +26,7 @@ export function Sparkline({ points, color, height = 48, ariaLabel }: SparklinePr
   const line = `M ${coords.join(' L ')}`;
   const area = `${line} L ${width},${height} L 0,${height} Z`;
 
-  return (
+  const chart = (
     <svg
       viewBox={`0 0 ${width} ${height}`}
       preserveAspectRatio="none"
@@ -47,7 +50,34 @@ export function Sparkline({ points, color, height = 48, ariaLabel }: SparklinePr
         strokeLinecap="round"
         strokeLinejoin="round"
         vectorEffect="non-scaling-stroke" />
+    </svg>
+  );
+
+  if (!showAxes) return chart;
+
+  return (
+    <div className="flex flex-col w-full text-[10px] text-slate-400 font-mono">
+      <div className="flex">
+        <div className="flex flex-col justify-between pr-3 text-right w-12 shrink-0 py-[2px]" style={{ height }}>
+          <span>{yFormatter(max)}</span>
+          <span>{yFormatter(min)}</span>
+        </div>
+        <div className="flex-1 relative">
+           {/* Top and bottom dashed grid lines */}
+           <div className="absolute top-0 left-0 w-full h-[1px] bg-line border-dashed opacity-50 pointer-events-none" />
+           <div className="absolute bottom-0 left-0 w-full h-[1px] bg-line border-dashed opacity-50 pointer-events-none" />
+           {chart}
+        </div>
+      </div>
       
-    </svg>);
+      {xLabels && xLabels.length > 0 && (
+        <div className="flex justify-between pl-12 pt-2 pr-1">
+          <span>{xLabels[0]}</span>
+          {xLabels.length > 2 && <span>{xLabels[Math.floor((xLabels.length - 1) / 2)]}</span>}
+          <span>{xLabels[xLabels.length - 1]}</span>
+        </div>
+      )}
+    </div>
+  );
 
 }

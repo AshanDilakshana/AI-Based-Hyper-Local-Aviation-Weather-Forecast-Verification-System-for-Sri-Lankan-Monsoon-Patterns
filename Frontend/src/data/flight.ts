@@ -1,14 +1,14 @@
 import type { BriefingRow, FlightStat, WeatherMetric } from '../types/aviation';
 
 export const flightStats: FlightStat[] = [
-{ label: 'Route', value: 'CMB → SIN', icon: 'route' },
+{ label: 'Route', value: 'VCBI → SIN', icon: 'route' },
 { label: 'Flight duration', value: '3h 48m', icon: 'duration' },
 { label: 'Great-circle distance', value: '1,706 nm', icon: 'distance' },
 { label: 'Aircraft Number', value: '4R-ANA', icon: 'aircraft' }];
 
 
 export const forecastStats: FlightStat[] = [
-{ label: 'Route', value: 'CMB → SIN', icon: 'route' },
+{ label: 'Route', value: 'VCBI → SIN', icon: 'route' },
 { label: 'Flight duration', value: '3h 48m', icon: 'duration' },
 { label: 'Great-circle distance', value: '1,706 nm', icon: 'distance' },
 { label: 'Departure terminal', value: 'Terminal 1', icon: 'terminal' }];
@@ -47,7 +47,7 @@ export const requestMaps: string[] = ['WIND/TEMPERATURES', 'ICAO AREA D SIGWX'];
 export const requestPreview: BriefingRow[] = [
 { label: 'Route', value: 'VCBI → WSSS' },
 { label: 'Forecast scope', value: 'Departure, en-route, destination' },
-{ label: 'Approval routing', value: 'BIA Met Forecast Desk' }];
+{ label: 'Approval routing', value: 'VCBI Met Forecast Desk' }];
 
 
 export const routeMapImage = "/ee0d623a-21d2-486d-bada-bc88b8876581.jpg";

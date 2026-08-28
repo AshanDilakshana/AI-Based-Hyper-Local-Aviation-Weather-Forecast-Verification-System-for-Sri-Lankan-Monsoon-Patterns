@@ -131,7 +131,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
               System operational
             </p>
             <p className="mt-2 text-[11px] leading-relaxed text-slate-500">
-              BIA Met data stream updated 2 min ago
+              VCBI Met data stream updated 2 min ago
             </p>
           </div>
         </div>
