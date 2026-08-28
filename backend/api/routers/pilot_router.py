@@ -10,19 +10,40 @@ from typing import List
 from sqlalchemy.orm import Session
 
 from backend.data.database import get_db
-from backend.data.models import SystemLogs, VerifiedForecast, RouteAlternatives
+from backend.data.models import SystemLogs, VerifiedForecast, RouteAlternatives, FlightTimeAndFlights
 
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, Image as RLImage, KeepTogether
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.pdfbase import pdfmetrics
+
+try:
+    # First try the FM font for legacy encoding
+    fm_font_path = os.path.join(os.path.dirname(__file__), "FM Ababld-Bold.TTF")
+    if os.path.exists(fm_font_path):
+        pdfmetrics.registerFont(TTFont('FMSinhala', fm_font_path))
+    
+    # Fallback Unicode font
+    font_path = os.path.join(os.path.dirname(__file__), "NotoSansSinhala-Regular.ttf")
+    if os.path.exists(font_path):
+        pdfmetrics.registerFont(TTFont('NotoSinhala', font_path))
+except:
+    pass
+
+def draw_page_border(canvas, doc):
+    canvas.saveState()
+    canvas.setStrokeColor(colors.black)
+    canvas.setLineWidth(2)
+    canvas.rect(20, 20, doc.pagesize[0] - 40, doc.pagesize[1] - 40)
+    canvas.restoreState()
 
 router = APIRouter(prefix="/pilot", tags=["pilot"])
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data")
 DOCS_DIR = os.path.join(DATA_DIR, "documents")
-HISTORICAL_DATA_PATH = os.path.join(DATA_DIR, "historical_flight_data.json")
 TEMP_MAP_DIR = os.path.join(DATA_DIR, "temp_maps")
 
 os.makedirs(DOCS_DIR, exist_ok=True)
@@ -36,11 +57,7 @@ class FlightPlanRequest(BaseModel):
     flight_levels: List[str]
     maps: List[str]
 
-def load_flight_data():
-    if os.path.exists(HISTORICAL_DATA_PATH):
-        with open(HISTORICAL_DATA_PATH, 'r') as f:
-            return json.load(f)
-    return {}
+
 
 def get_forecast_hour(duration_mins: int) -> str:
     hours = duration_mins / 60.0
@@ -91,6 +108,31 @@ def fetch_tafs(airports: List[str]) -> str:
     except:
         return "Failed to fetch TAF data."
 
+def fetch_hire_ascent() -> tuple:
+    wind_str = "VRB05"
+    temp_str = "-05"
+    try:
+        # Fetching for Katunayake (VCBI) 500hPa level (approx FL180/185)
+        url = 'https://api.open-meteo.com/v1/forecast?latitude=7.1803&longitude=79.8833&current=temperature_500hPa,wind_speed_500hPa,wind_direction_500hPa&wind_speed_unit=kn'
+        res = requests.get(url, timeout=5)
+        if res.status_code == 200:
+            data = res.json().get('current', {})
+            wd = data.get('wind_direction_500hPa')
+            ws = data.get('wind_speed_500hPa')
+            temp = data.get('temperature_500hPa')
+            
+            if wd is not None and ws is not None:
+                wind_str = f"{int(wd):03d}{int(ws):02d}"
+            if temp is not None:
+                temp_int = int(temp)
+                if temp_int < 0:
+                    temp_str = f"-{abs(temp_int):02d}"
+                else:
+                    temp_str = f"+{abs(temp_int):02d}"
+    except Exception as e:
+        print("Error fetching HIRE ASCENT:", e)
+    return wind_str, temp_str
+
 def generate_briefing_pdf(filepath: str, req: FlightPlanRequest, duration_mins: int, arrival_time: datetime, forecasts: List[VerifiedForecast], taf_text: str):
     doc = SimpleDocTemplate(filepath, pagesize=A4, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=18)
     styles = getSampleStyleSheet()
@@ -115,28 +157,27 @@ def generate_briefing_pdf(filepath: str, req: FlightPlanRequest, duration_mins: 
         except:
             pass
 
-    # Sinhala text (cropped)
-    sinhala_img_path = os.path.join(os.path.dirname(__file__), "sinhala_text.png")
-    if os.path.exists(sinhala_img_path):
-        try:
-            img = RLImage(sinhala_img_path, width=4*inch, height=0.4*inch)
-            elements.append(img)
-            elements.append(Spacer(1, 5))
-        except:
-            pass
-            
-    elements.append(Paragraph("DEPARTMENT OF METEOROLOGY, SRI LANKA", ParagraphStyle(name='CenterHeading', alignment=1, fontName='Helvetica-Bold', fontSize=14)))
-    elements.append(Spacer(1, 15))
-    elements.append(Paragraph("<b>METEOROLOGICAL CONDITIONS<br/>EN ROUTE<br/>and at<br/>AERODROMES</b>", ParagraphStyle(name='CenterNormal', alignment=1, fontSize=11, leading=14)))
-    elements.append(Spacer(1, 15))
+    # Sinhala text (FM Font encoded)
+    try:
+        sinhala_style = ParagraphStyle(name='Sinhala', fontName='FMSinhala', fontSize=24, alignment=1)
+    except:
+        sinhala_style = ParagraphStyle(name='SinhalaFallback', fontSize=24, alignment=1)
+        
+    elements.append(Paragraph("› ,xld ld<.=K úoHd fomd¾;fïka;=j", sinhala_style))
+    elements.append(Spacer(1, 6))
+    elements.append(Paragraph("DEPARTMENT OF METEOROLOGY, SRI LANKA", ParagraphStyle(name='EnTitle', fontName='Helvetica-Bold', fontSize=16, alignment=1)))
+    elements.append(Spacer(1, 12))
+    elements.append(Paragraph("<b>METEOROLOGICAL CONDITIONS<br/>EN ROUTE<br/>and at<br/>AERODROMES</b>", ParagraphStyle(name='CenterNormal', alignment=1, fontSize=12, leading=14)))
+    elements.append(Spacer(1, 10))
     
     # Airplane
     airplane_img_path = "/Users/Ashan/.gemini/antigravity-ide/brain/19078c78-6553-4706-8666-a7303377bb60/.user_uploaded/media_1787946050280.png"
     if os.path.exists(airplane_img_path):
         try:
-            img = RLImage(airplane_img_path, width=5.5*inch, height=4*inch, kind='proportional')
+            # Reduced height to prevent spill to page 2
+            img = RLImage(airplane_img_path, width=4*inch, height=3*inch, kind='proportional')
             elements.append(img)
-            elements.append(Spacer(1, 15))
+            elements.append(Spacer(1, 10))
         except:
             pass
             
@@ -196,9 +237,11 @@ def generate_briefing_pdf(filepath: str, req: FlightPlanRequest, duration_mins: 
     elements.append(Spacer(1, 20))
     
     # HRI Ascent
+    ha_wind, ha_temp = fetch_hire_ascent()
+    
     elements.append(Paragraph("<b>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; HRI &nbsp; ASCENT &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (FL 185)</b>", ParagraphStyle(name='LeftBold', alignment=0, fontSize=10, fontName='Helvetica-Bold', leftIndent=150)))
     elements.append(Spacer(1, 10))
-    elements.append(Paragraph("<b>03010 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; -05</b>", ParagraphStyle(name='LeftBold', alignment=0, fontSize=11, fontName='Helvetica-Bold', leftIndent=100)))
+    elements.append(Paragraph(f"<b>{ha_wind} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; {ha_temp}</b>", ParagraphStyle(name='LeftBold', alignment=0, fontSize=11, fontName='Helvetica-Bold', leftIndent=100)))
     elements.append(Paragraph("<b>WIND .............................. KT &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; TEMP .............................. °C</b>", ParagraphStyle(name='LeftBold', alignment=0, fontSize=10, fontName='Helvetica-Bold', leftIndent=50)))
     
     elements.append(PageBreak())
@@ -401,7 +444,7 @@ def generate_briefing_pdf(filepath: str, req: FlightPlanRequest, duration_mins: 
         except:
             pass
         
-    doc.build(elements)
+    doc.build(elements, onFirstPage=draw_page_border)
 
 @router.post("/flight-plan")
 def create_flight_plan(req: FlightPlanRequest, db: Session = Depends(get_db)):
@@ -430,9 +473,9 @@ def create_flight_plan(req: FlightPlanRequest, db: Session = Depends(get_db)):
                 )
             forecasts = fallback
 
-        flight_data = load_flight_data()
         dest_upper = req.destination.upper()
-        duration_mins = flight_data.get(dest_upper, [240])[0]
+        flight_record = db.query(FlightTimeAndFlights).filter(FlightTimeAndFlights.destination == dest_upper).first()
+        duration_mins = flight_record.time_period_mins if flight_record and flight_record.time_period_mins else 240
         arrival_dt = dep_dt + timedelta(minutes=duration_mins)
         
         # Find matching route alternatives
