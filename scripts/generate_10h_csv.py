@@ -46,6 +46,6 @@ for i in range(1, 11):
     })
 
 df = pd.DataFrame(data)
-csv_path = "/Users/Ashan/.gemini/antigravity-ide/brain/19078c78-6553-4706-8666-a7303377bb60/10h_prediction.csv"
+csv_path = os.path.expanduser("~/Downloads/10h_prediction.csv")
 df.to_csv(csv_path, index=False)
 print("CSV generated at", csv_path)
