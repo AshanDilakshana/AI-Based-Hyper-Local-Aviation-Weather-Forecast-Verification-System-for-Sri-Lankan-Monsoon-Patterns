@@ -165,6 +165,7 @@ export function FlightPlanning() {
     } catch (err: any) {
       console.error(err);
       setError(err.response?.data?.detail || "Failed to generate preview document.");
+      setTimeout(() => setError(null), 8000);
     } finally {
       setIsLoading(false);
     }
@@ -206,7 +207,8 @@ export function FlightPlanning() {
       }
     } catch (err: any) {
       console.error(err);
-      setError(err.response?.data?.detail || "Failed to generate final document.");
+      setError(err.response?.data?.detail || "Failed to generate flight plan.");
+      setTimeout(() => setError(null), 8000);
     } finally {
       setIsLoading(false);
     }
@@ -219,6 +221,18 @@ export function FlightPlanning() {
         title="Flight Planning Request"
         description="Create an ICAO-aligned aviation weather briefing request for meteorological review."
       />
+
+      {error && !showModal && (
+        <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-4 mb-6 flex items-start gap-3 transition-all duration-300">
+          <div className="rounded-full bg-red-500/20 p-1 mt-0.5">
+            <XIcon className="h-4 w-4 text-red-400" />
+          </div>
+          <div>
+            <h3 className="text-sm font-medium text-red-400">Request Failed</h3>
+            <p className="mt-1 text-xs text-red-400/80">{error}</p>
+          </div>
+        </div>
+      )}
 
       <form className="w-full space-y-6" onSubmit={handleSubmit}>
         <section className="rounded-xl border border-line bg-panel p-6">

@@ -38,20 +38,21 @@ const initialState: FieldState = {
   observedTime: formatToUtcDatetime(now)
 };
 
-const numericFields: { key: keyof FieldState; label: string; suffix: string; }[] = [
-  { key: 'temperature', label: 'Temperature', suffix: '°C' },
-  { key: 'windSpeed', label: 'Wind speed', suffix: 'kt' },
-  { key: 'windDirection', label: 'Wind direction', suffix: '°' },
-  { key: 'humidity', label: 'Humidity', suffix: '% RH' },
-  { key: 'cloudBase', label: 'Clouds', suffix: '' },
-  { key: 'visibility', label: 'Visibility', suffix: 'km' },
-  { key: 'pressure', label: 'Pressure', suffix: 'hPa' }];
+const numericFields: {key: keyof FieldState;label: string;suffix: string;}[] = [
+{ key: 'temperature', label: 'Temperature', suffix: '°C' },
+{ key: 'windSpeed', label: 'Wind speed', suffix: 'kt' },
+{ key: 'windDirection', label: 'Wind direction', suffix: '°' },
+{ key: 'humidity', label: 'Humidity', suffix: '% RH' },
+{ key: 'cloudBase', label: 'Clouds', suffix: '' },
+{ key: 'visibility', label: 'Visibility', suffix: 'km' },
+{ key: 'pressure', label: 'Pressure', suffix: 'hPa' }];
 
 
 export function VerificationForm({ onSaveSuccess, editData, prefillData }: { onSaveSuccess?: () => void, editData?: any, prefillData?: any }) {
   const [fields, setFields] = useState<FieldState>(initialState);
   const [saving, setSaving] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
   const [blockTimer, setBlockTimer] = useState(0);
   const [parsedRecords, setParsedRecords] = useState<any[]>([]);
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -61,11 +62,11 @@ export function VerificationForm({ onSaveSuccess, editData, prefillData }: { onS
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
+    
     setUploading(true);
     const formData = new FormData();
     formData.append('file', file);
-
+    
     try {
       const res = await axios.post(`${API_BASE}/forecasts/upload-csv`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
@@ -73,7 +74,8 @@ export function VerificationForm({ onSaveSuccess, editData, prefillData }: { onS
       setParsedRecords(res.data.records);
       setShowUploadModal(true);
     } catch (err: any) {
-      alert("Error parsing CSV: " + (err.response?.data?.detail || err.message));
+      setErrorMessage("Error parsing CSV: " + (err.response?.data?.detail || err.message));
+      setTimeout(() => setErrorMessage(''), 8000);
     } finally {
       setUploading(false);
       // Reset input
@@ -131,13 +133,14 @@ export function VerificationForm({ onSaveSuccess, editData, prefillData }: { onS
     e.preventDefault();
     setSaving(true);
     setSuccessMessage('');
+    setErrorMessage('');
     try {
       const parseField = (val: string) => {
         if (val === '--' || val.trim() === '') return null;
         const parsed = parseFloat(val);
         return isNaN(parsed) ? null : parsed;
       };
-
+      
       const windSpeed = parseField(fields.windSpeed);
 
       const payload = {
@@ -165,9 +168,10 @@ export function VerificationForm({ onSaveSuccess, editData, prefillData }: { onS
       if (onSaveSuccess) onSaveSuccess();
       setBlockTimer(30);
       setTimeout(() => setSuccessMessage(''), 5000); // hide success message after 5s
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to save verified forecast', error);
-      alert('Failed to save data. Please check backend logs.');
+      setErrorMessage('Failed to save data: ' + (error.response?.data?.detail || error.message));
+      setTimeout(() => setErrorMessage(''), 8000);
     } finally {
       setSaving(false);
     }
@@ -184,18 +188,18 @@ export function VerificationForm({ onSaveSuccess, editData, prefillData }: { onS
     <form className="flex flex-col gap-6" onSubmit={handleSave}>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         {numericFields.map(({ key, label, suffix }) =>
-          <div key={key}>
+        <div key={key}>
             <label htmlFor={key} className="block text-xs text-slate-400">
               {label}
             </label>
             <div className="mt-2 flex items-center rounded-lg border border-line-strong bg-ink px-3 py-2.5 focus-within:border-accent">
               <input
-                id={key}
-                value={fields[key]}
-                onChange={(event) => update(key, event.target.value)}
-                inputMode={key === 'cloudBase' ? "text" : "decimal"}
-                className="w-full bg-transparent text-sm text-slate-100 outline-none placeholder:text-slate-600" />
-
+              id={key}
+              value={fields[key]}
+              onChange={(event) => update(key, event.target.value)}
+              inputMode={key === 'cloudBase' ? "text" : "decimal"}
+              className="w-full bg-transparent text-sm text-slate-100 outline-none placeholder:text-slate-600" />
+            
               {suffix && <span className="pl-2 text-xs text-slate-500">{suffix}</span>}
             </div>
           </div>
@@ -208,15 +212,15 @@ export function VerificationForm({ onSaveSuccess, editData, prefillData }: { onS
             Target time and date (UTC)
           </label>
           <div className="mt-2 flex items-center gap-3 rounded-lg border border-line-strong bg-ink px-3 py-3 focus-within:border-accent">
-            <CalendarIcon
-              className="h-4 w-4 shrink-0 text-slate-500 cursor-pointer hover:text-slate-300"
-              aria-hidden="true"
+            <CalendarIcon 
+              className="h-4 w-4 shrink-0 text-slate-500 cursor-pointer hover:text-slate-300" 
+              aria-hidden="true" 
               onClick={() => {
                 const el = document.getElementById('targetTime') as any;
                 if (el) {
                   try { el.showPicker(); } catch (e) { el.focus(); }
                 }
-              }}
+              }} 
             />
             <input
               id="targetTime"
@@ -224,9 +228,9 @@ export function VerificationForm({ onSaveSuccess, editData, prefillData }: { onS
               value={fields.targetTime}
               onChange={(event) => update('targetTime', event.target.value)}
               className="w-full bg-transparent text-sm text-slate-300 outline-none" />
-
-            <button
-              type="button"
+            
+            <button 
+              type="button" 
               onClick={addThreeHours}
               className="rounded border border-line-strong px-2 py-0.5 text-[11px] font-bold text-slate-300 hover:bg-slate-800 focus:outline-none focus:ring-1 focus:ring-accent"
             >
@@ -239,15 +243,15 @@ export function VerificationForm({ onSaveSuccess, editData, prefillData }: { onS
             Time (Forecast Generated At UTC)
           </label>
           <div className="mt-2 flex items-center gap-3 rounded-lg border border-line-strong bg-ink px-3 py-3 focus-within:border-accent">
-            <ClockIcon
-              className="h-4 w-4 shrink-0 text-slate-500 cursor-pointer hover:text-slate-300"
-              aria-hidden="true"
+            <ClockIcon 
+              className="h-4 w-4 shrink-0 text-slate-500 cursor-pointer hover:text-slate-300" 
+              aria-hidden="true" 
               onClick={() => {
                 const el = document.getElementById('observedTime') as any;
                 if (el) {
                   try { el.showPicker(); } catch (e) { el.focus(); }
                 }
-              }}
+              }} 
             />
             <input
               id="observedTime"
@@ -258,8 +262,23 @@ export function VerificationForm({ onSaveSuccess, editData, prefillData }: { onS
           </div>
         </div>
       </div>
-
+      
       <div className="flex flex-col items-end gap-4 mt-2 w-full">
+        {errorMessage && (
+          <div className="w-full flex items-center justify-between rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 shadow-[0_0_20px_rgba(239,68,68,0.15)] animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <div className="flex items-center gap-3">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-red-500/20 text-red-400">
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </span>
+              <div className="flex flex-col items-start">
+                <p className="text-sm font-semibold text-red-400">{errorMessage}</p>
+                <p className="text-[11px] text-red-500/70">Please check your inputs or backend logs.</p>
+              </div>
+            </div>
+          </div>
+        )}
         {successMessage && (
           <div className="w-full flex items-center justify-between rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 shadow-[0_0_20px_rgba(16,185,129,0.15)] animate-in fade-in slide-in-from-bottom-2 duration-300">
             <div className="flex items-center gap-3">
@@ -274,11 +293,11 @@ export function VerificationForm({ onSaveSuccess, editData, prefillData }: { onS
           </div>
         )}
         <div className="flex gap-3">
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileUpload}
-            className="hidden"
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            onChange={handleFileUpload} 
+            className="hidden" 
             accept=".csv, .xlsx, .xls"
           />
           <button
@@ -301,8 +320,8 @@ export function VerificationForm({ onSaveSuccess, editData, prefillData }: { onS
         </div>
       </div>
       {showUploadModal && (
-        <UploadPreviewModal
-          records={parsedRecords}
+        <UploadPreviewModal 
+          records={parsedRecords} 
           onClose={() => setShowUploadModal(false)}
           onSuccess={() => {
             setShowUploadModal(false);
