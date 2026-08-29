@@ -7,21 +7,25 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 
 # Ensure we can import backend modules
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../")))
 
 from backend.data.database import SessionLocal, engine, Base
 from backend.data.models import WeatherData, SystemLogs
 
 API_URL = "https://aviationweather.gov/api/data/metar?ids=VCBI&format=json"
 
+
 def log_event(db_session, level, component, message, details=None):
     try:
-        log = SystemLogs(level=level, component=component, message=message, details=details)
+        log = SystemLogs(
+            level=level, component=component, message=message, details=details
+        )
         db_session.add(log)
         db_session.commit()
     except Exception as e:
         print(f"Failed to write log to DB: {e}")
     print(f"[{level}] {component}: {message}")
+
 
 def calculate_rh(temp, dewp):
     """
@@ -37,38 +41,48 @@ def calculate_rh(temp, dewp):
     except Exception:
         return None
 
+
 def extract_visibility_from_raw(raw_ob):
     """
     Extracts visibility (e.g., 9999) from raw METAR.
     It usually follows the wind group (e.g., 22012KT).
     """
-    match = re.search(r'KT\s+(\d{4})', raw_ob)
+    match = re.search(r"KT\s+(\d{4})", raw_ob)
     if match:
         return float(match.group(1))
-    return 9999.0 # fallback
+    return 9999.0  # fallback
+
 
 def extract_weather_and_clouds(raw_ob):
     """
     Extracts clouds (like FEW018) and weather phenomena (like RA, HZ).
     """
-    parts = raw_ob.split(' ')
+    parts = raw_ob.split(" ")
     clouds = []
     weather = []
-    
-    cloud_prefixes = ('FEW', 'SCT', 'BKN', 'OVC', 'NSC', 'CAVOK', 'SKC')
-    weather_codes = ('RA', 'HZ', 'BR', 'FG', 'TS', 'DZ', 'VCTS', 'SHRA')
-    
+
+    cloud_prefixes = ("FEW", "SCT", "BKN", "OVC", "NSC", "CAVOK", "SKC")
+    weather_codes = ("RA", "HZ", "BR", "FG", "TS", "DZ", "VCTS", "SHRA")
+
     for part in parts:
         if part.startswith(cloud_prefixes):
             clouds.append(part)
-        elif any(w in part for w in weather_codes) and not part.startswith(cloud_prefixes):
-            if part not in ('NOSIG', 'METAR', 'VCBI') and not re.match(r'\d{6}Z', part) and not part.endswith('KT') and '/' not in part:
+        elif any(w in part for w in weather_codes) and not part.startswith(
+            cloud_prefixes
+        ):
+            if (
+                part not in ("NOSIG", "METAR", "VCBI")
+                and not re.match(r"\d{6}Z", part)
+                and not part.endswith("KT")
+                and "/" not in part
+            ):
                 weather.append(part)
-                
+
     return (
-        " ".join(clouds) if clouds else "NSC", 
-        " ".join(weather) if weather else None
+        " ".join(clouds) if clouds else "NSC",
+        " ".join(weather) if weather else None,
     )
+
 
 def parse_metar_time(time_str):
     if not time_str:
@@ -80,9 +94,11 @@ def parse_metar_time(time_str):
             pass
     try:
         from dateutil import parser
+
         return parser.parse(time_str).replace(tzinfo=None)
     except Exception:
         return datetime.utcnow()
+
 
 def fetch_and_store_live_metar(hours=None):
     """
@@ -93,62 +109,77 @@ def fetch_and_store_live_metar(hours=None):
     # Initialize DB first so we can log errors
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
-    
+
     # Auto-detect gap since last observation if hours is not specified
     if hours is None:
         try:
-            last_rec = db.query(WeatherData).order_by(WeatherData.timestamp_utc.desc()).first()
+            last_rec = (
+                db.query(WeatherData).order_by(WeatherData.timestamp_utc.desc()).first()
+            )
             if last_rec and last_rec.timestamp_utc:
-                gap_hours = (datetime.utcnow() - last_rec.timestamp_utc).total_seconds() / 3600.0
+                gap_hours = (
+                    datetime.utcnow() - last_rec.timestamp_utc
+                ).total_seconds() / 3600.0
                 hours = max(2, min(48, math.ceil(gap_hours + 2)))
             else:
                 hours = 24
         except Exception:
             hours = 24
-            
+
     print(f"[{datetime.now()}] Fetching METAR data for VCBI (Last {hours} hours)...")
-    url = f"https://aviationweather.gov/api/data/metar?ids=VCBI&format=json&hours={hours}"
+    url = (
+        f"https://aviationweather.gov/api/data/metar?ids=VCBI&format=json&hours={hours}"
+    )
     try:
         response = requests.get(url, timeout=15)
         response.raise_for_status()
         data = response.json()
         if not data or len(data) == 0:
-            log_event(db, "WARNING", f"Live_METAR_Fetcher_{hours}H", "No data returned from API.")
+            log_event(
+                db,
+                "WARNING",
+                f"Live_METAR_Fetcher_{hours}H",
+                "No data returned from API.",
+            )
             return
-            
+
         records_added = 0
-        for ob in reversed(data): # Process oldest to newest
-            raw_ob = ob.get('rawOb', '')
-            
-            report_time_str = ob.get('reportTime')
+        for ob in reversed(data):  # Process oldest to newest
+            raw_ob = ob.get("rawOb", "")
+
+            report_time_str = ob.get("reportTime")
             if not report_time_str:
                 continue
-                
+
             dt = datetime.strptime(report_time_str, "%Y-%m-%dT%H:%M:%S.000Z")
-            
+
             year = dt.year
             month = dt.month
             date = dt.day
             time_utc = dt.strftime("%H%M")
-            
+
             # Check if this record already exists (to prevent duplicates)
-            existing = db.query(WeatherData).filter_by(
-                year=year, month=month, date=date, time_utc=time_utc
-            ).first()
-            
+            existing = (
+                db.query(WeatherData)
+                .filter_by(year=year, month=month, date=date, time_utc=time_utc)
+                .first()
+            )
+
             if existing:
-                continue # Skip if already in DB
-                
-            wind_dir = float(ob.get('wdir')) if ob.get('wdir') is not None else None
-            wind_speed_kts = float(ob.get('wspd')) if ob.get('wspd') is not None else None
-            dry_temp_c = float(ob.get('temp')) if ob.get('temp') is not None else None
-            dew_point_c = float(ob.get('dewp')) if ob.get('dewp') is not None else None
-            qnh_hpa = float(ob.get('altim')) if ob.get('altim') is not None else None
-            
+                continue  # Skip if already in DB
+
+            wind_dir = float(ob.get("wdir")) if ob.get("wdir") is not None else None
+            wind_speed_kts = (
+                float(ob.get("wspd")) if ob.get("wspd") is not None else None
+            )
+            dry_temp_c = float(ob.get("temp")) if ob.get("temp") is not None else None
+            dew_point_c = float(ob.get("dewp")) if ob.get("dewp") is not None else None
+            qnh_hpa = float(ob.get("altim")) if ob.get("altim") is not None else None
+
             rh_percent = calculate_rh(dry_temp_c, dew_point_c)
             visibility = extract_visibility_from_raw(raw_ob)
             clouds, weather = extract_weather_and_clouds(raw_ob)
-            
+
             new_record = WeatherData(
                 timestamp_utc=datetime.utcnow(),
                 year=year,
@@ -163,23 +194,39 @@ def fetch_and_store_live_metar(hours=None):
                 dry_temp_c=dry_temp_c,
                 dew_point_c=dew_point_c,
                 rh_percent=rh_percent,
-                qnh_hpa=qnh_hpa
+                qnh_hpa=qnh_hpa,
             )
             db.add(new_record)
             records_added += 1
-            
+
         db.commit()
         if records_added > 0:
-            log_event(db, "SUCCESS", f"Live_METAR_Fetcher_{hours}H", f"Added {records_added} new live METAR record(s).")
+            log_event(
+                db,
+                "SUCCESS",
+                f"Live_METAR_Fetcher_{hours}H",
+                f"Added {records_added} new live METAR record(s).",
+            )
         else:
-            log_event(db, "INFO", f"Live_METAR_Fetcher_{hours}H", "No new METAR records. All fetched data already exists in DB.")
-            
+            log_event(
+                db,
+                "INFO",
+                f"Live_METAR_Fetcher_{hours}H",
+                "No new METAR records. All fetched data already exists in DB.",
+            )
+
         return records_added
     except Exception as e:
-        log_event(db, "ERROR", f"Live_METAR_Fetcher_{hours}H", f"Error fetching live METAR: {str(e)}")
+        log_event(
+            db,
+            "ERROR",
+            f"Live_METAR_Fetcher_{hours}H",
+            f"Error fetching live METAR: {str(e)}",
+        )
         return 0
     finally:
         db.close()
+
 
 if __name__ == "__main__":
     fetch_and_store_live_metar(hours=2)

@@ -91,14 +91,14 @@ def train_dewpoint_3h_model():
             old_mae = mean_absolute_error(y_test, old_preds)
             print(f"Old Model MAE: {old_mae:.4f}")
             
-            if new_mae < old_mae:
-                print("New model is BETTER. Promoting new model and backing up the old one.")
+            if new_mae <= old_mae:
+                print("New model is BETTER or EQUAL. Promoting new model and backing up the old one.")
                 shutil.copy2(model_path, backup_path)
                 joblib.dump(new_model, model_path)
                 joblib.dump((X_test, y_test, features), assets_path)
-                promotion_status = "Promoted (Better MAE)"
+                promotion_status = "Promoted (Better or Equal MAE)"
             else:
-                print("New model is WORSE or EQUAL. Discarding new model.")
+                print("New model is WORSE. Discarding new model.")
                 promotion_status = "Discarded (Worse MAE)"
         except Exception as e:
             print(f"Error loading/evaluating old model: {e}. Overwriting anyway.")

@@ -1,4 +1,5 @@
 import os
+import shutil
 import sqlite3
 import pandas as pd
 import numpy as np
@@ -13,9 +14,9 @@ from tensorflow.keras.layers import LSTM, Dense, Dropout
 from tensorflow.keras.callbacks import EarlyStopping
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_DIR = os.path.dirname(os.path.dirname(BASE_DIR))
+PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(BASE_DIR)))
 DB_PATH = os.path.join(PROJECT_DIR, "weather_data.db")
-OUTPUT_DIR = os.path.join(BASE_DIR, "lstm_hybrid")
+OUTPUT_DIR = BASE_DIR
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # 1. Load Data
@@ -152,10 +153,68 @@ print("Press RMSE:", np.sqrt(mean_squared_error(target_test_unscaled[:, 1], hybr
 print("Press R2:", r2_score(target_test_unscaled[:, 1], hybrid_preds[:, 1]))
 print("Press Accuracy:", 100 * (1 - mean_absolute_percentage_error(target_test_unscaled[:, 1], hybrid_preds[:, 1])), "%")
 
-# 8. Save Models
-lstm_model.save(os.path.join(OUTPUT_DIR, "lstm_model.keras"))
-joblib.dump(hybrid_model, os.path.join(OUTPUT_DIR, "hybrid_rf_model.pkl"))
-joblib.dump(scaler_X, os.path.join(OUTPUT_DIR, "lstm_scaler_X.pkl"))
-joblib.dump(scaler_y, os.path.join(OUTPUT_DIR, "lstm_scaler_y.pkl"))
+# NEW LOGIC
+new_temp_mae = mean_absolute_error(target_test_unscaled[:, 0], hybrid_preds[:, 0])
+new_press_mae = mean_absolute_error(target_test_unscaled[:, 1], hybrid_preds[:, 1])
+new_total_mae = new_temp_mae + new_press_mae
 
-print(f"\nModels saved successfully in {OUTPUT_DIR}!")
+better_model = True
+
+old_lstm_path = os.path.join(OUTPUT_DIR, "lstm_model.keras")
+old_hybrid_path = os.path.join(OUTPUT_DIR, "hybrid_rf_model.pkl")
+old_scaler_X_path = os.path.join(OUTPUT_DIR, "lstm_scaler_X.pkl")
+old_scaler_y_path = os.path.join(OUTPUT_DIR, "lstm_scaler_y.pkl")
+
+if os.path.exists(old_lstm_path) and os.path.exists(old_hybrid_path):
+    print("\nEvaluating existing hybrid models for comparison...")
+    try:
+        from tensorflow.keras.models import load_model
+        old_lstm = load_model(old_lstm_path, compile=False)
+        old_hybrid = joblib.load(old_hybrid_path)
+        old_scaler_X = joblib.load(old_scaler_X_path)
+        old_scaler_y = joblib.load(old_scaler_y_path)
+        
+        # Test old models
+        features_scaled_old = old_scaler_X.transform(features)
+        X_seq_old = []
+        for i in range(len(features_scaled_old) - SEQ_LEN):
+            X_seq_old.append(features_scaled_old[i : i + SEQ_LEN])
+        X_seq_old = np.array(X_seq_old)
+        X_test_old = X_seq_old[split_idx:]
+        
+        lstm_preds_scaled_old = old_lstm.predict(X_test_old, verbose=0)
+        lstm_preds_old = old_scaler_y.inverse_transform(lstm_preds_scaled_old)
+        
+        hybrid_X_test_old = np.hstack((curr_test, lstm_preds_old))
+        old_hybrid_preds = old_hybrid.predict(hybrid_X_test_old)
+        
+        old_temp_mae = mean_absolute_error(target_test_unscaled[:, 0], old_hybrid_preds[:, 0])
+        old_press_mae = mean_absolute_error(target_test_unscaled[:, 1], old_hybrid_preds[:, 1])
+        
+        print(f"Old Hybrid Temp MAE: {old_temp_mae:.4f}")
+        print(f"Old Hybrid Press MAE: {old_press_mae:.4f}")
+        
+        old_total_mae = old_temp_mae + old_press_mae
+        
+        if new_total_mae >= old_total_mae:
+            better_model = False
+            print("Old models perform better or equally well. Skipping save to memory.")
+        else:
+            print("New models perform better! Creating backup of old models...")
+            shutil.copy(old_lstm_path, os.path.join(OUTPUT_DIR, "lstm_model_backup.keras"))
+            shutil.copy(old_hybrid_path, os.path.join(OUTPUT_DIR, "hybrid_rf_model_backup.pkl"))
+            shutil.copy(old_scaler_X_path, os.path.join(OUTPUT_DIR, "lstm_scaler_X_backup.pkl"))
+            shutil.copy(old_scaler_y_path, os.path.join(OUTPUT_DIR, "lstm_scaler_y_backup.pkl"))
+            
+    except Exception as e:
+        print(f"Could not load/evaluate old models for comparison: {e}")
+
+if better_model:
+    # 8. Save Models
+    lstm_model.save(os.path.join(OUTPUT_DIR, "lstm_model.keras"))
+    joblib.dump(hybrid_model, os.path.join(OUTPUT_DIR, "hybrid_rf_model.pkl"))
+    joblib.dump(scaler_X, os.path.join(OUTPUT_DIR, "lstm_scaler_X.pkl"))
+    joblib.dump(scaler_y, os.path.join(OUTPUT_DIR, "lstm_scaler_y.pkl"))
+    print(f"\nModels saved successfully in {OUTPUT_DIR}!")
+else:
+    print(f"\nRetained existing hybrid models in {OUTPUT_DIR}. No new files saved.")
