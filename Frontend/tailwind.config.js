@@ -59,6 +59,17 @@ export default {
           700: '#0369A1',
         },
       },
+      keyframes: {
+        flight: {
+          '0%': { left: '0%', opacity: '0' },
+          '10%': { opacity: '1' },
+          '90%': { opacity: '1' },
+          '100%': { left: '100%', opacity: '0' },
+        }
+      },
+      animation: {
+        flight: 'flight 20s linear infinite',
+      }
     },
   },
   plugins: [],

@@ -309,7 +309,6 @@ export function WeatherForecasting() {
                 <p className="mt-1 flex items-baseline gap-1.5">
                   <span className="text-2xl font-bold leading-8 text-white">{metric.value}</span>
                   {metric.unit ? <span className="text-xs text-slate-500">{metric.unit}</span> : null}
-                  {metric.detail ? <span className="text-xs text-slate-500 ml-1">{metric.detail}</span> : null}
                 </p>
               </div>
             )}

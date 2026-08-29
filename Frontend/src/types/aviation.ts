@@ -1,4 +1,4 @@
-export type BriefingStatus = 'Draft' | 'Approved' | 'Pending';
+export type BriefingStatus = 'Draft' | 'Approved' | 'Pending' | 'Generated';
 
 export interface BriefingDocument {
   reference: string;
