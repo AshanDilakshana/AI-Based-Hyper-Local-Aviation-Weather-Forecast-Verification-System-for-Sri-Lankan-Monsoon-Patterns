@@ -34,22 +34,32 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfbase import pdfmetrics
+from reportlab.lib.fonts import addMapping
 
 try:
-    # Define the font directory
-    font_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets", "fonts")
+    # Define the font directory (backend/assets/fonts)
+    backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    font_dir = os.path.join(backend_dir, "assets", "fonts")
     
     # First try the FM font for legacy encoding
     fm_font_path = os.path.join(font_dir, "FM Ababld-Bold.TTF")
     if os.path.exists(fm_font_path):
+        print(f"Found FMSinhala at {fm_font_path}")
         pdfmetrics.registerFont(TTFont("FMSinhala", fm_font_path))
+        addMapping("FMSinhala", 0, 0, "FMSinhala")
+        pdfmetrics.registerFont(TTFont("fmsinhala", fm_font_path))
+        addMapping("fmsinhala", 0, 0, "fmsinhala")
 
     # Fallback Unicode font
     font_path = os.path.join(font_dir, "NotoSansSinhala-Regular.ttf")
     if os.path.exists(font_path):
         pdfmetrics.registerFont(TTFont("NotoSinhala", font_path))
-except:
-    pass
+        addMapping("NotoSinhala", 0, 0, "NotoSinhala")
+        print("Successfully loaded NotoSinhala")
+except Exception as e:
+    print(f"ERROR LOADING FONTS: {e}")
+    import traceback
+    traceback.print_exc()
 
 
 def draw_page_border(canvas, doc):
@@ -217,15 +227,17 @@ def generate_briefing_pdf(
             pass
 
     # Sinhala text (FM Font encoded)
-    try:
+    if os.path.exists(fm_font_path):
         sinhala_style = ParagraphStyle(
             name="Sinhala", fontName="FMSinhala", fontSize=24, alignment=1
         )
-    except:
+    else:
         sinhala_style = ParagraphStyle(name="SinhalaFallback", fontSize=24, alignment=1)
-
-    elements.append(Paragraph("› ,xld ld<.=K úoHd fomd¾;fïka;=j", sinhala_style))
-    elements.append(Spacer(1, 6))
+        
+    raw_sinhala_text = "› ,xld ld<.=K úoHd fomd¾;fïka;=j"
+    escaped_sinhala_text = raw_sinhala_text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    elements.append(Paragraph(escaped_sinhala_text, sinhala_style))
+    elements.append(Spacer(1, 15))
     elements.append(
         Paragraph(
             "DEPARTMENT OF METEOROLOGY, SRI LANKA",

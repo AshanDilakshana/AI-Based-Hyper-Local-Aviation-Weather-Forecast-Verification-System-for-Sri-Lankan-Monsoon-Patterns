@@ -268,15 +268,26 @@ async def upload_csv_forecasts(file: UploadFile = File(...)):
             and str(wind_str).strip()
             and str(wind_str).strip().lower() != "nan"
         ):
-            # Handle float representation from pandas (e.g., '3015.0')
-            clean_wind = str(wind_str).split(".")[0].strip()
-            # Pad with leading zeros to make it at least 5 digits (e.g., '3015' -> '03015')
-            clean_wind = clean_wind.zfill(5)
-
-            match = re.search(r"^(\d{3})(\d{2,3})$", clean_wind)
-            if match:
-                wind_dir = float(match.group(1))
-                wind_speed = float(match.group(2))
+            clean_wind = str(wind_str).strip()
+            
+            if "/" in clean_wind:
+                parts = clean_wind.split("/")
+                if len(parts) == 2:
+                    try:
+                        wind_dir = float(parts[0].strip())
+                        wind_speed = float(parts[1].strip())
+                    except ValueError:
+                        pass
+            else:
+                # Handle float representation from pandas (e.g., '3015.0')
+                clean_wind = clean_wind.split(".")[0].strip()
+                # Pad with leading zeros to make it at least 5 digits (e.g., '3015' -> '03015')
+                clean_wind = clean_wind.zfill(5)
+    
+                match = re.search(r"^(\d{3})(\d{2,3})$", clean_wind)
+                if match:
+                    wind_dir = float(match.group(1))
+                    wind_speed = float(match.group(2))
 
         # Parse Date and Time
         try:
@@ -322,10 +333,11 @@ def bulk_verify_forecasts(
     req: VerifiedForecastBulkRequest, db: Session = Depends(get_db)
 ):
     for forecast in req.forecasts:
+        target_dt = datetime.fromisoformat(forecast.target_time.replace("Z", "+00:00")).replace(tzinfo=None)
         # Find if it already exists
         existing = (
             db.query(VerifiedForecast)
-            .filter(VerifiedForecast.target_time == forecast.target_time)
+            .filter(VerifiedForecast.target_time == target_dt)
             .first()
         )
 
@@ -354,7 +366,7 @@ def bulk_verify_forecasts(
         else:
             # Insert new
             new_vf = VerifiedForecast(
-                target_time=forecast.target_time,
+                target_time=target_dt,
                 dry_temp_c=forecast.dry_temp_c,
                 wind_speed_kts=forecast.wind_speed_kts,
                 wind_dir=forecast.wind_dir,
