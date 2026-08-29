@@ -101,7 +101,7 @@ class FlightTimeAndFlights(Base):
     time_period_mins = Column(Integer, nullable=True) # e.g. 580
 
 class PilotFlightPlan(Base):
-    __tablename__ = "piolet_flight_plane"
+    __tablename__ = "pilot_flight_plan"
     
     id = Column(Integer, primary_key=True, index=True)
     pilot_reference = Column(String, index=True) # Pilot username/reference ID
