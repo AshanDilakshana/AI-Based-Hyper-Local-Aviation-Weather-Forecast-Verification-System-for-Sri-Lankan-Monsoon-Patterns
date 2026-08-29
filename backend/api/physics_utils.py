@@ -1,5 +1,6 @@
 import math
 
+
 def calculate_pressure_altitude(qnh_hpa: float) -> float:
     """
     Calculates Pressure Altitude (PA) in feet.
@@ -9,6 +10,7 @@ def calculate_pressure_altitude(qnh_hpa: float) -> float:
         return 0.0
     return 145366.45 * (1 - math.pow(qnh_hpa / 1013.25, 0.190284))
 
+
 def calculate_isa_temperature(pa_ft: float) -> float:
     """
     Calculates International Standard Atmosphere (ISA) Temperature in Celsius at a given Pressure Altitude.
@@ -16,14 +18,20 @@ def calculate_isa_temperature(pa_ft: float) -> float:
     """
     return 15.0 - 1.98 * (pa_ft / 1000.0)
 
-def calculate_density_altitude(pa_ft: float, actual_temp_c: float, isa_temp_c: float) -> float:
+
+def calculate_density_altitude(
+    pa_ft: float, actual_temp_c: float, isa_temp_c: float
+) -> float:
     """
     Calculates Density Altitude (DA) in feet.
     Formula: DA = PA + 120 * (T_actual - T_ISA)
     """
     return pa_ft + 120.0 * (actual_temp_c - isa_temp_c)
 
-def classify_vcbi_density_altitude(da_ft: float, p75: float = 1868.2, p90: float = 2041.1) -> str:
+
+def classify_vcbi_density_altitude(
+    da_ft: float, p75: float = 1868.2, p90: float = 2041.1
+) -> str:
     """
     Classifies VCBI Density Altitude into NORMAL, ELEVATED, or HIGH based on historical percentiles.
     """
@@ -33,6 +41,7 @@ def classify_vcbi_density_altitude(da_ft: float, p75: float = 1868.2, p90: float
         return "ELEVATED"
     else:
         return "HIGH"
+
 
 def get_aviation_performance_impact(classification: str) -> str:
     """
