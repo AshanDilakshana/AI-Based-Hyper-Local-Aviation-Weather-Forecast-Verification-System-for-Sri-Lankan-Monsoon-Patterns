@@ -1,4 +1,3 @@
-
 from fastapi import FastAPI, HTTPException
 import os
 import sys
@@ -13,11 +12,16 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
 # Ensure backend modules can be imported
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 
 
-
-from backend.api.routers import live_metrology, forecast_router, logs_router, pilot_router, auth_router
+from backend.api.routers import (
+    live_metrology,
+    forecast_router,
+    logs_router,
+    pilot_router,
+    auth_router,
+)
 from backend.data.database import engine, Base
 from backend.data import models
 
@@ -29,8 +33,10 @@ from fastapi.staticfiles import StaticFiles
 try:
     from backend.scheduler import start_scheduler
 except ImportError:
+
     def start_scheduler():
         print("Scheduler not found locally.")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -38,11 +44,12 @@ async def lifespan(app: FastAPI):
     start_scheduler()
     yield
 
+
 app = FastAPI(
     title="Aviation Weather Forecast API",
     description="Main API gateway for aviation weather models.",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # Mount static directory for generated documents
@@ -53,13 +60,8 @@ if not os.path.exists(DOCS_DIR):
 app.mount("/documents", StaticFiles(directory=DOCS_DIR), name="documents")
 
 
-@app.on_event("startup")
-def on_startup():
-    print("Starting background scheduler...")
-    # Call start_scheduler (which is non-blocking since it uses BackgroundScheduler)
-    start_scheduler()
-
 from fastapi.middleware.cors import CORSMiddleware
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -69,7 +71,7 @@ app.add_middleware(
 )
 
 # ---------------------------------------------------------
-# Include Route Modules 
+# Include Route Modules
 # ---------------------------------------------------------
 
 # Live Metrology API
@@ -88,9 +90,6 @@ app.include_router(pilot_router.router)
 app.include_router(auth_router.router)
 
 
-
-
-
 # Mock Metrology API (Local placeholder)
 
 
@@ -99,6 +98,7 @@ app.include_router(auth_router.router)
 # Ashan's Wind Prediction Models (ACTIVE)
 try:
     from backend.api.routers import wind_router
+
     app.include_router(wind_router.router)
 except ImportError:
     print("Warning: wind_router not found locally. Skipping.")
@@ -107,6 +107,7 @@ except ImportError:
 # Imash - Temperature & Pressure (ACTIVE)
 try:
     from backend.api.routers import temperature_pressure_router
+
     app.include_router(temperature_pressure_router.router)
 except ImportError:
     print("Warning: temperature_pressure_router not found locally. Skipping.")
@@ -114,6 +115,7 @@ except ImportError:
 # Dashboard Router
 try:
     from backend.api.routers import dashboard_router
+
     app.include_router(dashboard_router.router)
 except ImportError:
     print("Warning: dashboard_router not found locally. Skipping.")
@@ -122,6 +124,7 @@ except ImportError:
 # Sachiii - Cloud & Visibility Prediction Models (ACTIVE)
 try:
     from backend.api.routers import cloud_visibility_router
+
     app.include_router(cloud_visibility_router.router)
 except ImportError:
     print("Warning: cloud_visibility_router not found locally. Skipping.")
@@ -130,6 +133,7 @@ except ImportError:
 # viji - QNH, Dewpoint & RH Models (ACTIVE)
 try:
     from backend.api.routers import qnh_dewpoint_router
+
     app.include_router(qnh_dewpoint_router.router)
 except ImportError:
     print("Warning: qnh_dewpoint_router not found locally. Skipping.")
@@ -140,7 +144,12 @@ def read_root():
     return {
         "message": "Welcome to the Aviation Weather Forecast API.",
         "docs": "Visit /docs for the Swagger UI.",
-        "active_models": ["Temperature & Pressure", "Cloud Status", "Visibility", "QNH, Dewpoint & RH Prediction"]
+        "active_models": [
+            "Temperature & Pressure",
+            "Cloud Status",
+            "Visibility",
+            "QNH, Dewpoint & RH Prediction",
+        ],
     }
 
 
@@ -149,10 +158,13 @@ def read_root():
 # ---------------------------------------------------------
 
 from fastapi import HTTPException
-from backend.mlops_retrainer.mlops_qnh_dewpoint_retrainer import run_qnh_dewpoint_retraining
+from backend.mlops_retrainer.mlops_qnh_dewpoint_retrainer import (
+    run_qnh_dewpoint_retraining,
+)
 from backend.api.routers.qnh_dewpoint_router import load_QNH_Dewpoint_models
 
 from backend.celery_worker import run_full_retraining_pipeline, celery_app
+
 
 @app.post("/models/retrain")
 def manual_retrain_models():
@@ -165,46 +177,63 @@ def manual_retrain_models():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.get("/models/retrain/status/{task_id}")
 def get_retrain_status(task_id: str):
     """
     Check the status of a background retraining task.
     """
     task_result = celery_app.AsyncResult(task_id)
-    
+
     # If the task is finished and successful, hot-reload the models into memory
-    if task_result.status == 'SUCCESS':
+    if task_result.status == "SUCCESS":
         try:
             try:
                 from backend.api.routers.wind_router import load_Wind_models
+
                 load_Wind_models()
-            except ImportError: pass
-            
+            except ImportError:
+                pass
+
             try:
-                from backend.api.routers.temperature_pressure_router import load_Temp_Press_models
+                from backend.api.routers.temperature_pressure_router import (
+                    load_Temp_Press_models,
+                )
+
                 load_Temp_Press_models()
-            except ImportError: pass
-            
+            except ImportError:
+                pass
+
             try:
-                from backend.api.routers.cloud_visibility_router import load_models as load_Cloud_models
+                from backend.api.routers.cloud_visibility_router import (
+                    load_models as load_Cloud_models,
+                )
+
                 load_Cloud_models()
-            except ImportError: pass
-            
+            except ImportError:
+                pass
+
             try:
-                from backend.api.routers.qnh_dewpoint_router import load_QNH_Dewpoint_models
+                from backend.api.routers.qnh_dewpoint_router import (
+                    load_QNH_Dewpoint_models,
+                )
+
                 load_QNH_Dewpoint_models()
-            except ImportError: pass
-            
+            except ImportError:
+                pass
+
         except Exception as e:
             print(f"Warning: Failed to hot-reload some models after retraining: {e}")
 
     return {
         "task_id": task_id,
         "status": task_result.status,
-        "result": task_result.result if task_result.status == 'SUCCESS' else None,
-        "error": str(task_result.info) if task_result.status == 'FAILURE' else None
+        "result": task_result.result if task_result.status == "SUCCESS" else None,
+        "error": str(task_result.info) if task_result.status == "FAILURE" else None,
     }
+
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)
