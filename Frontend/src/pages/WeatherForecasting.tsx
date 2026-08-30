@@ -5,6 +5,7 @@ import { MetricCard } from '../components/ui/MetricCard';
 import { ObservationTable } from '../components/ui/ObservationTable';
 import { Panel } from '../components/ui/Panel';
 import { VerificationForm } from '../components/forecast/VerificationForm';
+import { Modal } from '../components/ui/Modal';
 
 const API_BASE = 'http://localhost:8000';
 
@@ -40,6 +41,7 @@ export function WeatherForecasting() {
   
   const [obsDuration, setObsDuration] = useState<6 | 12>(6);
   const [editData, setEditData] = useState<any>(null);
+  const [isDensityModalOpen, setIsDensityModalOpen] = useState(false);
 
   const fetchLiveData = async () => {
     try {
@@ -263,6 +265,32 @@ export function WeatherForecasting() {
           {mappedForecastMetrics.slice(3).map((metric) =>
           <MetricCard key={metric.label} {...metric} />
           )}
+          
+          {/* Density Altitude & VCBI Classification Card */}
+          <button
+            onClick={() => setIsDensityModalOpen(true)}
+            className="col-span-2 rounded-xl border border-line bg-panel p-4 text-left transition-colors hover:border-accent group flex flex-col justify-between focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+          >
+            <h3 className="text-xs text-slate-400 group-hover:text-accent-pale transition-colors">Density Altitude & VCBI Class</h3>
+            <div className="mt-2 flex items-center justify-between w-full">
+              <div>
+                 <p className="flex items-baseline gap-1.5">
+                   <span className="text-2xl font-bold leading-8 text-white">
+                     {forecastData?.temperature_pressure_forecast?.derived_parameters?.density_altitude_ft !== undefined ? Number(forecastData.temperature_pressure_forecast.derived_parameters.density_altitude_ft).toFixed(0) : '--'}
+                   </span>
+                   <span className="text-xs text-slate-500">ft</span>
+                 </p>
+                 <p className="text-[10px] text-slate-500 mt-1">Density Altitude</p>
+              </div>
+              <span className="text-slate-600 mx-2">|</span>
+              <div className="text-right">
+                 <p className="text-lg font-bold text-emerald-400 truncate uppercase">
+                    {forecastData?.temperature_pressure_forecast?.derived_parameters?.classification ?? '--'}
+                 </p>
+                 <p className="text-[10px] text-slate-500 mt-1">Classification</p>
+              </div>
+            </div>
+          </button>
         </div>
       </section>
 
@@ -356,5 +384,60 @@ export function WeatherForecasting() {
         </div>
         
       </Panel>
+
+      <Modal 
+        isOpen={isDensityModalOpen} 
+        onClose={() => setIsDensityModalOpen(false)} 
+        title="Density Altitude Details"
+      >
+        <div className="flex flex-col gap-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="rounded-lg bg-ink border border-line p-3">
+              <p className="text-xs text-slate-400 mb-1">Density Altitude</p>
+              <p className="text-lg font-bold text-white">
+                {forecastData?.temperature_pressure_forecast?.derived_parameters?.density_altitude_ft !== undefined ? Number(forecastData.temperature_pressure_forecast.derived_parameters.density_altitude_ft).toFixed(0) : '--'} ft
+              </p>
+            </div>
+            <div className="rounded-lg bg-ink border border-line p-3">
+              <p className="text-xs text-slate-400 mb-1">VCBI Classification</p>
+              <p className="text-lg font-bold text-emerald-400 uppercase">
+                {forecastData?.temperature_pressure_forecast?.derived_parameters?.classification ?? '--'}
+              </p>
+            </div>
+            <div className="rounded-lg bg-ink border border-line p-3">
+              <p className="text-xs text-slate-400 mb-1">Pressure Altitude</p>
+              <p className="text-lg font-bold text-white">
+                {forecastData?.temperature_pressure_forecast?.derived_parameters?.pressure_altitude_ft !== undefined ? Number(forecastData.temperature_pressure_forecast.derived_parameters.pressure_altitude_ft).toFixed(0) : '--'} ft
+              </p>
+            </div>
+            <div className="rounded-lg bg-ink border border-line p-3">
+              <p className="text-xs text-slate-400 mb-1">ISA Temperature</p>
+              <p className="text-lg font-bold text-white">
+                {forecastData?.temperature_pressure_forecast?.derived_parameters?.isa_temperature_c !== undefined ? Number(forecastData.temperature_pressure_forecast.derived_parameters.isa_temperature_c).toFixed(1) : '--'} °C
+              </p>
+            </div>
+            <div className="rounded-lg bg-ink border border-line p-3">
+              <p className="text-xs text-slate-400 mb-1">Temperature</p>
+              <p className="text-lg font-bold text-white">
+                {forecastData?.temperature_pressure_forecast?.prediction?.temperature_C !== undefined ? Number(forecastData.temperature_pressure_forecast.prediction.temperature_C).toFixed(1) : '--'} °C
+              </p>
+            </div>
+            <div className="rounded-lg bg-ink border border-line p-3">
+              <p className="text-xs text-slate-400 mb-1">Pressure (QNH)</p>
+              <p className="text-lg font-bold text-white">
+                {forecastData?.temperature_pressure_forecast?.prediction?.pressure_hPa !== undefined ? Number(forecastData.temperature_pressure_forecast.prediction.pressure_hPa).toFixed(1) : '--'} hPa
+              </p>
+            </div>
+          </div>
+          {forecastData?.temperature_pressure_forecast?.derived_parameters?.performance_impact && (
+            <div className="rounded-lg bg-ink/50 border border-line p-3 mt-2">
+              <p className="text-xs text-slate-400 mb-1">Performance Impact</p>
+              <p className="text-sm text-slate-300">
+                {forecastData.temperature_pressure_forecast.derived_parameters.performance_impact}
+              </p>
+            </div>
+          )}
+        </div>
+      </Modal>
     </div>);
 }
