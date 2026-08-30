@@ -217,7 +217,8 @@ def generate_briefing_pdf(
     elements.append(Spacer(1, 15))
 
     # Emblem
-    emblem_img_path = "/Users/Ashan/.gemini/antigravity-ide/brain/19078c78-6553-4706-8666-a7303377bb60/.user_uploaded/media_1787944037304.png"
+    backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    emblem_img_path = os.path.join(backend_dir, "assets", "images", "emblem.png")
     if os.path.exists(emblem_img_path):
         try:
             img = RLImage(emblem_img_path, width=1.5 * inch, height=1.5 * inch)
@@ -256,7 +257,8 @@ def generate_briefing_pdf(
     elements.append(Spacer(1, 10))
 
     # Airplane
-    airplane_img_path = "/Users/Ashan/.gemini/antigravity-ide/brain/19078c78-6553-4706-8666-a7303377bb60/.user_uploaded/media_1787946050280.png"
+    backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    airplane_img_path = os.path.join(backend_dir, "assets", "images", "airplane.png")
     if os.path.exists(airplane_img_path):
         try:
             # Reduced height to prevent spill to page 2
@@ -476,7 +478,8 @@ def generate_briefing_pdf(
     elements.append(PageBreak())
 
     # --- PAGE 2: STATIC LEGENDS FROM UPLOADED IMAGE ---
-    legend1 = "/Users/Ashan/.gemini/antigravity-ide/brain/19078c78-6553-4706-8666-a7303377bb60/.user_uploaded/media_1787944602902.png"
+    backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    legend1 = os.path.join(backend_dir, "assets", "images", "legend.png")
 
     if os.path.exists(legend1):
         # 1024x677 aspect ratio ~ 1.51
@@ -499,7 +502,8 @@ def generate_briefing_pdf(
         contact_fax = "+94 47 2031485"
         contact_email = "met.mattala@gmail.com"
 
-    emblem_img_path = "/Users/Ashan/.gemini/antigravity-ide/brain/19078c78-6553-4706-8666-a7303377bb60/.user_uploaded/media_1787944037304.png"
+    backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    emblem_img_path = os.path.join(backend_dir, "assets", "images", "emblem.png")
     emblem_flowable = ""
     if os.path.exists(emblem_img_path):
         try:
