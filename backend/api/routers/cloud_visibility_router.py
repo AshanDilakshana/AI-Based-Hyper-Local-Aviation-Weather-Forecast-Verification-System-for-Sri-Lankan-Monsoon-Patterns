@@ -53,6 +53,9 @@ MODEL_PATH = os.path.abspath(
 
 cloud_model = None
 cloud_mapping = None
+cloud_type_model = None
+cloud_height_model = None
+cloud_type_mapping = None
 
 vis_model = None
 vis_mapping = None
@@ -68,7 +71,7 @@ def load_models():
     Loads or reloads the models into memory.
     Called on startup and after automated retraining.
     """
-    global cloud_model, cloud_mapping, vis_model, vis_mapping
+    global cloud_model, cloud_mapping, cloud_type_model, cloud_height_model, cloud_type_mapping, vis_model, vis_mapping
 
     # -----------------------------------------------------
     # Load Cloud Model with Fallback
@@ -80,8 +83,13 @@ def load_models():
         if os.path.exists(cloud_primary):
             with open(cloud_primary, "rb") as f:
                 cloud_bundle = pickle.load(f)
-            cloud_model = cloud_bundle["model"]
-            cloud_mapping = cloud_bundle["mapping"]
+            if 'type_model' in cloud_bundle:
+                cloud_type_model = cloud_bundle['type_model']
+                cloud_height_model = cloud_bundle['height_model']
+                cloud_type_mapping = cloud_bundle['type_mapping']
+            else:
+                cloud_model = cloud_bundle["model"]
+                cloud_mapping = cloud_bundle["mapping"]
             print("[SUCCESS] Loaded Primary Cloud XGBoost Model.")
         else:
             raise FileNotFoundError(f"Primary Cloud model not found at {cloud_primary}")
@@ -93,8 +101,13 @@ def load_models():
             if os.path.exists(cloud_backup):
                 with open(cloud_backup, "rb") as f:
                     cloud_bundle = pickle.load(f)
-                cloud_model = cloud_bundle["model"]
-                cloud_mapping = cloud_bundle["mapping"]
+                if 'type_model' in cloud_bundle:
+                    cloud_type_model = cloud_bundle['type_model']
+                    cloud_height_model = cloud_bundle['height_model']
+                    cloud_type_mapping = cloud_bundle['type_mapping']
+                else:
+                    cloud_model = cloud_bundle["model"]
+                    cloud_mapping = cloud_bundle["mapping"]
                 print("[SUCCESS] Loaded Backup Cloud XGBoost Model.")
             else:
                 print("[ERROR] No Backup Cloud model found.")
@@ -151,7 +164,7 @@ def predict_cloud_visibility(data: CloudVisibilityRequest):
     # Check Models
     # -----------------------------------------------------
 
-    if cloud_model is None or vis_model is None:
+    if (cloud_model is None and cloud_type_model is None) or vis_model is None:
 
         raise HTTPException(
             status_code=500, detail="Models failed to load on server startup."
@@ -267,9 +280,22 @@ def predict_cloud_visibility(data: CloudVisibilityRequest):
         # CLOUD PREDICTION
         # =================================================
 
-        cloud_raw_pred = cloud_model.predict(input_data)[0]
-
-        cloud_idx = int(np.clip(np.round(cloud_raw_pred), 0, len(cloud_mapping) - 1))
+        if cloud_type_model is not None and cloud_height_model is not None:
+            type_raw = cloud_type_model.predict(input_data)[0]
+            type_idx = int(np.clip(np.round(type_raw), 0, len(cloud_type_mapping) - 1))
+            cloud_type = str(cloud_type_mapping[type_idx])
+            
+            height_raw = cloud_height_model.predict(input_data)[0]
+            cloud_height = int(np.clip(np.round(height_raw), 0, 999))
+            
+            if cloud_type in ['NSC', 'SKC', 'CLR', 'CAVOK', 'NIL']:
+                cloud_status = cloud_type
+            else:
+                cloud_status = f"{cloud_type}{cloud_height:03d}"
+        else:
+            cloud_raw_pred = cloud_model.predict(input_data)[0]
+            cloud_idx = int(np.clip(np.round(cloud_raw_pred), 0, len(cloud_mapping) - 1))
+            cloud_status = str(cloud_mapping[cloud_idx])
 
         # =================================================
         # VISIBILITY PREDICTION
@@ -308,7 +334,7 @@ def predict_cloud_visibility(data: CloudVisibilityRequest):
                 db.add(unified_record)
 
             unified_record.visibility = float(vis_mapping[vis_idx])
-            unified_record.clouds = str(cloud_mapping[cloud_idx])
+            unified_record.clouds = cloud_status
             db.add(unified_record)
             db.commit()
         except Exception as db_e:
@@ -322,7 +348,7 @@ def predict_cloud_visibility(data: CloudVisibilityRequest):
 
         return CloudVisibilityResponse(
             visibility_prediction=int(float(vis_mapping[vis_idx])),
-            cloud_status=str(cloud_mapping[cloud_idx]),
+            cloud_status=cloud_status,
         )
 
     except Exception as e:

@@ -578,6 +578,7 @@ def generate_briefing_pdf(
                 "<b>Time<br/>(hour)</b>",
                 ParagraphStyle(name="c", alignment=1, fontSize=9),
             ),
+            "",
             Paragraph(
                 "<b>Wind<br/>(deg/kt)</b>",
                 ParagraphStyle(name="c", alignment=1, fontSize=9),
@@ -597,6 +598,7 @@ def generate_briefing_pdf(
         [
             Paragraph("SLST", ParagraphStyle(name="c", alignment=1, fontSize=9)),
             Paragraph("UTC", ParagraphStyle(name="c", alignment=1, fontSize=9)),
+            "",
             "",
             "",
             "",
