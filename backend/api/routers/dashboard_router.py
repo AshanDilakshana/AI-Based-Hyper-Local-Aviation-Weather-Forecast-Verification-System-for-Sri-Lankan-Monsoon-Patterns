@@ -101,6 +101,31 @@ def get_latest_forecast(db: Session = Depends(get_db)):
                     if latest_pred.pressure_hpa is not None
                     else 0
                 ),
+                "predicted_humidity": (
+                    latest_pred.rh_percent
+                    if latest_pred.rh_percent is not None
+                    else 0
+                ),
+                "predicted_wind_speed": (
+                    latest_pred.wind_speed_kts
+                    if latest_pred.wind_speed_kts is not None
+                    else 0
+                ),
+                "predicted_wind_direction": (
+                    latest_pred.wind_dir
+                    if latest_pred.wind_dir is not None
+                    else 0
+                ),
+                "predicted_visibility": (
+                    latest_pred.visibility
+                    if latest_pred.visibility is not None
+                    else 0
+                ),
+                "predicted_clouds": (
+                    latest_pred.clouds
+                    if latest_pred.clouds is not None
+                    else ""
+                ),
                 "forecast_report_time": forecast_time_iso,
                 "input_report_time": (
                     latest_pred.created_at.isoformat() if latest_pred.created_at else ""

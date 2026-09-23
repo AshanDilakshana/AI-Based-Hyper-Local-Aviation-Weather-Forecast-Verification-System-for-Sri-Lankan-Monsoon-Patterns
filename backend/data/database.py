@@ -19,7 +19,12 @@ if not SQLALCHEMY_DATABASE_URL:
     raise ValueError("SUPABASE_DATABASE_URL is missing in .env file!")
 
 # FastAPI backend connects to Supabase (PostgreSQL)
-engine = create_engine(SQLALCHEMY_DATABASE_URL)
+engine = create_engine(
+    SQLALCHEMY_DATABASE_URL, 
+    pool_size=5, 
+    max_overflow=2, 
+    pool_timeout=60
+)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # Expose a separate engine for SQLite for MLOps training cache
