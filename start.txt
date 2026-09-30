@@ -3,3 +3,10 @@ redis:brew services start redis
 Celery:celery -A backend.celery_worker.celery_app worker --pool=solo --loglevel=info
 main:source venv/bin/activate
 python -m uvicorn backend.api.main:app --host 0.0.0.0 --port 8000 --reload
+
+
+windows
+venv: .\.venv\Scripts\activate
+redis (WSL): Open WSL terminal -> `sudo service redis-server start` (If not installed: `sudo apt install redis-server`)
+Celery: celery -A backend.celery_worker.celery_app worker --pool=solo --loglevel=info
+main: python -m uvicorn backend.api.main:app --host 0.0.0.0 --port 8000 --reload

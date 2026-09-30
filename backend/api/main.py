@@ -1,6 +1,12 @@
-from fastapi import FastAPI, HTTPException
 import os
 import sys
+
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
 
 # Suppress TensorFlow logging and oneDNN warnings BEFORE any TF import occurs
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"

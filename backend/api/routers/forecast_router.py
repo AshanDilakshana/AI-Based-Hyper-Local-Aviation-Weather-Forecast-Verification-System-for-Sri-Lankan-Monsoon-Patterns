@@ -45,73 +45,90 @@ def get_all_ai_predictions(db: Session = Depends(get_db)):
         qnh_hpa=latest_weather.qnh_hpa,
     )
 
-    # 1. Wind Hybrid Model Prediction (Ashan)
-    try:
-        from backend.api.routers.wind_router import predict_wind_hybrid_3h
+    import concurrent.futures
+    from backend.data.database import SessionLocal
+    from backend.data.models import ModelsForecast
 
-        wind_prediction = predict_wind_hybrid_3h(wind_req)
-    except Exception as e:
-        wind_prediction = {"error": f"Wind model failed: {str(e)}"}
+    # Pre-create the unified forecast row to prevent concurrent insert race conditions
+    if latest_weather and latest_weather.timestamp_utc:
+        target_time = (latest_weather.timestamp_utc + timedelta(hours=3)).replace(minute=0, second=0, microsecond=0)
+        existing_record = db.query(ModelsForecast).filter(ModelsForecast.target_time_utc == target_time).first()
+        if not existing_record:
+            new_forecast = ModelsForecast(target_time_utc=target_time)
+            db.add(new_forecast)
+            try:
+                db.commit()
+            except Exception:
+                db.rollback()
 
-    # ---------------------------------------------------------
-    # (imash) Temperature & Pressure Model Integration
-    # ---------------------------------------------------------
-    try:
-        from backend.api.schemas import TempPressPredictionRequest
-        from backend.api.routers.temperature_pressure_router import (
-            predict_temperature_pressure,
-        )
+    def run_wind():
+        try:
+            from backend.api.routers.wind_router import predict_wind_hybrid_3h
+            return predict_wind_hybrid_3h(wind_req)
+        except Exception as e:
+            return {"error": f"Wind model failed: {str(e)}"}
 
-        temp_req = TempPressPredictionRequest(
-            temperature=latest_weather.dry_temp_c,
-            humidity=latest_weather.rh_percent,
-            pressure=latest_weather.qnh_hpa,
-            dew_point=latest_weather.dew_point_c,
-            wind_speed=latest_weather.wind_speed_kts,
-            wind_direction=latest_weather.wind_dir,
-            visibility=latest_weather.visibility,
-        )
-        temp_prediction = predict_temperature_pressure(temp_req, db)
-    except Exception as e:
-        temp_prediction = {"error": f"Temp/Pressure model failed: {str(e)}"}
+    def run_temp():
+        db_temp = SessionLocal()
+        try:
+            from backend.api.schemas import TempPressPredictionRequest
+            from backend.api.routers.temperature_pressure_router import predict_temperature_pressure
+            temp_req = TempPressPredictionRequest(
+                temperature=latest_weather.dry_temp_c,
+                humidity=latest_weather.rh_percent,
+                pressure=latest_weather.qnh_hpa,
+                dew_point=latest_weather.dew_point_c,
+                wind_speed=latest_weather.wind_speed_kts,
+                wind_direction=latest_weather.wind_dir,
+                visibility=latest_weather.visibility,
+            )
+            return predict_temperature_pressure(temp_req, db_temp)
+        except Exception as e:
+            return {"error": f"Temp/Pressure model failed: {str(e)}"}
+        finally:
+            db_temp.close()
 
-    # ---------------------------------------------------------
-    # (sachiii) Cloud & Visibility Model Integration
-    # ---------------------------------------------------------
-    try:
-        from backend.api.schemas import CloudVisibilityRequest
-        from backend.api.routers.cloud_visibility_router import predict_cloud_visibility
+    def run_cloud():
+        try:
+            from backend.api.schemas import CloudVisibilityRequest
+            from backend.api.routers.cloud_visibility_router import predict_cloud_visibility
+            hour_val = (
+                float(str(latest_weather.time_utc)[:2])
+                if latest_weather.time_utc and len(str(latest_weather.time_utc)) >= 2
+                else 12.0
+            )
+            cloud_req = CloudVisibilityRequest(
+                temp=latest_weather.dry_temp_c,
+                dew=latest_weather.dew_point_c,
+                rh=latest_weather.rh_percent,
+                qnh=latest_weather.qnh_hpa,
+                wind=latest_weather.wind_speed_kts,
+                month=latest_weather.month,
+                hour=hour_val,
+                wind_dir=latest_weather.wind_dir,
+                weather_encoded=0.0,
+            )
+            return predict_cloud_visibility(cloud_req)
+        except Exception as e:
+            return {"error": f"Cloud model failed: {str(e)}"}
 
-        hour_val = (
-            float(str(latest_weather.time_utc)[:2])
-            if latest_weather.time_utc and len(str(latest_weather.time_utc)) >= 2
-            else 12.0
-        )
+    def run_qnh():
+        try:
+            from backend.api.routers.qnh_dewpoint_router import predict_qnh_dewpoint_3h
+            return predict_qnh_dewpoint_3h()
+        except Exception as e:
+            return {"error": f"QNH/Dewpoint model failed: {str(e)}"}
 
-        cloud_req = CloudVisibilityRequest(
-            temp=latest_weather.dry_temp_c,
-            dew=latest_weather.dew_point_c,
-            rh=latest_weather.rh_percent,
-            qnh=latest_weather.qnh_hpa,
-            wind=latest_weather.wind_speed_kts,
-            month=latest_weather.month,
-            hour=hour_val,
-            wind_dir=latest_weather.wind_dir,
-            weather_encoded=0.0,
-        )
-        cloud_visibility_prediction = predict_cloud_visibility(cloud_req)
-    except Exception as e:
-        cloud_visibility_prediction = {"error": f"Cloud model failed: {str(e)}"}
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+        f_wind = executor.submit(run_wind)
+        f_temp = executor.submit(run_temp)
+        f_cloud = executor.submit(run_cloud)
+        f_qnh = executor.submit(run_qnh)
 
-    # ---------------------------------------------------------
-    # (viji) QNH & Dewpoint Model Integration
-    # ---------------------------------------------------------
-    try:
-        from backend.api.routers.qnh_dewpoint_router import predict_qnh_dewpoint_3h
-
-        qnh_dewpoint_prediction = predict_qnh_dewpoint_3h()
-    except Exception as e:
-        qnh_dewpoint_prediction = {"error": f"QNH/Dewpoint model failed: {str(e)}"}
+        wind_prediction = f_wind.result()
+        temp_prediction = f_temp.result()
+        cloud_visibility_prediction = f_cloud.result()
+        qnh_dewpoint_prediction = f_qnh.result()
 
     return {
         "timestamp_utc": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
