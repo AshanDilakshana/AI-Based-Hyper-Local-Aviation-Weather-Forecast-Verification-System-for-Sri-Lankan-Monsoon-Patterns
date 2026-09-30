@@ -6,16 +6,23 @@ from celery import Celery
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
+from dotenv import load_dotenv
+
 # Ensure backend modules can be imported
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../")))
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+load_dotenv(os.path.join(BASE_DIR, ".env"))
+sys.path.append(BASE_DIR)
 
 # Configure Celery
 # We use Redis as both the broker (message queue) and the backend (to store results)
+REDIS_URL = os.getenv("REDIS_URL", "redis://127.0.0.1:6379/0")
+
 celery_app = Celery(
     "retrain_tasks",
-    broker="redis://localhost:6379/0",
-    backend="redis://localhost:6379/0",
+    broker=REDIS_URL,
+    backend=REDIS_URL,
 )
+
 
 
 @celery_app.task(name="run_full_retraining_pipeline")

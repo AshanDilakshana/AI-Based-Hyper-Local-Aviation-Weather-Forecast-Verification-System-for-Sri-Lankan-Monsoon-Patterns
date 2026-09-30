@@ -69,7 +69,7 @@ def clean_old_system_logs():
         )
         db.commit()
         print(
-            f"[{datetime.now()}] ✅ Successfully deleted {deleted_count} system logs older than 30 days (before {cutoff_date})."
+            f"[{datetime.now()}] [OK] Successfully deleted {deleted_count} system logs older than 30 days (before {cutoff_date})."
         )
     except Exception as e:
         print(f"[{datetime.now()}] [ERROR] Failed to clean old system logs: {e}")
@@ -161,13 +161,13 @@ def start_scheduler():
     )
 
     scheduler.start()
-    print("✅ MLOps Background Scheduler started. Next run: 1st of the month at 00:00.")
+    print("[OK] MLOps Background Scheduler started. Next run: 1st of the month at 00:00.")
     print(
-        "✅ Smart Live METAR Fetcher scheduled to run every 32 minutes (retries every 5m if delayed)."
+        "[OK] Smart Live METAR Fetcher scheduled to run every 32 minutes (retries every 5m if delayed)."
     )
-    print("✅ Daily METAR Backup Fetcher scheduled to run every day at 01:00 AM.")
+    print("[OK] Daily METAR Backup Fetcher scheduled to run every day at 01:00 AM.")
     print(
-        "✅ Daily System Log Cleanup scheduled to run every day at 02:00 AM (30-day retention)."
+        "[OK] Daily System Log Cleanup scheduled to run every day at 02:00 AM (30-day retention)."
     )
 
     # Return the scheduler instance so it can be managed if needed
