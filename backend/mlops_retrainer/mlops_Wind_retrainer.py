@@ -11,6 +11,7 @@ from preprocessing_and_feature_engineering.wind_prediction_model.unified_pipelin
     UnifiedWeatherPipeline,
 )
 from Models.wind_models.wind_trainer import train_for_mlops, evaluate_old_model
+from backend.mlops_retrainer.sync_training_data import sync_training_data
 
 
 def get_all_historical_data(db_session):
@@ -227,6 +228,7 @@ def retrain_tft_pipeline(tft_dir):
 
 
 def run_wind_models_retraining():
+    sync_training_data()
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../Models"))
 
     # 1st: 3H XGBoost Model
