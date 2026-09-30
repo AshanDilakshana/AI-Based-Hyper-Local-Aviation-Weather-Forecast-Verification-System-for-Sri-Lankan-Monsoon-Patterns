@@ -230,3 +230,6 @@ def fetch_and_store_live_metar(hours=None):
 
 if __name__ == "__main__":
     fetch_and_store_live_metar(hours=2)
+
+
+# z
