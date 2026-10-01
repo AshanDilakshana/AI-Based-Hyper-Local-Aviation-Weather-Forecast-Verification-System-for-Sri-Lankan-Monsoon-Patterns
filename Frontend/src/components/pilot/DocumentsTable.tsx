@@ -37,13 +37,27 @@ export function DocumentsTable({ documents, showStatus = true }: DocumentsTableP
                 </td>
             }
               <td className="py-5 text-right">
-                <button
-                type="button"
-                className="rounded-md p-1.5 text-subtle transition-colors duration-150 ease-out hover:bg-white/5 hover:text-sky-bright"
-                aria-label={`Download ${doc.reference}`}>
-                
-                  <DownloadIcon className="h-[17px] w-[17px]" aria-hidden="true" />
-                </button>
+                {doc.url ? (
+                  <a
+                    href={doc.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    download={`${doc.reference}.pdf`}
+                    className="inline-block rounded-md p-1.5 text-subtle transition-colors duration-150 ease-out hover:bg-white/5 hover:text-sky-bright"
+                    aria-label={`Download ${doc.reference}`}
+                  >
+                    <DownloadIcon className="h-[17px] w-[17px]" aria-hidden="true" />
+                  </a>
+                ) : (
+                  <button
+                    type="button"
+                    disabled
+                    className="rounded-md p-1.5 text-subtle opacity-50 cursor-not-allowed"
+                    aria-label={`Download ${doc.reference}`}
+                  >
+                    <DownloadIcon className="h-[17px] w-[17px]" aria-hidden="true" />
+                  </button>
+                )}
               </td>
             </tr>
           )}

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   ActivityIcon,
@@ -10,7 +10,9 @@ import {
   PlaneTakeoffIcon,
   SettingsIcon,
   UserIcon,
-  XIcon } from
+  XIcon,
+  ClockIcon
+} from
 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { roleMeta } from '../../types/auth';
@@ -33,6 +35,7 @@ const pilotNav = [
 { to: '/pilot/briefing', label: 'Weather Briefing', Icon: CloudSunIcon, end: false },
 { to: '/pilot/maps', label: 'Forecast Maps', Icon: MapIcon, end: false },
 { to: '/pilot/documents', label: 'My Documents', Icon: FileTextIcon, end: false },
+{ to: '/pilot/recent-plans', label: 'Recent Flight Plans', Icon: ClockIcon, end: false },
 { to: '/logs', label: 'Activity Logs', Icon: ActivityIcon, end: false }];
 
 

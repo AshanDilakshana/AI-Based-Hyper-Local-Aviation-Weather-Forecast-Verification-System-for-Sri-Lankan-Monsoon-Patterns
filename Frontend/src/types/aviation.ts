@@ -1,10 +1,11 @@
-export type BriefingStatus = 'Draft' | 'Approved' | 'Pending' | 'Generated';
+export type BriefingStatus = 'Draft' | 'Approved' | 'Pending' | 'Generated' | 'Valid' | 'Expired';
 
 export interface BriefingDocument {
   reference: string;
   route: string;
   forecastDate: string;
   status: BriefingStatus;
+  url?: string;
 }
 
 export interface FlightStat {
