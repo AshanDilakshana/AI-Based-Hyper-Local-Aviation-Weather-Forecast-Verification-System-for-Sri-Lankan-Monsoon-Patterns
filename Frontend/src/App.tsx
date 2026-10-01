@@ -18,6 +18,7 @@ import { FlightPlanning } from './pages/pilot/FlightPlanning';
 import { BriefingReview } from './pages/pilot/BriefingReview';
 import { RouteMaps } from './pages/pilot/RouteMaps';
 import { Documents } from './pages/pilot/Documents';
+import { RecentFlightPlans } from './pages/pilot/RecentFlightPlans';
 
 export function App() {
   return (
@@ -104,6 +105,14 @@ export function App() {
                 element={
                 <RequireAuth allow={['pilot']}>
                     <Documents />
+                  </RequireAuth>
+                } />
+              
+              <Route
+                path="/pilot/recent-plans"
+                element={
+                <RequireAuth allow={['pilot']}>
+                    <RecentFlightPlans />
                   </RequireAuth>
                 } />
               
