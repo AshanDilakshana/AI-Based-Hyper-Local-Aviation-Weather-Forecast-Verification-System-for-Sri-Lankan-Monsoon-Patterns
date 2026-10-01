@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { CalendarDaysIcon, ClockIcon, PlaneTakeoffIcon, SendIcon, XIcon, CheckCircleIcon, Loader2Icon, InfoIcon } from 'lucide-react';
@@ -43,6 +44,7 @@ export function FlightPlanning() {
   const [error, setError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [flightDuration, setFlightDuration] = useState<string | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const { user } = useAuth();
 
@@ -143,8 +145,11 @@ export function FlightPlanning() {
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (isLoading) return;
     setIsLoading(true);
     setError(null);
+    abortControllerRef.current = new AbortController();
+
     try {
       const response = await axios.post('http://localhost:8000/pilot/flight-plan', {
         departure,
@@ -156,6 +161,8 @@ export function FlightPlanning() {
         pilot_reference: user?.reference || "guest",
         flight_no: flightNo,
         preview_only: true
+      }, {
+        signal: abortControllerRef.current.signal
       });
       
       if (response.data && response.data.document_url) {
@@ -163,17 +170,26 @@ export function FlightPlanning() {
         setShowModal(true);
       }
     } catch (err: any) {
-      console.error(err);
-      setError(err.response?.data?.detail || "Failed to generate preview document.");
+      if (axios.isCancel(err)) {
+        console.log("Request canceled by user");
+        setError("Generation canceled.");
+      } else {
+        console.error(err);
+        setError(err.response?.data?.detail || "Failed to generate preview document.");
+      }
       setTimeout(() => setError(null), 8000);
     } finally {
       setIsLoading(false);
+      abortControllerRef.current = null;
     }
   };
 
   const confirmAndGenerate = async () => {
+    if (isLoading) return;
     setIsLoading(true);
     setError(null);
+    abortControllerRef.current = new AbortController();
+
     try {
       const response = await axios.post('http://localhost:8000/pilot/flight-plan', {
         departure,
@@ -184,12 +200,18 @@ export function FlightPlanning() {
         maps,
         pilot_reference: user?.reference || "guest",
         flight_no: flightNo,
-        preview_only: false
+        preview_only: false,
+        preview_url: previewUrl
+      }, {
+        signal: abortControllerRef.current.signal
       });
       
       if (response.data && response.data.document_url) {
         // Fetch the PDF as a blob to force a download prompt across origins
-        const pdfResponse = await axios.get(response.data.document_url, { responseType: 'blob' });
+        const pdfResponse = await axios.get(response.data.document_url, { 
+          responseType: 'blob',
+          signal: abortControllerRef.current.signal
+        });
         const blobUrl = window.URL.createObjectURL(new Blob([pdfResponse.data]));
         
         const link = document.createElement('a');
@@ -206,12 +228,25 @@ export function FlightPlanning() {
         setPreviewUrl(null);
       }
     } catch (err: any) {
-      console.error(err);
-      setError(err.response?.data?.detail || "Failed to generate flight plan.");
+      if (axios.isCancel(err)) {
+        console.log("Download canceled by user");
+        setError("Download canceled.");
+      } else {
+        console.error(err);
+        setError(err.response?.data?.detail || "Failed to generate flight plan.");
+      }
       setTimeout(() => setError(null), 8000);
     } finally {
       setIsLoading(false);
+      abortControllerRef.current = null;
     }
+  };
+
+  const handleCancel = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    setIsLoading(false);
   };
 
   return (
@@ -473,12 +508,19 @@ export function FlightPlanning() {
       )}
 
       {/* Full-screen Loading Overlay */}
-      {isLoading && (
-        <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-black/60 backdrop-blur-md">
+      {isLoading && createPortal(
+        <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-black/60 backdrop-blur-md">
           <PlaneTakeoffIcon className="h-16 w-16 animate-bounce text-sky-400" />
           <h2 className="mt-6 text-xl font-bold text-white">Generating Flight Briefing</h2>
           <p className="mt-2 text-sm text-sky-pale animate-pulse">Fetching meteorological data and rendering PDF...</p>
-        </div>
+          <button 
+            onClick={handleCancel}
+            className="mt-8 rounded-lg border border-red-500/50 bg-red-500/20 px-6 py-2.5 text-sm font-bold text-red-400 transition-colors hover:bg-red-500/30"
+          >
+            Cancel Generation
+          </button>
+        </div>,
+        document.body
       )}
     </div>
   );
