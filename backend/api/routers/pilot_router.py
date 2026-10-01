@@ -92,6 +92,7 @@ class FlightPlanRequest(BaseModel):
     pilot_reference: Optional[str] = "guest"
     flight_no: Optional[str] = ""
     preview_only: bool = False
+    preview_url: Optional[str] = None
 
 
 def get_forecast_hour(duration_mins: int) -> str:
@@ -124,7 +125,7 @@ def get_live_map(
     filepath = os.path.join(TEMP_MAP_DIR, filename)
 
     try:
-        time.sleep(1.5)
+        time.sleep(1.0)
         response = requests.get(url, timeout=10)
         if response.status_code == 200:
             with open(filepath, "wb") as f:
@@ -919,23 +920,34 @@ def create_flight_plan(req: FlightPlanRequest, db: Session = Depends(get_db)):
         pilot_ref = req.pilot_reference if req.pilot_reference else "guest"
         safe_pilot_ref = "".join([c for c in pilot_ref if c.isalnum() or c in ('-', '_')])
         
-        # Clean up any preview files for this pilot when they generate a real one
-        if not req.preview_only:
-            if os.path.exists(DOCS_DIR):
-                for f in os.listdir(DOCS_DIR):
-                    if f.startswith(f"preview_{safe_pilot_ref}_") and f.endswith(".pdf"):
-                        try:
-                            os.remove(os.path.join(DOCS_DIR, f))
-                        except Exception:
-                            pass
-
-        prefix = "preview" if req.preview_only else "briefing"
-        filename = f"{prefix}_{safe_pilot_ref}_{req.departure.upper()}_{req.destination.upper()}_{doc_id}.pdf"
-        filepath = os.path.join(DOCS_DIR, filename)
-
-        generate_briefing_pdf(
-            filepath, req, duration_mins, arrival_dt, forecasts, taf_text
-        )
+        # If we are confirming a preview, just rename it
+        if not req.preview_only and req.preview_url:
+            preview_filename = req.preview_url.split("/")[-1]
+            old_filepath = os.path.join(DOCS_DIR, preview_filename)
+            if os.path.exists(old_filepath):
+                filename = preview_filename.replace("preview_", "briefing_", 1)
+                filepath = os.path.join(DOCS_DIR, filename)
+                os.rename(old_filepath, filepath)
+            else:
+                raise HTTPException(status_code=404, detail="Preview document not found or expired.")
+        else:
+            # Clean up any preview files for this pilot when they generate a real one
+            if not req.preview_only:
+                if os.path.exists(DOCS_DIR):
+                    for f in os.listdir(DOCS_DIR):
+                        if f.startswith(f"preview_{safe_pilot_ref}_") and f.endswith(".pdf"):
+                            try:
+                                os.remove(os.path.join(DOCS_DIR, f))
+                            except Exception:
+                                pass
+    
+            prefix = "preview" if req.preview_only else "briefing"
+            filename = f"{prefix}_{safe_pilot_ref}_{req.departure.upper()}_{req.destination.upper()}_{doc_id}.pdf"
+            filepath = os.path.join(DOCS_DIR, filename)
+    
+            generate_briefing_pdf(
+                filepath, req, duration_mins, arrival_dt, forecasts, taf_text
+            )
 
         log_entry = SystemLogs(
             level="info",
@@ -999,6 +1011,18 @@ def get_last_flight_plan(pilot_reference: str, db: Session = Depends(get_db)):
     if plan:
         return plan
     return {}
+
+
+@router.get("/flight-plans")
+def get_flight_plans(pilot_reference: str, db: Session = Depends(get_db)):
+    plans = (
+        db.query(PilotFlightPlan)
+        .filter(PilotFlightPlan.pilot_reference == pilot_reference)
+        .order_by(PilotFlightPlan.created_at.desc())
+        .limit(50)
+        .all()
+    )
+    return plans
 
 
 @router.get("/next-flight")
