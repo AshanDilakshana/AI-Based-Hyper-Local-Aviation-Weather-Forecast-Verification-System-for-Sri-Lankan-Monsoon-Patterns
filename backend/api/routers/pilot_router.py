@@ -913,7 +913,11 @@ def create_flight_plan(req: FlightPlanRequest, db: Session = Depends(get_db)):
         taf_text = fetch_tafs(airports_list)
 
         doc_id = str(uuid.uuid4())
-        filename = f"briefing_{doc_id}.pdf"
+        pilot_ref = req.pilot_reference if req.pilot_reference else "guest"
+        safe_pilot_ref = "".join([c for c in pilot_ref if c.isalnum() or c in ('-', '_')])
+        
+        prefix = "preview" if req.preview_only else "briefing"
+        filename = f"{prefix}_{safe_pilot_ref}_{req.departure.upper()}_{req.destination.upper()}_{doc_id}.pdf"
         filepath = os.path.join(DOCS_DIR, filename)
 
         generate_briefing_pdf(
@@ -1064,3 +1068,38 @@ def get_flight_info_by_time(time_local: str, db: Session = Depends(get_db)):
             "duration_mins": flight.time_period_mins,
         }
     return {}
+
+@router.get("/my-documents")
+def get_my_documents(pilot_reference: str):
+    if not pilot_reference:
+        return []
+        
+    safe_pilot_ref = "".join([c for c in pilot_reference if c.isalnum() or c in ('-', '_')])
+    prefix = f"briefing_{safe_pilot_ref}_"
+    
+    docs = []
+    if os.path.exists(DOCS_DIR):
+        for f in os.listdir(DOCS_DIR):
+            if f.startswith(prefix) and f.endswith(".pdf"):
+                filepath = os.path.join(DOCS_DIR, f)
+                created_time = datetime.fromtimestamp(os.path.getctime(filepath))
+                
+                # Parse departure and destination from filename: briefing_ref_DEP_DEST_uuid.pdf
+                parts = f.replace(".pdf", "").split("_")
+                
+                departure = "Unknown"
+                destination = "Unknown"
+                if len(parts) >= 5:
+                    departure = parts[2]
+                    destination = parts[3]
+                
+                docs.append({
+                    "reference": f.replace(".pdf", ""),
+                    "route": f"{departure} → {destination}",
+                    "forecastDate": created_time.strftime("%d %b %Y %H:%M"),
+                    "status": "Approved",
+                    "url": f"http://localhost:8000/documents/{f}"
+                })
+                
+    docs.sort(key=lambda x: os.path.getctime(os.path.join(DOCS_DIR, f"{x['reference']}.pdf")), reverse=True)
+    return docs
