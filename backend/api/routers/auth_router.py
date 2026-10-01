@@ -50,6 +50,12 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)):
             detail="The user with this username already exists in the system.",
         )
 
+    if user_in.role == "admin":
+        raise HTTPException(
+            status_code=403,
+            detail="Admin accounts cannot be created via public registration.",
+        )
+
     user = User(
         username=user_in.username,
         hashed_password=get_password_hash(user_in.password),
