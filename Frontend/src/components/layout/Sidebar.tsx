@@ -11,7 +11,9 @@ import {
   SettingsIcon,
   UserIcon,
   XIcon,
-  ClockIcon
+  ClockIcon,
+  UsersIcon,
+  PlaneIcon
 } from
 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -39,6 +41,14 @@ const pilotNav = [
 { to: '/logs', label: 'Activity Logs', Icon: ActivityIcon, end: false }];
 
 
+const adminNav = [
+{ to: '/admin', label: 'Dashboard', Icon: LayoutDashboardIcon, end: true },
+{ to: '/admin/users', label: 'User Management', Icon: UsersIcon, end: false },
+{ to: '/admin/flights', label: 'Flight Schedules', Icon: PlaneIcon, end: false },
+{ to: '/admin/routes', label: 'Route Alternatives', Icon: MapIcon, end: false },
+{ to: '/admin/logs', label: 'System Logs', Icon: ActivityIcon, end: false }];
+
+
 const linkClass = ({ isActive }: {isActive: boolean;}) =>
 `flex items-center gap-3 rounded-lg px-3 py-3 text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
 isActive ?
@@ -49,7 +59,7 @@ isActive ?
 export function Sidebar({ open, onClose }: SidebarProps) {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
-  const visibleItems = user?.role === 'pilot' ? pilotNav : forecasterNav;
+  const visibleItems = user?.role === 'pilot' ? pilotNav : (user?.role === 'admin' ? adminNav : forecasterNav);
 
   const handleSignOut = () => {
     onClose();

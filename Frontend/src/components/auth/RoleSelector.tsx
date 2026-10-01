@@ -1,5 +1,5 @@
 import React from 'react';
-import { PlaneIcon, RadarIcon } from 'lucide-react';
+import { PlaneIcon, RadarIcon, ShieldIcon } from 'lucide-react';
 import type { Role } from '../../types/auth';
 import { roleMeta } from '../../types/auth';
 
@@ -10,14 +10,15 @@ type RoleSelectorProps = {
 
 const icons: Record<Role, typeof PlaneIcon> = {
   forecaster: RadarIcon,
-  pilot: PlaneIcon
+  pilot: PlaneIcon,
+  admin: ShieldIcon
 };
 
 export function RoleSelector({ value, onChange }: RoleSelectorProps) {
   return (
     <fieldset>
       <legend className="text-xs text-slate-400">Sign in as</legend>
-      <div className="mt-2 grid grid-cols-2 gap-3">
+      <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-3">
         {(Object.keys(roleMeta) as Role[]).map((role) => {
           const Icon = icons[role];
           const isActive = role === value;

@@ -91,3 +91,42 @@ body {
 [data-theme='light'] .bg-amber-400 {
   color: #1f2937;
 }
+
+/* ── Admin badge & button theme-aware overrides ──────────────────── */
+.badge-admin    { background: rgb(127 29 29 / 0.5); color: #fca5a5; border: 1px solid rgb(153 27 27 / 0.6); }
+.badge-pilot    { background: rgb(12 74 110 / 0.5);  color: #7dd3fc; border: 1px solid rgb(7 89 133 / 0.6); }
+.badge-forecaster { background: rgb(6 78 59 / 0.5);  color: #6ee7b7; border: 1px solid rgb(4 120 87 / 0.6); }
+
+.btn-deactivate { background: rgb(127 29 29 / 0.2); color: #f87171; border: 1px solid rgb(127 29 29 / 0.5); }
+.btn-deactivate:hover { background: rgb(127 29 29 / 0.4); }
+.btn-activate   { background: rgb(6 78 59 / 0.2);  color: #34d399; border: 1px solid rgb(6 78 59 / 0.5); }
+.btn-activate:hover { background: rgb(6 78 59 / 0.4); }
+
+.status-active   { color: #34d399; }
+.status-inactive { color: #94a3b8; }
+
+/* Dashboard stat cards */
+.stat-sky     { background: rgb(12 74 110 / 0.15); border-color: rgb(7 89 133 / 0.4); }
+.stat-emerald { background: rgb(6 78 59 / 0.15);   border-color: rgb(4 120 87 / 0.4); }
+.stat-rose    { background: rgb(127 29 29 / 0.15);  border-color: rgb(153 27 27 / 0.4); }
+.stat-amber   { background: rgb(120 53 15 / 0.15);  border-color: rgb(146 64 14 / 0.4); }
+.stat-violet  { background: rgb(76 29 149 / 0.15);  border-color: rgb(91 33 182 / 0.4); }
+
+[data-theme='light'] .badge-admin    { background: #fee2e2; color: #b91c1c; border-color: #fca5a5; }
+[data-theme='light'] .badge-pilot    { background: #e0f2fe; color: #0369a1; border-color: #7dd3fc; }
+[data-theme='light'] .badge-forecaster { background: #d1fae5; color: #047857; border-color: #6ee7b7; }
+
+[data-theme='light'] .btn-deactivate { background: #fee2e2; color: #dc2626; border-color: #fca5a5; }
+[data-theme='light'] .btn-deactivate:hover { background: #fecaca; }
+[data-theme='light'] .btn-activate   { background: #d1fae5; color: #059669; border-color: #6ee7b7; }
+[data-theme='light'] .btn-activate:hover { background: #a7f3d0; }
+
+[data-theme='light'] .status-active   { color: #059669; }
+[data-theme='light'] .status-inactive { color: #9ca3af; }
+
+[data-theme='light'] .stat-sky     { background: #e0f2fe; border-color: #7dd3fc; }
+[data-theme='light'] .stat-emerald { background: #d1fae5; border-color: #6ee7b7; }
+[data-theme='light'] .stat-rose    { background: #fee2e2; border-color: #fca5a5; }
+[data-theme='light'] .stat-amber   { background: #fef3c7; border-color: #fcd34d; }
+[data-theme='light'] .stat-violet  { background: #ede9fe; border-color: #c4b5fd; }
+

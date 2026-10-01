@@ -14,8 +14,6 @@ export function SignIn() {
   const [role, setRole] = useState<Role>('forecaster');
   const [reference, setReference] = useState('');
   const [password, setPassword] = useState('');
-  const [operator, setOperator] = useState('');
-  const [station, setStation] = useState('VCBI · Bandaranaike Intl.');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -36,11 +34,11 @@ export function SignIn() {
     try {
       await signIn({
         role,
-        name: role === 'pilot' ? 'Capt. N. Fernando' : 'A. Ranasinghe',
+        name: role === 'pilot' ? 'Capt. N. Fernando' : (role === 'admin' ? 'System Admin' : 'A. Ranasinghe'),
         reference,
         password: password,
-        organisation: role === 'pilot' ? operator : 'Department of Meteorology',
-        station: role === 'pilot' ? 'VCBI · Bandaranaike Intl.' : station
+        organisation: role === 'pilot' ? 'Airlines' : (role === 'admin' ? 'IT Dept' : 'Department of Meteorology'),
+        station: 'VCBI · Bandaranaike Intl.'
       });
       navigate(state?.from ?? roleMeta[role].home, { replace: true });
     } catch (err: any) {
@@ -80,22 +78,16 @@ export function SignIn() {
             placeholder="MET-04821"
             autoComplete="username" />
           
-            <div>
-              <label htmlFor="station" className="block text-xs text-slate-400">
-                Duty station
-              </label>
-              <select
-              id="station"
-              value={station}
-              onChange={(event) => setStation(event.target.value)}
-              className="mt-2 w-full rounded-lg border border-line-strong bg-ink px-3 py-2.5 text-sm text-slate-100 outline-none focus:border-accent">
-              
-                <option>VCBI · Bandaranaike Intl.</option>
-                <option>VCCC · Colombo FIR centre</option>
-                <option>VCRI · Ratmalana</option>
-              </select>
-            </div>
-          </> :
+          </> : role === 'admin' ? 
+        <>
+            <TextField
+            id="adminId"
+            label="Admin ID"
+            value={reference}
+            onChange={setReference}
+            placeholder="ADM-001"
+            autoComplete="username" />
+        </> :
 
         <>
             <TextField
@@ -105,14 +97,6 @@ export function SignIn() {
             onChange={setReference}
             placeholder="ATPL-SL-2291"
             autoComplete="username" />
-          
-            <TextField
-            id="operator"
-            label="Airline / operator"
-            value={operator}
-            onChange={setOperator}
-            placeholder="SriLankan Airlines"
-            hint="Used to scope route and aerodrome briefings." />
           
           </>
         }

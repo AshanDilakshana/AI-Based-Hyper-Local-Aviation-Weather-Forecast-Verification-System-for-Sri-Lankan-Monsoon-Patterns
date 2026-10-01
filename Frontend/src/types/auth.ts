@@ -1,4 +1,4 @@
-export type Role = 'forecaster' | 'pilot';
+export type Role = 'forecaster' | 'pilot' | 'admin';
 
 export type AuthUser = {
   name: string;
@@ -24,5 +24,11 @@ export const roleMeta: Record<Role, {label: string;title: string;home: string;bl
     title: 'Flight Crew',
     home: '/pilot',
     blurb: 'Read current aerodrome conditions and download wind & temp aloft charts.'
+  },
+  admin: {
+    label: 'Administrator',
+    title: 'System Admin',
+    home: '/admin',
+    blurb: 'Manage users, flight schedules, route alternatives, and monitor system logs.'
   }
 };

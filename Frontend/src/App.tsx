@@ -19,6 +19,11 @@ import { BriefingReview } from './pages/pilot/BriefingReview';
 import { RouteMaps } from './pages/pilot/RouteMaps';
 import { Documents } from './pages/pilot/Documents';
 import { RecentFlightPlans } from './pages/pilot/RecentFlightPlans';
+import { AdminDashboard } from './pages/admin/AdminDashboard';
+import { FlightSchedules } from './pages/admin/FlightSchedules';
+import { UserManagement } from './pages/admin/UserManagement';
+import { RouteAlternatives } from './pages/admin/RouteAlternatives';
+import { SystemLogs } from './pages/admin/SystemLogs';
 
 export function App() {
   return (
@@ -113,6 +118,46 @@ export function App() {
                 element={
                 <RequireAuth allow={['pilot']}>
                     <RecentFlightPlans />
+                  </RequireAuth>
+                } />
+
+              <Route
+                path="/admin"
+                element={
+                <RequireAuth allow={['admin']}>
+                    <AdminDashboard />
+                  </RequireAuth>
+                } />
+              
+              <Route
+                path="/admin/flights"
+                element={
+                <RequireAuth allow={['admin']}>
+                    <FlightSchedules />
+                  </RequireAuth>
+                } />
+
+              <Route
+                path="/admin/users"
+                element={
+                <RequireAuth allow={['admin']}>
+                    <UserManagement />
+                  </RequireAuth>
+                } />
+
+              <Route
+                path="/admin/routes"
+                element={
+                <RequireAuth allow={['admin']}>
+                    <RouteAlternatives />
+                  </RequireAuth>
+                } />
+
+              <Route
+                path="/admin/logs"
+                element={
+                <RequireAuth allow={['admin']}>
+                    <SystemLogs />
                   </RequireAuth>
                 } />
               
