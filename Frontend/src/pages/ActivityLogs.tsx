@@ -239,9 +239,9 @@ export function ActivityLogs() {
                     <td className="px-4 py-3.5 text-slate-200">
                       {log.message}
                     </td>
-                    <td className="px-4 py-3.5 text-xs text-slate-400 max-w-xs truncate">
+                    <td className="px-4 py-3.5 text-xs text-slate-400 whitespace-nowrap">
                       {log.details ? (
-                        <span className="font-mono bg-ink/80 px-2 py-1 rounded text-[11px] text-slate-300 border border-line inline-block">
+                        <span className="font-mono bg-ink/80 px-2 py-1 rounded text-[11px] text-slate-300 border border-line inline-block max-w-4xl overflow-x-auto">
                           {log.details}
                         </span>
                       ) : (
