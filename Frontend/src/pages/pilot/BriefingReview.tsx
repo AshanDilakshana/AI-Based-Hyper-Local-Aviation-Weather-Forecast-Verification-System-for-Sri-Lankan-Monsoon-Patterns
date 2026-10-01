@@ -93,46 +93,7 @@ export function BriefingReview() {
         </div>
       </section>
 
-      <section className="rounded-xl border border-line bg-panel p-5">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-lg font-bold text-white">Briefing document</h2>
-            <p className="mt-1 text-xs text-subtle">Generated from verified forecast data</p>
-          </div>
-          <div className="text-right">
-            <p className="text-xl font-bold text-emerald-400">100%</p>
-            <p className="text-[10px] tracking-wide text-muted">Forecaster Verified</p>
-          </div>
-        </div>
 
-        <dl className="mt-5 divide-y divide-line border-y border-line">
-          {loading ? (
-             <div className="py-3 text-sm text-slate-400">Loading briefing...</div>
-          ) : (
-            briefing.map((row) =>
-            <div key={row.label} className="flex flex-col gap-1 py-3 sm:flex-row sm:gap-10">
-                <dt className="w-44 shrink-0 text-sm text-muted">{row.label}</dt>
-                <dd className="text-sm text-bright">{row.value}</dd>
-              </div>
-            )
-          )}
-        </dl>
-
-        <div className="mt-5 flex flex-wrap gap-3">
-          <button
-            type="button"
-            className="h-10 rounded-lg border border-lineStrong px-4 text-sm font-semibold text-bright transition-colors duration-150 ease-out hover:bg-white/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-bright">
-            
-            Preview document
-          </button>
-          <button
-            type="button"
-            className="h-10 rounded-lg bg-emerald-600 px-4 text-sm font-semibold text-white transition-colors duration-150 ease-out hover:bg-emerald-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400">
-            
-            Sign & Acknowledge
-          </button>
-        </div>
-      </section>
 
       <section className="rounded-xl border border-line bg-panel p-5">
         <div className="flex items-start justify-between gap-4">
