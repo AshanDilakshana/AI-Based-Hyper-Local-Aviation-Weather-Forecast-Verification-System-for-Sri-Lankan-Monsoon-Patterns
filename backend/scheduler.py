@@ -79,14 +79,14 @@ def clean_old_system_logs():
 
 def clean_old_temp_maps():
     """
-    Deletes temporary map images older than 5 days to save disk space.
+    Deletes temporary map images older than 1 day to save disk space.
     """
     try:
         from backend.api.routers.pilot_router import TEMP_MAP_DIR
         if not os.path.exists(TEMP_MAP_DIR):
             return
             
-        cutoff_time = time.time() - (5 * 24 * 60 * 60) # 5 days ago in seconds
+        cutoff_time = time.time() - (1 * 24 * 60 * 60) # 1 day ago in seconds
         deleted_count = 0
         
         for filename in os.listdir(TEMP_MAP_DIR):
@@ -97,7 +97,7 @@ def clean_old_temp_maps():
                     deleted_count += 1
                     
         print(
-            f"[{datetime.now()}] [OK] Successfully deleted {deleted_count} temp maps older than 5 days."
+            f"[{datetime.now()}] [OK] Successfully deleted {deleted_count} temp maps older than 1 day."
         )
     except Exception as e:
         print(f"[{datetime.now()}] [ERROR] Failed to clean old temp maps: {e}")
@@ -185,14 +185,14 @@ def start_scheduler():
         replace_existing=True,
     )
 
-    # Daily cleanup for temp maps older than 5 days
+    # Daily cleanup for temp maps older than 1 day
     scheduler.add_job(
         clean_old_temp_maps,
         "cron",
         hour=3,
         minute=0,
         id="daily_temp_maps_cleanup",
-        name="Daily Temp Maps Cleanup (5 Days)",
+        name="Daily Temp Maps Cleanup (1 Day)",
         replace_existing=True,
     )
 
@@ -206,7 +206,7 @@ def start_scheduler():
         "[OK] Daily System Log Cleanup scheduled to run every day at 02:00 AM (30-day retention)."
     )
     print(
-        "[OK] Daily Temp Maps Cleanup scheduled to run every day at 03:00 AM (5-day retention)."
+        "[OK] Daily Temp Maps Cleanup scheduled to run every day at 03:00 AM (1-day retention)."
     )
 
     # Return the scheduler instance so it can be managed if needed

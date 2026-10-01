@@ -110,9 +110,6 @@ def get_forecast_hour(duration_mins: int) -> str:
         return "36"
 
 
-MAP_URL_CACHE = {}
-
-
 def get_live_map(
     map_type: str, flight_level: str, area: str, forecast_hour: str
 ) -> str:
@@ -123,9 +120,6 @@ def get_live_map(
     else:
         url = f"https://aviationweather.gov/data/products/fax/F{forecast_hour}_wind_{fl_code}_{area_code}.gif"
 
-    if url in MAP_URL_CACHE and os.path.exists(MAP_URL_CACHE[url]):
-        return MAP_URL_CACHE[url]
-
     filename = f"{uuid.uuid4()}.gif"
     filepath = os.path.join(TEMP_MAP_DIR, filename)
 
@@ -135,7 +129,6 @@ def get_live_map(
         if response.status_code == 200:
             with open(filepath, "wb") as f:
                 f.write(response.content)
-            MAP_URL_CACHE[url] = filepath
             return filepath
         return None
     except:
@@ -205,6 +198,7 @@ def generate_briefing_pdf(
     normal_style = styles["Normal"]
 
     elements = []
+    temp_maps_to_delete = []
 
     # --- PAGE 1: COVER PAGE ---
     # Top Text
@@ -781,6 +775,7 @@ def generate_briefing_pdf(
             map_filepath = get_live_map(map_type, fl, req.area, forecast_hour)
 
             if map_filepath and os.path.exists(map_filepath):
+                temp_maps_to_delete.append(map_filepath)
                 try:
                     # Make it larger but maintain aspect ratio to prevent cropping/stretching
                     img = RLImage(
@@ -843,6 +838,14 @@ def generate_briefing_pdf(
             pass
 
     doc.build(elements, onFirstPage=draw_page_border)
+
+    # Clean up temporary map files downloaded for this PDF
+    for tm in temp_maps_to_delete:
+        try:
+            if os.path.exists(tm):
+                os.remove(tm)
+        except Exception:
+            pass
 
 
 @router.post("/flight-plan")
@@ -916,6 +919,16 @@ def create_flight_plan(req: FlightPlanRequest, db: Session = Depends(get_db)):
         pilot_ref = req.pilot_reference if req.pilot_reference else "guest"
         safe_pilot_ref = "".join([c for c in pilot_ref if c.isalnum() or c in ('-', '_')])
         
+        # Clean up any preview files for this pilot when they generate a real one
+        if not req.preview_only:
+            if os.path.exists(DOCS_DIR):
+                for f in os.listdir(DOCS_DIR):
+                    if f.startswith(f"preview_{safe_pilot_ref}_") and f.endswith(".pdf"):
+                        try:
+                            os.remove(os.path.join(DOCS_DIR, f))
+                        except Exception:
+                            pass
+
         prefix = "preview" if req.preview_only else "briefing"
         filename = f"{prefix}_{safe_pilot_ref}_{req.departure.upper()}_{req.destination.upper()}_{doc_id}.pdf"
         filepath = os.path.join(DOCS_DIR, filename)
@@ -1093,11 +1106,16 @@ def get_my_documents(pilot_reference: str):
                     departure = parts[2]
                     destination = parts[3]
                 
+                # Status logic: Valid for 12 hours after creation
+                now = datetime.now()
+                is_expired = now > (created_time + timedelta(hours=12))
+                status_val = "Expired" if is_expired else "Valid"
+                
                 docs.append({
                     "reference": f.replace(".pdf", ""),
                     "route": f"{departure} → {destination}",
                     "forecastDate": created_time.strftime("%d %b %Y %H:%M"),
-                    "status": "Approved",
+                    "status": status_val,
                     "url": f"http://localhost:8000/documents/{f}"
                 })
                 
