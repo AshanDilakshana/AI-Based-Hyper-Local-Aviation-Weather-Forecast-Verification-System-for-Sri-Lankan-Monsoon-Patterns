@@ -71,9 +71,16 @@ def process_data(df):
 
     # Safely convert to categorical code without view warnings by working on a copy
     df = df.copy()
-    
-    df['Cloud_Type_Code'] = df['Cloud_Type'].astype('category').cat.codes
-    cloud_type_mapping = dict(enumerate(df['Cloud_Type'].astype('category').cat.categories))
+
+    # Map rare cloud types (< 10 occurrences) to 'OTHER' to ensure sufficient samples for training/stratification
+    cloud_counts = df['Cloud_Type'].value_counts()
+    rare_types = cloud_counts[cloud_counts < 10].index
+    if len(rare_types) > 0:
+        df.loc[df['Cloud_Type'].isin(rare_types), 'Cloud_Type'] = 'OTHER'
+
+    cloud_type_cat = df['Cloud_Type'].astype(str).astype('category')
+    df['Cloud_Type_Code'] = cloud_type_cat.cat.codes
+    cloud_type_mapping = dict(enumerate(cloud_type_cat.cat.categories))
 
     unique_vis = sorted(df['Visibility_Cleaned'].unique(), key=lambda x: float(x) if x.replace('.','',1).isdigit() else 0)
     vis_cat = pd.Categorical(df['Visibility_Cleaned'], categories=unique_vis, ordered=True)
@@ -91,7 +98,7 @@ def train_for_mlops(df):
     y_vis = df['Vis_Code']
     
     X_train, X_test, y_train_t, y_test_t, y_train_h, y_test_h, y_train_v, y_test_v = train_test_split(
-        X, y_cloud_type, y_cloud_height, y_vis, test_size=0.2, random_state=42
+        X, y_cloud_type, y_cloud_height, y_vis, test_size=0.2, random_state=42, stratify=y_cloud_type
     )
 
     cloud_type_model = XGBClassifier(
@@ -120,7 +127,20 @@ def train_for_mlops(df):
     height_mae = mean_absolute_error(y_test_h, h_preds)
     vis_mae = mean_absolute_error(y_test_v, v_preds)
     
-    return cloud_type_model, cloud_height_model, vis_model, type_acc, height_mae, vis_mae, cloud_type_mapping, vis_mapping, X_test, y_test_t
+    return (
+        cloud_type_model,
+        cloud_height_model,
+        vis_model,
+        type_acc,
+        height_mae,
+        vis_mae,
+        cloud_type_mapping,
+        vis_mapping,
+        X_test,
+        y_test_t,
+        y_test_h,
+        y_test_v,
+    )
 
 if __name__ == "__main__":
     print(f"[INFO] XGBoost Script: Loading dataset from DB {db_path}...")
@@ -129,7 +149,20 @@ if __name__ == "__main__":
     conn.close()
 
     print("\n[TRAINING] Optimizing and Training XGBoost Models (Cloud Type + Cloud Height + Visibility)...")
-    cloud_type_model, cloud_height_model, vis_model, type_acc, height_mae, vis_mae, cloud_type_mapping, vis_mapping, X_test, y_test_t = train_for_mlops(df)
+    (
+        cloud_type_model,
+        cloud_height_model,
+        vis_model,
+        type_acc,
+        height_mae,
+        vis_mae,
+        cloud_type_mapping,
+        vis_mapping,
+        X_test,
+        y_test_t,
+        y_test_h,
+        y_test_v,
+    ) = train_for_mlops(df)
 
     print(f"\n[RESULTS] XGBoost Models:")
     print(f"  -> Cloud Type Classification Accuracy: {type_acc * 100:.2f}%")

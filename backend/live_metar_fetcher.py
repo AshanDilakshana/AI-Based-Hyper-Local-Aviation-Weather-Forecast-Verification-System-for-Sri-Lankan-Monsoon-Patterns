@@ -100,6 +100,15 @@ def parse_metar_time(time_str):
         return datetime.utcnow()
 
 
+def safe_float(val):
+    if val is None:
+        return None
+    try:
+        return float(val)
+    except (ValueError, TypeError):
+        return None
+
+
 def fetch_and_store_live_metar(hours=None):
     """
     Fetches METAR data from AviationWeather API for VCBI.
@@ -133,7 +142,27 @@ def fetch_and_store_live_metar(hours=None):
     try:
         response = requests.get(url, timeout=15)
         response.raise_for_status()
-        data = response.json()
+
+        if not response.text or not response.text.strip():
+            log_event(
+                db,
+                "WARNING",
+                f"Live_METAR_Fetcher_{hours}H",
+                "Empty response from AviationWeather API.",
+            )
+            return 0
+
+        try:
+            data = response.json()
+        except Exception as json_err:
+            log_event(
+                db,
+                "WARNING",
+                f"Live_METAR_Fetcher_{hours}H",
+                f"Non-JSON response from API: {json_err}",
+            )
+            return 0
+
         if not data or len(data) == 0:
             log_event(
                 db,
@@ -141,7 +170,7 @@ def fetch_and_store_live_metar(hours=None):
                 f"Live_METAR_Fetcher_{hours}H",
                 "No data returned from API.",
             )
-            return
+            return 0
 
         records_added = 0
         for ob in reversed(data):  # Process oldest to newest
@@ -168,13 +197,11 @@ def fetch_and_store_live_metar(hours=None):
             if existing:
                 continue  # Skip if already in DB
 
-            wind_dir = float(ob.get("wdir")) if ob.get("wdir") is not None else None
-            wind_speed_kts = (
-                float(ob.get("wspd")) if ob.get("wspd") is not None else None
-            )
-            dry_temp_c = float(ob.get("temp")) if ob.get("temp") is not None else None
-            dew_point_c = float(ob.get("dewp")) if ob.get("dewp") is not None else None
-            qnh_hpa = float(ob.get("altim")) if ob.get("altim") is not None else None
+            wind_dir = safe_float(ob.get("wdir"))
+            wind_speed_kts = safe_float(ob.get("wspd"))
+            dry_temp_c = safe_float(ob.get("temp"))
+            dew_point_c = safe_float(ob.get("dewp"))
+            qnh_hpa = safe_float(ob.get("altim"))
 
             rh_percent = calculate_rh(dry_temp_c, dew_point_c)
             visibility = extract_visibility_from_raw(raw_ob)

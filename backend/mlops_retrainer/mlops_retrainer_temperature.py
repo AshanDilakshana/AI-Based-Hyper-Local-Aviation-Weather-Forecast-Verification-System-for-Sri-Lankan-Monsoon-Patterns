@@ -63,13 +63,19 @@ def retrain_temperature_pressure():
         # 1. Train LSTM Hybrid (Primary)
         print("Running train_lstm_hybrid.py...")
         result_lstm = subprocess.run(
-            ["python", train_lstm_script], capture_output=True, text=True
+            [sys.executable, train_lstm_script],
+            capture_output=True,
+            text=True,
+            env=os.environ.copy(),
         )
 
         # 2. Train Quick RF (Fallback)
         print("Running train_quick_rf.py...")
         result_rf = subprocess.run(
-            ["python", train_rf_script], capture_output=True, text=True
+            [sys.executable, train_rf_script],
+            capture_output=True,
+            text=True,
+            env=os.environ.copy(),
         )
 
         model_key = "Temperature_Pressure_Model"

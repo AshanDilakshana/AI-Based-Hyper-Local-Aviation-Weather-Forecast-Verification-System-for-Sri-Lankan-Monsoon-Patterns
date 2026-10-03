@@ -36,9 +36,13 @@ def get_all_historical_data(db_session):
 
 
 def log_event(db_session, level, component, message, details=None):
-    log = SystemLogs(level=level, component=component, message=message, details=details)
-    db_session.add(log)
-    db_session.commit()
+    try:
+        log = SystemLogs(level=level, component=component, message=message, details=details)
+        db_session.add(log)
+        db_session.commit()
+    except Exception as e:
+        db_session.rollback()
+        print(f"Failed to write log to DB: {e}")
     print(f"[{level}] {component}: {message}")
 
 
@@ -139,6 +143,7 @@ def retrain_model_pipeline(forecast_hours, target_col, model_dir, model_filename
             ret = False, "Model Rejected"
 
     except Exception as e:
+        db.rollback()
         log_event(db, "ERROR", component, f"Error during retraining: {str(e)}")
         ret = False, str(e)
     finally:
@@ -219,6 +224,7 @@ def retrain_tft_pipeline(tft_dir):
                         )
 
     except Exception as e:
+        db.rollback()
         log_event(db, "ERROR", component, f"Error during TFT retraining: {str(e)}")
         ret = False, str(e)
     finally:

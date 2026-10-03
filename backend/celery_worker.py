@@ -23,6 +23,24 @@ celery_app = Celery(
     backend=REDIS_URL,
 )
 
+celery_app.conf.update(
+    broker_connection_retry_on_startup=True,
+    broker_transport_options={
+        "visibility_timeout": 86400,
+        "socket_timeout": 30.0,
+        "socket_connect_timeout": 30.0,
+    },
+    result_backend_transport_options={
+        "socket_timeout": 30.0,
+        "socket_connect_timeout": 30.0,
+    },
+    redis_socket_timeout=30.0,
+    redis_socket_connect_timeout=30.0,
+    redis_backend_health_check_interval=20,
+    broker_heartbeat=10,
+    broker_pool_limit=10,
+)
+
 
 
 @celery_app.task(name="run_full_retraining_pipeline")

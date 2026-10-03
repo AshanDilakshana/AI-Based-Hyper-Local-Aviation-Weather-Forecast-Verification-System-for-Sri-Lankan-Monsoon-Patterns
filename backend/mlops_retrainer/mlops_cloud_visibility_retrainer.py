@@ -40,19 +40,21 @@ def run_cloud_visibility_retraining():
     # 2. Train New Models
     try:
         (
-            new_cloud_model,
+            new_cloud_type_model,
+            new_cloud_height_model,
             new_vis_model,
             new_cloud_acc,
+            new_height_mae,
             new_vis_mae,
-            cloud_mapping,
+            cloud_type_mapping,
             vis_mapping,
-            X_test_c,
-            y_test_c,
-            X_test_v,
+            X_test,
+            y_test_t,
+            y_test_h,
             y_test_v,
         ) = train_for_mlops(df)
         print(
-            f"[INFO] New Model Trained - Cloud Acc: {new_cloud_acc:.4f}, Vis MAE: {new_vis_mae:.4f}"
+            f"[INFO] New Model Trained - Cloud Acc: {new_cloud_acc:.4f}, Height MAE: {new_height_mae:.4f}, Vis MAE: {new_vis_mae:.4f}"
         )
     except Exception as e:
         return False, f"Training failed: {e}"
@@ -62,26 +64,33 @@ def run_cloud_visibility_retraining():
     vis_model_path = os.path.join(model_dir, "xgb_visibility_model.pkl")
 
     old_cloud_acc = 0.0
+    old_height_mae = float("inf")
     old_vis_mae = float("inf")
 
     if os.path.exists(cloud_model_path) and os.path.exists(vis_model_path):
         try:
             with open(cloud_model_path, "rb") as f:
                 old_cloud_bundle = pickle.load(f)
-                old_cloud_model = old_cloud_bundle["model"]
-
             with open(vis_model_path, "rb") as f:
                 old_vis_bundle = pickle.load(f)
-                old_vis_model = old_vis_bundle["model"]
 
-            # Evaluate old models on new test set
-            old_c_preds = old_cloud_model.predict(X_test_c)
-            old_cloud_acc = accuracy_score(y_test_c, old_c_preds)
+            if "type_model" in old_cloud_bundle:
+                old_cloud_type_model = old_cloud_bundle["type_model"]
+                old_cloud_height_model = old_cloud_bundle["height_model"]
+                old_c_preds = old_cloud_type_model.predict(X_test)
+                old_cloud_acc = accuracy_score(y_test_t, old_c_preds)
+                old_h_preds = old_cloud_height_model.predict(X_test)
+                old_height_mae = mean_absolute_error(y_test_h, old_h_preds)
+            elif "model" in old_cloud_bundle:
+                old_cloud_model = old_cloud_bundle["model"]
+                old_c_preds = old_cloud_model.predict(X_test)
+                old_cloud_acc = accuracy_score(y_test_t, old_c_preds)
 
-            old_v_preds = old_vis_model.predict(X_test_v)
+            old_vis_model = old_vis_bundle["model"]
+            old_v_preds = old_vis_model.predict(X_test)
             old_vis_mae = mean_absolute_error(y_test_v, old_v_preds)
             print(
-                f"[INFO] Old Model Evaluated - Cloud Acc: {old_cloud_acc:.4f}, Vis MAE: {old_vis_mae:.4f}"
+                f"[INFO] Old Model Evaluated - Cloud Acc: {old_cloud_acc:.4f}, Height MAE: {old_height_mae:.4f}, Vis MAE: {old_vis_mae:.4f}"
             )
         except Exception as e:
             print(
@@ -101,10 +110,19 @@ def run_cloud_visibility_retraining():
             os.replace(vis_model_path, vis_model_path.replace(".pkl", "_backup.pkl"))
 
         # Save new models
+        cloud_bundle = {
+            "type_model": new_cloud_type_model,
+            "height_model": new_cloud_height_model,
+            "type_mapping": cloud_type_mapping,
+        }
+        vis_bundle = {
+            "model": new_vis_model,
+            "mapping": vis_mapping,
+        }
         with open(cloud_model_path, "wb") as f:
-            pickle.dump({"model": new_cloud_model, "mapping": cloud_mapping}, f)
+            pickle.dump(cloud_bundle, f)
         with open(vis_model_path, "wb") as f:
-            pickle.dump({"model": new_vis_model, "mapping": vis_mapping}, f)
+            pickle.dump(vis_bundle, f)
 
         return True, "New models deployed successfully."
     else:
