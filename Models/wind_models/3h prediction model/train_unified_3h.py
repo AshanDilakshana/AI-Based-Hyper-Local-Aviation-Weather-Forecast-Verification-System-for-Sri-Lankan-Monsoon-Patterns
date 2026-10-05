@@ -52,7 +52,7 @@ def main():
     X, y = pipeline.process_training_data(df)
 
     processed_df = X.copy()
-    processed_df[pipeline.target] = y
+    processed_df[pipeline.targets] = y
     processed_df.to_csv(processed_data_path, index=False)
     print(f"Processed 3H data saved to: {processed_data_path}")
 
@@ -60,7 +60,7 @@ def main():
     print("\nStarting Training Process...")
     train_xgboost_model(
         data_path=processed_data_path,
-        target_col=pipeline.target,
+        target_cols=pipeline.targets,
         output_dir=current_dir,
         model_filename='xgboost_wind_model_3h.json'
     )
