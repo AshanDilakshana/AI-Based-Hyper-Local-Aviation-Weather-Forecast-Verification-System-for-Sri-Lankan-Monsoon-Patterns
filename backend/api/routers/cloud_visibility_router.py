@@ -214,6 +214,16 @@ def predict_cloud_visibility(data: CloudVisibilityRequest):
             print(
                 f"[WARNING] Could not fetch live data from DB, using payload fallback: {db_e}"
             )
+            
+        data.wind_dir = float(data.wind_dir) if data.wind_dir is not None else 0.0
+        data.wind = float(data.wind) if data.wind is not None else 0.0
+        data.temp = float(data.temp) if data.temp is not None else 30.0
+        data.dew = float(data.dew) if data.dew is not None else 25.0
+        data.rh = float(data.rh) if data.rh is not None else 75.0
+        data.qnh = float(data.qnh) if data.qnh is not None else 1010.0
+        data.month = float(data.month) if data.month is not None else 6.0
+        data.hour = float(data.hour) if data.hour is not None else 12.0
+        data.weather_encoded = float(data.weather_encoded) if data.weather_encoded is not None else 0.0
 
         # =================================================
         # FEATURE ENGINEERING
