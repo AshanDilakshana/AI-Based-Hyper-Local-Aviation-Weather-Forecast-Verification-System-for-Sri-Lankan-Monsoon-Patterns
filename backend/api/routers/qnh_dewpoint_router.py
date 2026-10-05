@@ -93,8 +93,8 @@ def predict_qnh_dewpoint_3h():
         base_dir = os.path.dirname(
             os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
         )
-        db_path = os.path.join(base_dir, "weather_data.db")
-
+        from backend.data.database import engine
+        
         # We need to import the pipelines dynamically to avoid circular imports
         # or path issues during startup
         import sys
@@ -109,10 +109,8 @@ def predict_qnh_dewpoint_3h():
             DewpointUnifiedPipeline,
         )
 
-        from backend.data.database import engine
-
-        # Run QNH Pipeline for inference (is_training=False prevents target NaN dropping)
-        qnh_pipeline = QNHUnifiedPipeline(db_path, engine=engine)
+        # Run QNH Pipeline for inference using Supabase DB (is_training=False prevents target NaN dropping)
+        qnh_pipeline = QNHUnifiedPipeline(engine=engine)
         df_qnh_all = qnh_pipeline.run_pipeline(is_training=False)
 
         if df_qnh_all.empty:
@@ -125,8 +123,8 @@ def predict_qnh_dewpoint_3h():
         qnh_features = qnh_pipeline.get_feature_columns(latest_qnh_row)
         input_qnh_df = latest_qnh_row[qnh_features]
 
-        # Run Dewpoint Pipeline for inference
-        dew_pipeline = DewpointUnifiedPipeline(db_path, engine=engine)
+        # Run Dewpoint Pipeline for inference using Supabase DB
+        dew_pipeline = DewpointUnifiedPipeline(engine=engine)
         df_dew_all = dew_pipeline.run_pipeline(is_training=False)
 
         if df_dew_all.empty:
