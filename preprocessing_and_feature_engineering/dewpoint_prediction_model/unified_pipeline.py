@@ -9,11 +9,24 @@ class DewpointUnifiedPipeline:
         self.db_path = db_path
         self.engine = engine
 
-    def load_data(self) -> pd.DataFrame:
-        """Loads data from the database."""
-        query = "SELECT * FROM weather_data ORDER BY timestamp_utc"
+    def load_data(self, is_training: bool = True) -> pd.DataFrame:
+        """Loads data from the database. For inference, fetches only the latest records."""
+        if is_training:
+            query = "SELECT * FROM weather_data ORDER BY timestamp_utc"
+        else:
+            query = "SELECT * FROM (SELECT * FROM weather_data ORDER BY timestamp_utc DESC LIMIT 100) ORDER BY timestamp_utc ASC"
+
         if self.engine is not None:
-            df = pd.read_sql_query(query, self.engine)
+            try:
+                df = pd.read_sql_query(query, self.engine)
+            except Exception as e:
+                # Fallback to local SQLite if remote engine connection fails or drops SSL
+                if self.db_path and os.path.exists(self.db_path):
+                    conn = sqlite3.connect(self.db_path)
+                    df = pd.read_sql_query(query, conn)
+                    conn.close()
+                else:
+                    raise e
         else:
             if not os.path.exists(self.db_path):
                 raise FileNotFoundError(f"Database not found at {self.db_path}")
@@ -26,7 +39,7 @@ class DewpointUnifiedPipeline:
     def run_pipeline(self, is_training: bool = True) -> pd.DataFrame:
         """Executes the full preprocessing and feature engineering pipeline."""
         print("Loading raw data from database...")
-        df_raw = self.load_data()
+        df_raw = self.load_data(is_training=is_training)
         
         print("Cleaning data...")
         cleaner = DewpointDataCleaner(df_raw)
