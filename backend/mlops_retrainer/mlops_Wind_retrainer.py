@@ -46,7 +46,7 @@ def log_event(db_session, level, component, message, details=None):
     print(f"[{level}] {component}: {message}")
 
 
-def retrain_model_pipeline(forecast_hours, target_col, model_dir, model_filename):
+def retrain_model_pipeline(forecast_hours, target_cols, model_dir, model_filename):
     db = SessionLocal()
     component = f"MLOps_{forecast_hours}H"
 
@@ -64,14 +64,14 @@ def retrain_model_pipeline(forecast_hours, target_col, model_dir, model_filename
         X, y = pipeline.process_training_data(df_raw)
 
         df_processed = X.copy()
-        df_processed[target_col] = y
+        df_processed[target_cols] = y
 
         if df_processed.empty:
             log_event(db, "ERROR", component, "Processed data is empty.")
             return False, "Processing failed"
 
         log_event(db, "INFO", component, "Training New Model...")
-        new_model, new_mae, X_test, y_test = train_for_mlops(df_processed, target_col)
+        new_model, new_mae, X_test, y_test = train_for_mlops(df_processed, target_cols)
 
         model_path = os.path.join(model_dir, model_filename)
         old_mae = evaluate_old_model(model_path, X_test, y_test)
@@ -232,6 +232,20 @@ def retrain_tft_pipeline(tft_dir):
 
     return ret
 
+import time
+
+def retry_pipeline(pipeline_func, *args, max_retries=3, delay_seconds=10, **kwargs):
+    for attempt in range(1, max_retries + 1):
+        res, msg = pipeline_func(*args, **kwargs)
+        if res:
+            return res, msg
+        else:
+            if "Not enough data" in str(msg):
+                return res, msg # No need to retry if data is insufficient
+            print(f"[RETRY SYSTEM] Attempt {attempt} failed: {msg}. Retrying in {delay_seconds}s...")
+            time.sleep(delay_seconds)
+    
+    return False, f"Failed after {max_retries} attempts. Last error: {msg}"
 
 def run_wind_models_retraining():
     sync_training_data()
@@ -239,18 +253,18 @@ def run_wind_models_retraining():
 
     # 1st: 3H XGBoost Model
     dir_3h = os.path.join(base_dir, "wind_models/3h prediction model")
-    res_3h, msg_3h = retrain_model_pipeline(
-        3, "Wind speed(Kts)_3h_ahead", dir_3h, "xgboost_wind_model_3h.json"
+    res_3h, msg_3h = retry_pipeline(
+        retrain_model_pipeline, 3, ["Target_Wind_Speed_3h_Ahead", "Target_Wind_Dir_Sin_3h_Ahead", "Target_Wind_Dir_Cos_3h_Ahead"], dir_3h, "xgboost_wind_model_3h.json"
     )
 
     # 2nd: TFT 3H Model
     dir_tft = os.path.join(base_dir, "wind_models/TFT_3H")
-    res_tft, msg_tft = retrain_tft_pipeline(dir_tft)
+    res_tft, msg_tft = retry_pipeline(retrain_tft_pipeline, dir_tft)
 
     # 3rd: 1H XGBoost Model
     dir_1h = os.path.join(base_dir, "wind_models/1h prediction model")
-    res_1h, msg_1h = retrain_model_pipeline(
-        1, "Wind speed(Kts)_1h_ahead", dir_1h, "xgboost_wind_model_1h.json"
+    res_1h, msg_1h = retry_pipeline(
+        retrain_model_pipeline, 1, ["Target_Wind_Speed_1h_Ahead", "Target_Wind_Dir_Sin_1h_Ahead", "Target_Wind_Dir_Cos_1h_Ahead"], dir_1h, "xgboost_wind_model_1h.json"
     )
 
     return {"3H_Wind_Model": msg_3h, "TFT_3H_Model": msg_tft, "1H_Wind_Model": msg_1h}
