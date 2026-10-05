@@ -101,21 +101,24 @@ def train_for_mlops(df):
         X, y_cloud_type, y_cloud_height, y_vis, test_size=0.2, random_state=42, stratify=y_cloud_type
     )
 
+    import torch
+    gpu_device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
     cloud_type_model = XGBClassifier(
         n_estimators=500, max_depth=8, learning_rate=0.1,
-        tree_method='hist', random_state=42, n_jobs=-1
+        tree_method='hist', device=gpu_device, random_state=42, n_jobs=-1
     )
     cloud_type_model.fit(X_train, y_train_t)
 
     cloud_height_model = XGBRegressor(
         n_estimators=500, max_depth=7, learning_rate=0.05,
-        subsample=0.8, colsample_bytree=0.8, random_state=42, n_jobs=-1
+        subsample=0.8, colsample_bytree=0.8, tree_method='hist', device=gpu_device, random_state=42, n_jobs=-1
     )
     cloud_height_model.fit(X_train, y_train_h)
 
     vis_model = XGBRegressor(
         n_estimators=500, max_depth=7, learning_rate=0.04,
-        subsample=0.8, colsample_bytree=0.8, random_state=42, n_jobs=-1
+        subsample=0.8, colsample_bytree=0.8, tree_method='hist', device=gpu_device, random_state=42, n_jobs=-1
     )
     vis_model.fit(X_train, y_train_v)
 
