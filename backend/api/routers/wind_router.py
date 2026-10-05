@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException
 import xgboost as xgb
+import math
 import pandas as pd
 import numpy as np
 import os
@@ -225,9 +226,19 @@ def predict_wind_1h(request: WindPredictionRequest):
     raw_wind_dir = df_window.iloc[-1]["Wind Dir"]
     current_wind_dir = float(raw_wind_dir) if pd.notnull(raw_wind_dir) else 0.0
 
-    predicted_wind_speed = float(model_1h.predict(features_ordered)[0])
+    predictions = model_1h.predict(features_ordered)[0]
+    predicted_wind_speed = float(predictions[0])
+    pred_sin = float(predictions[1])
+    pred_cos = float(predictions[2])
+    
+    pred_dir_rad = math.atan2(pred_sin, pred_cos)
+    pred_dir_deg = math.degrees(pred_dir_rad)
+    if pred_dir_deg < 0:
+        pred_dir_deg += 360
+    predicted_wind_dir = round(pred_dir_deg, 1)
+
     best_heading, crosswind, headwind, runway_name = suggest_best_runway(
-        predicted_wind_speed, current_wind_dir
+        predicted_wind_speed, predicted_wind_dir
     )
     status, message = get_alert_status(crosswind, "1 hour ahead")
 
@@ -247,7 +258,7 @@ def predict_wind_1h(request: WindPredictionRequest):
             db.add(unified_record)
 
         unified_record.wind_speed_kts = predicted_wind_speed
-        unified_record.wind_dir = current_wind_dir
+        unified_record.wind_dir = predicted_wind_dir
         db.commit()
     except Exception as e:
         print(f"Failed to save prediction record: {e}")
@@ -291,9 +302,19 @@ def predict_wind_3h(request: WindPredictionRequest):
     raw_wind_dir = df_window.iloc[-1]["Wind Dir"]
     current_wind_dir = float(raw_wind_dir) if pd.notnull(raw_wind_dir) else 0.0
 
-    predicted_wind_speed = float(model_3h.predict(features_ordered)[0])
+    predictions = model_3h.predict(features_ordered)[0]
+    predicted_wind_speed = float(predictions[0])
+    pred_sin = float(predictions[1])
+    pred_cos = float(predictions[2])
+    
+    pred_dir_rad = math.atan2(pred_sin, pred_cos)
+    pred_dir_deg = math.degrees(pred_dir_rad)
+    if pred_dir_deg < 0:
+        pred_dir_deg += 360
+    predicted_wind_dir = round(pred_dir_deg, 1)
+
     best_heading, crosswind, headwind, runway_name = suggest_best_runway(
-        predicted_wind_speed, current_wind_dir
+        predicted_wind_speed, predicted_wind_dir
     )
     status, message = get_alert_status(crosswind, "3 hours ahead")
 
@@ -313,7 +334,7 @@ def predict_wind_3h(request: WindPredictionRequest):
             db.add(unified_record)
 
         unified_record.wind_speed_kts = predicted_wind_speed
-        unified_record.wind_dir = current_wind_dir
+        unified_record.wind_dir = predicted_wind_dir
         db.commit()
     except Exception as e:
         print(f"Failed to save prediction record: {e}")
@@ -322,7 +343,7 @@ def predict_wind_3h(request: WindPredictionRequest):
 
     return WindPredictionResponse(
         predicted_wind_speed_kts=round(predicted_wind_speed, 2),
-        wind_dir=current_wind_dir,
+        wind_dir=predicted_wind_dir,
         headwind_kts=round(headwind, 2),
         crosswind_kts=round(crosswind, 2),
         runway=runway_name,
@@ -344,10 +365,9 @@ def predict_wind_tft_3h(request: WindPredictionRequest):
             detail="time_utc and qnh_hpa are required for the 3H model.",
         )
 
-    from backend.data.database import engine
-
     try:
-        df_tft = load_and_prepare_data(engine=engine).tail(96).reset_index(drop=True)
+        from backend.data.database import engine
+        df_tft = load_and_prepare_data(engine=engine, limit=300).tail(96).reset_index(drop=True)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to load data for TFT: {e}")
 
@@ -413,10 +433,9 @@ def predict_wind_hybrid_3h(request: WindPredictionRequest):
         )
 
     # TFT Predict
-    from backend.data.database import engine
-
     try:
-        df_tft = load_and_prepare_data(engine=engine).tail(96).reset_index(drop=True)
+        from backend.data.database import engine
+        df_tft = load_and_prepare_data(engine=engine, limit=300).tail(96).reset_index(drop=True)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to load data for TFT: {e}")
 
@@ -437,16 +456,22 @@ def predict_wind_hybrid_3h(request: WindPredictionRequest):
     expected_cols = pipeline.required_features
     features_ordered = features[expected_cols]
 
-    xgb_pred_value = float(model_3h.predict(features_ordered)[0])
+    xgb_predictions = model_3h.predict(features_ordered)[0]
+    xgb_pred_value = float(xgb_predictions[0])
+    pred_sin = float(xgb_predictions[1])
+    pred_cos = float(xgb_predictions[2])
+
+    pred_dir_rad = math.atan2(pred_sin, pred_cos)
+    pred_dir_deg = math.degrees(pred_dir_rad)
+    if pred_dir_deg < 0:
+        pred_dir_deg += 360
+    predicted_wind_dir = round(pred_dir_deg, 1)
 
     # Hybrid Predict (Average)
     predicted_wind_speed = (tft_pred_value + xgb_pred_value) / 2.0
 
-    raw_wind_dir = df_window.iloc[-1]["Wind Dir"]
-    current_wind_dir = float(raw_wind_dir) if pd.notnull(raw_wind_dir) else 0.0
-
     best_heading, crosswind, headwind, runway_name = suggest_best_runway(
-        predicted_wind_speed, current_wind_dir
+        predicted_wind_speed, predicted_wind_dir
     )
     status, message = get_alert_status(crosswind, "3 hours ahead (Hybrid)")
 
@@ -466,7 +491,7 @@ def predict_wind_hybrid_3h(request: WindPredictionRequest):
             db.add(unified_record)
 
         unified_record.wind_speed_kts = predicted_wind_speed
-        unified_record.wind_dir = current_wind_dir
+        unified_record.wind_dir = predicted_wind_dir
 
         db.commit()
     except Exception as e:
@@ -476,7 +501,7 @@ def predict_wind_hybrid_3h(request: WindPredictionRequest):
 
     return WindPredictionResponse(
         predicted_wind_speed_kts=round(predicted_wind_speed, 2),
-        wind_dir=current_wind_dir,
+        wind_dir=predicted_wind_dir,
         headwind_kts=round(headwind, 2),
         crosswind_kts=round(crosswind, 2),
         runway=runway_name,
