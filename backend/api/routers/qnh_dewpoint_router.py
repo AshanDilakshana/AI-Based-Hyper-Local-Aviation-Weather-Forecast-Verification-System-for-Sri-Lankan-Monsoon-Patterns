@@ -197,6 +197,7 @@ def predict_qnh_dewpoint_3h():
             unified_record.rh_percent = float(rh)
             db.add(unified_record)
             db.commit()
+            print(f"[SUCCESS] QNH/Dewpoint Prediction saved to DB for target time: {target_time}")
         except Exception as db_e:
             print(f"[ERROR] Failed to save to ModelsForecast: {db_e}")
         finally:
