@@ -265,6 +265,7 @@ def run_active_prediction(db: Session = Depends(get_db)):
         unified_record.pressure_hpa = predicted_press
 
         db.commit()
+        print(f"[SUCCESS] Temp/Press Prediction saved to DB for target time: {target_time}")
 
         return {
             "forecast_report_time": target_time.isoformat(),
@@ -369,6 +370,7 @@ def predict_temperature_pressure(
         unified_record.pressure_hpa = predicted_press
 
         db.commit()
+        print(f"[SUCCESS] Temp/Press Prediction saved to DB for target time: {target_time}")
 
         return {
             "prediction": {
@@ -436,13 +438,9 @@ def predict_live_weather(db: Session = Depends(get_db)):
 
         obs_time = datetime.utcnow()
         if "reportTime" in data:
-            try:
-                # Format: 2026-08-19T18:10:00.000Z
-                obs_time = datetime.strptime(
-                    data["reportTime"], "%Y-%m-%dT%H:%M:%S.%fZ"
-                )
-            except:
-                pass
+            from backend.live_metar_fetcher import parse_metar_time
+            obs_time = parse_metar_time(data["reportTime"])
+
 
         # Save to WeatherData
         weather_record = WeatherData(
@@ -526,6 +524,7 @@ def predict_live_weather(db: Session = Depends(get_db)):
         unified_record.pressure_hpa = predicted_press
 
         db.commit()
+        print(f"[SUCCESS] Temp/Press Prediction saved to DB for target time: {target_time}")
 
         return {
             "live_data": {

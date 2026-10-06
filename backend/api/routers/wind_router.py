@@ -260,6 +260,7 @@ def predict_wind_1h(request: WindPredictionRequest):
         unified_record.wind_speed_kts = predicted_wind_speed
         unified_record.wind_dir = predicted_wind_dir
         db.commit()
+        print(f"[SUCCESS] Wind Prediction saved to DB for target time: {unified_dt_target}")
     except Exception as e:
         print(f"Failed to save prediction record: {e}")
     finally:
@@ -336,6 +337,7 @@ def predict_wind_3h(request: WindPredictionRequest):
         unified_record.wind_speed_kts = predicted_wind_speed
         unified_record.wind_dir = predicted_wind_dir
         db.commit()
+        print(f"[SUCCESS] Wind Prediction saved to DB for target time: {unified_dt_target}")
     except Exception as e:
         print(f"Failed to save prediction record: {e}")
     finally:
@@ -403,6 +405,7 @@ def predict_wind_tft_3h(request: WindPredictionRequest):
         unified_record.wind_speed_kts = predicted_wind_speed
         unified_record.wind_dir = current_wind_dir
         db.commit()
+        print(f"[SUCCESS] Wind TFT 3H Prediction saved to DB for target time: {unified_dt_target}")
     except Exception as e:
         print(f"Failed to save prediction record: {e}")
     finally:
@@ -494,6 +497,7 @@ def predict_wind_hybrid_3h(request: WindPredictionRequest):
         unified_record.wind_dir = predicted_wind_dir
 
         db.commit()
+        print(f"[SUCCESS] Wind Hybrid 3H Prediction saved to DB for target time: {unified_dt_target}")
     except Exception as e:
         print(f"Failed to save prediction record: {e}")
     finally:

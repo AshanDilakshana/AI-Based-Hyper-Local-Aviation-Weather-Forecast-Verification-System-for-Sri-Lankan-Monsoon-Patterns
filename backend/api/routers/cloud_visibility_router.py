@@ -347,6 +347,7 @@ def predict_cloud_visibility(data: CloudVisibilityRequest):
             unified_record.clouds = cloud_status
             db.add(unified_record)
             db.commit()
+            print(f"[SUCCESS] Cloud/Visibility Prediction saved to DB for target time: {target_time}")
         except Exception as db_e:
             print(f"[ERROR] Failed to save to ModelsForecast: {db_e}")
         finally:

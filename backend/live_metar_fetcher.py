@@ -208,7 +208,7 @@ def fetch_and_store_live_metar(hours=None):
             clouds, weather = extract_weather_and_clouds(raw_ob)
 
             new_record = WeatherData(
-                timestamp_utc=datetime.utcnow(),
+                timestamp_utc=dt,
                 year=year,
                 month=month,
                 date=date,
