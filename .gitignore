@@ -71,7 +71,6 @@ build/
 
 # --- OS & Editor ---
 .DS_Store
-.vscode/
 .idea/
 
 # --- Logs ---
@@ -95,3 +94,4 @@ TEmpory/
 frontend/
 frontend 2/
 Reletion analysis/
+.gitignore
