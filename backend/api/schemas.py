@@ -3,21 +3,21 @@ from typing import Optional, List
 
 
 class TempPressPredictionRequest(BaseModel):
-    temperature: float
-    humidity: float
-    pressure: float
-    dew_point: float
-    wind_speed: float
-    wind_direction: float
-    visibility: float
+    temperature: Optional[float] = None
+    humidity: Optional[float] = None
+    pressure: Optional[float] = None
+    dew_point: Optional[float] = None
+    wind_speed: Optional[float] = None
+    wind_direction: Optional[float] = None
+    visibility: Optional[float] = None
 
 
 class WindPredictionRequest(BaseModel):
-    temperature: float = Field(..., description="Current dry temperature in Celsius")
-    dew_point: float = Field(..., description="Current dew point in Celsius")
-    humidity: float = Field(..., description="Current relative humidity percentage")
-    wind_dir: float = Field(
-        ..., description="Current wind direction in degrees (0-360)"
+    temperature: Optional[float] = Field(None, description="Current dry temperature in Celsius")
+    dew_point: Optional[float] = Field(None, description="Current dew point in Celsius")
+    humidity: Optional[float] = Field(None, description="Current relative humidity percentage")
+    wind_dir: Optional[float] = Field(
+        None, description="Current wind direction in degrees (0-360)"
     )
     runway_heading: int = Field(
         40, description="Runway heading for BIA (Default: 04 -> 40 degrees)"
@@ -39,11 +39,11 @@ class WindPredictionResponse(BaseModel):
 
 
 class CloudVisibilityRequest(BaseModel):
-    temp: float = Field(..., description="Dry Temperature in Celsius")
-    dew: float = Field(..., description="Dew Point in Celsius")
-    rh: float = Field(..., description="Relative Humidity percentage")
-    qnh: float = Field(..., description="QNH Pressure in hPa")
-    wind: float = Field(..., description="Wind Speed in Knots")
+    temp: Optional[float] = Field(None, description="Dry Temperature in Celsius")
+    dew: Optional[float] = Field(None, description="Dew Point in Celsius")
+    rh: Optional[float] = Field(None, description="Relative Humidity percentage")
+    qnh: Optional[float] = Field(None, description="QNH Pressure in hPa")
+    wind: Optional[float] = Field(None, description="Wind Speed in Knots")
     month: float | None = Field(default=6.0, description="Month of the year (1-12)")
     hour: float | None = Field(
         default=12.0, description="Hour of the day in UTC (0-23)"

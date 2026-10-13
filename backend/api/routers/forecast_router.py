@@ -119,16 +119,10 @@ def get_all_ai_predictions(db: Session = Depends(get_db)):
         except Exception as e:
             return {"error": f"QNH/Dewpoint model failed: {str(e)}"}
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
-        f_wind = executor.submit(run_wind)
-        f_temp = executor.submit(run_temp)
-        f_cloud = executor.submit(run_cloud)
-        f_qnh = executor.submit(run_qnh)
-
-        wind_prediction = f_wind.result()
-        temp_prediction = f_temp.result()
-        cloud_visibility_prediction = f_cloud.result()
-        qnh_dewpoint_prediction = f_qnh.result()
+    wind_prediction = run_wind()
+    temp_prediction = run_temp()
+    cloud_visibility_prediction = run_cloud()
+    qnh_dewpoint_prediction = run_qnh()
 
     return {
         "timestamp_utc": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),

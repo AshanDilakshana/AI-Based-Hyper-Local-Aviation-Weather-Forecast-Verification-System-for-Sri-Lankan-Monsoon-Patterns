@@ -27,6 +27,7 @@ from backend.api.routers import (
     logs_router,
     pilot_router,
     auth_router,
+    admin_router,
 )
 from backend.data.database import engine, Base
 from backend.data import models
@@ -94,6 +95,9 @@ app.include_router(pilot_router.router)
 
 # Auth API
 app.include_router(auth_router.router)
+
+# Admin API
+app.include_router(admin_router.router)
 
 
 # Mock Metrology API (Local placeholder)

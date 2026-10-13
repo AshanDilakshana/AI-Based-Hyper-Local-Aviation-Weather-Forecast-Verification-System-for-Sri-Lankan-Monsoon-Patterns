@@ -31,8 +31,12 @@ class UnifiedWeatherPipeline:
             'Wind_Speed_Rolling_Mean_6h'
         ]
         
-        # Dynamically set the target name based on the forecast hours
-        self.target = f'Target_Wind_Speed_{self.forecast_hours}h_Ahead'
+        # Dynamically set the target names based on the forecast hours
+        self.target_speed = f'Target_Wind_Speed_{self.forecast_hours}h_Ahead'
+        self.target_dir_sin = f'Target_Wind_Dir_Sin_{self.forecast_hours}h_Ahead'
+        self.target_dir_cos = f'Target_Wind_Dir_Cos_{self.forecast_hours}h_Ahead'
+        
+        self.targets = [self.target_speed, self.target_dir_sin, self.target_dir_cos]
 
     def process_training_data(self, df: pd.DataFrame) -> tuple:
         """
@@ -52,14 +56,20 @@ class UnifiedWeatherPipeline:
         row_shift = -(self.forecast_hours * 2)
         
         if 'Wind speed(Kts)' in df_features.columns:
-            df_features[self.target] = df_features['Wind speed(Kts)'].shift(row_shift)
+            df_features[self.target_speed] = df_features['Wind speed(Kts)'].shift(row_shift)
             
-        required_cols = self.required_features + [self.target]
+        if 'Wind Dir_Sin' in df_features.columns:
+            df_features[self.target_dir_sin] = df_features['Wind Dir_Sin'].shift(row_shift)
+            
+        if 'Wind Dir_Cos' in df_features.columns:
+            df_features[self.target_dir_cos] = df_features['Wind Dir_Cos'].shift(row_shift)
+            
+        required_cols = self.required_features + self.targets
         available_cols = [c for c in required_cols if c in df_features.columns]
         df_final = df_features.dropna(subset=available_cols).copy()
         
         X = df_final[self.required_features]
-        y = df_final[self.target]
+        y = df_final[self.targets]
         
         return X, y
 

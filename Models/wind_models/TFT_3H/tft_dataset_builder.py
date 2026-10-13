@@ -8,15 +8,27 @@ warnings.filterwarnings("ignore")
 from pytorch_forecasting import TimeSeriesDataSet
 from pytorch_forecasting.data import GroupNormalizer
 
-def load_and_prepare_data(db_path=None, engine=None):
+def load_and_prepare_data(db_path=None, engine=None, limit=None):
     """
     Connects to the database (Supabase or SQLite), fetches weather_data, and formats it for PyTorch Forecasting.
     """
+    if engine is None and db_path is None:
+        db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../weather_data.db"))
+        
     if engine is None:
         engine = create_engine(f"sqlite:///{db_path}")
         
-    query = "SELECT * FROM weather_data ORDER BY id ASC"
-    df = pd.read_sql(query, engine)
+    if limit is not None:
+        query = f"SELECT * FROM (SELECT * FROM weather_data ORDER BY id DESC LIMIT {limit}) ORDER BY id ASC"
+    else:
+        query = "SELECT * FROM weather_data ORDER BY id ASC"
+        
+    try:
+        df = pd.read_sql(query, engine)
+    except Exception:
+        local_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../weather_data.db"))
+        local_engine = create_engine(f"sqlite:///{local_path}")
+        df = pd.read_sql(query, local_engine)
     
     # 1. Create a proper datetime index
     df['time_utc_str'] = df['time_utc'].astype(str).str.zfill(4)
