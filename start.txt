@@ -10,3 +10,7 @@ venv: .\.venv\Scripts\activate
 redis (WSL): Open WSL terminal -> `sudo service redis-server start` (If not installed: `sudo apt install redis-server`)
 Celery: celery -A backend.celery_worker.celery_app worker --pool=solo --loglevel=info
 main: python -m uvicorn backend.api.main:app --host 0.0.0.0 --port 8000 --reload
+
+
+run with out gpu : $env:CUDA_VISIBLE_DEVICES="-1"
+python -m uvicorn backend.api.main:app --host 0.0.0.0 --port 8000 --reload
