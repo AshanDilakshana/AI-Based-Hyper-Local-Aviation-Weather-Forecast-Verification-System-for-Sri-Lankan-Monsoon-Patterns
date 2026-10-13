@@ -77,7 +77,6 @@ yarn-error.log*
 
 # --- OS & Editor ---
 .DS_Store
-.vscode/
 .idea/
 Thumbs.db
 *.swp
