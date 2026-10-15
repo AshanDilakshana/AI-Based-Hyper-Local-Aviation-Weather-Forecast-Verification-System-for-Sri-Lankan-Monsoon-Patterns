@@ -95,20 +95,28 @@ class FlightPlanRequest(BaseModel):
     preview_url: Optional[str] = None
 
 
-def get_forecast_hour(duration_mins: int) -> str:
+def get_forecast_hours(duration_mins: int) -> List[str]:
+    """
+    Returns the required forecast validity lead times (F06, F12, F18, F24)
+    to cover the entire flight from departure to arrival.
+    - Up to 6 hours (Short/Medium-haul, e.g. WSSS, DEL): ['06']
+    - 6 to 12 hours (Long-haul, e.g. MEL, LHR): ['06', '12'] (covers en-route + arrival)
+    - 12 to 18 hours (Ultra long-haul): ['06', '12', '18']
+    - > 18 hours: ['06', '12', '18', '24']
+    """
     hours = duration_mins / 60.0
     if hours <= 6:
-        return "06"
+        return ["06"]
     elif hours <= 12:
-        return "12"
+        return ["06", "12"]
     elif hours <= 18:
-        return "18"
-    elif hours <= 24:
-        return "24"
-    elif hours <= 30:
-        return "30"
+        return ["06", "12", "18"]
     else:
-        return "36"
+        return ["06", "12", "18", "24"]
+
+
+def get_forecast_hour(duration_mins: int) -> str:
+    return get_forecast_hours(duration_mins)[-1]
 
 
 def get_live_map(
@@ -766,53 +774,107 @@ def generate_briefing_pdf(
     arr_time_str = arrival_time.strftime("%d-%b-%Y %H:%M Z")
     validity_str = f"VALID: {dep_time_str} TO {arr_time_str}"
 
-    forecast_hour = get_forecast_hour(duration_mins)
+    forecast_hours = get_forecast_hours(duration_mins)
 
     for fl in req.flight_levels:
         for map_type in req.maps:
-            elements.append(Paragraph(f"Flight Level: {fl}", styles["Heading3"]))
-            elements.append(Spacer(1, 10))
+            if "SIGWX" in map_type.upper():
+                elements.append(Paragraph(f"Flight Level: {fl} — Significant Weather (SIGWX)", styles["Heading3"]))
+                elements.append(Spacer(1, 10))
 
-            map_filepath = get_live_map(map_type, fl, req.area, forecast_hour)
+                map_filepath = get_live_map(map_type, fl, req.area, "24")
 
-            if map_filepath and os.path.exists(map_filepath):
-                temp_maps_to_delete.append(map_filepath)
-                try:
-                    # Make it larger but maintain aspect ratio to prevent cropping/stretching
-                    img = RLImage(
-                        map_filepath,
-                        width=7.2 * inch,
-                        height=7 * inch,
-                        kind="proportional",
-                    )
-                    box_data = [[f"{map_type} Chart - {fl} | {validity_str}"], [img]]
-                except:
+                if map_filepath and os.path.exists(map_filepath):
+                    temp_maps_to_delete.append(map_filepath)
+                    try:
+                        img = RLImage(
+                            map_filepath,
+                            width=7.2 * inch,
+                            height=7 * inch,
+                            kind="proportional",
+                        )
+                        box_data = [[f"{map_type} Chart - {fl} | {validity_str}"], [img]]
+                    except:
+                        box_data = [
+                            [
+                                f"{map_type} Chart - {fl}\n\n{validity_str}\n\n[ ERROR LOADING MAP IMAGE ]"
+                            ]
+                        ]
+                else:
                     box_data = [
                         [
-                            f"{map_type} Chart - {fl}\n\n{validity_str}\n\n[ ERROR LOADING MAP IMAGE ]"
+                            f"{map_type} Chart - {fl}\n\n{validity_str}\n\n[ MAP FETCH TIMEOUT / NOT AVAILABLE ]"
                         ]
                     ]
-            else:
-                box_data = [
-                    [
-                        f"{map_type} Chart - {fl}\n\n{validity_str}\n\n[ MAP FETCH TIMEOUT / NOT AVAILABLE ]"
-                    ]
-                ]
 
-            box_table = Table(box_data, colWidths=[7.2 * inch])
-            box_table.setStyle(
-                TableStyle(
-                    [
-                        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-                        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                        ("BACKGROUND", (0, 0), (-1, -1), colors.whitesmoke),
-                        ("GRID", (0, 0), (-1, -1), 1, colors.grey),
-                        ("FONTNAME", (0, 0), (0, 0), "Helvetica-Bold"),
-                    ]
+                box_table = Table(box_data, colWidths=[7.2 * inch])
+                box_table.setStyle(
+                    TableStyle(
+                        [
+                            ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                            ("BACKGROUND", (0, 0), (-1, -1), colors.whitesmoke),
+                            ("GRID", (0, 0), (-1, -1), 1, colors.grey),
+                            ("FONTNAME", (0, 0), (0, 0), "Helvetica-Bold"),
+                        ]
+                    )
                 )
-            )
-            elements.append(box_table)
-            elements.append(PageBreak())
+                elements.append(box_table)
+                elements.append(PageBreak())
+
+            else:
+                for fh in forecast_hours:
+                    stage_suffix = f" (T+{fh}H Forecast)"
+                    if len(forecast_hours) > 1:
+                        if fh == forecast_hours[0]:
+                            stage_suffix += " [Departure / En-route Stage]"
+                        elif fh == forecast_hours[-1]:
+                            stage_suffix += " [Descent / Arrival Stage]"
+                        else:
+                            stage_suffix += " [Mid En-route Stage]"
+
+                    elements.append(Paragraph(f"Flight Level: {fl} — Upper Wind & Temp{stage_suffix}", styles["Heading3"]))
+                    elements.append(Spacer(1, 10))
+
+                    map_filepath = get_live_map(map_type, fl, req.area, fh)
+
+                    if map_filepath and os.path.exists(map_filepath):
+                        temp_maps_to_delete.append(map_filepath)
+                        try:
+                            img = RLImage(
+                                map_filepath,
+                                width=7.2 * inch,
+                                height=7 * inch,
+                                kind="proportional",
+                            )
+                            box_data = [[f"{map_type} Chart{stage_suffix} - {fl} | {validity_str}"], [img]]
+                        except:
+                            box_data = [
+                                [
+                                    f"{map_type} Chart{stage_suffix} - {fl}\n\n{validity_str}\n\n[ ERROR LOADING MAP IMAGE ]"
+                                ]
+                            ]
+                    else:
+                        box_data = [
+                            [
+                                f"{map_type} Chart{stage_suffix} - {fl}\n\n{validity_str}\n\n[ MAP FETCH TIMEOUT / NOT AVAILABLE ]"
+                            ]
+                        ]
+
+                    box_table = Table(box_data, colWidths=[7.2 * inch])
+                    box_table.setStyle(
+                        TableStyle(
+                            [
+                                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                                ("BACKGROUND", (0, 0), (-1, -1), colors.whitesmoke),
+                                ("GRID", (0, 0), (-1, -1), 1, colors.grey),
+                                ("FONTNAME", (0, 0), (0, 0), "Helvetica-Bold"),
+                            ]
+                        )
+                    )
+                    elements.append(box_table)
+                    elements.append(PageBreak())
 
     # --- SECOND LEGEND (SIGNIFICANT WEATHER) ---
     legend2_path = "/Users/Ashan/.gemini/antigravity-ide/brain/19078c78-6553-4706-8666-a7303377bb60/.user_uploaded/media_1787945542625.png"
