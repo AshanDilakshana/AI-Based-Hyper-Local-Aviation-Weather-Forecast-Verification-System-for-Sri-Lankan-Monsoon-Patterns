@@ -95,24 +95,55 @@ class FlightPlanRequest(BaseModel):
     preview_url: Optional[str] = None
 
 
+def get_noaa_model_base_time(ref_time: Optional[datetime] = None) -> datetime:
+    """
+    Returns the estimated base run time (00, 06, 12, or 18 UTC) of the latest
+    numerical weather prediction model cycle published on NOAA fax.
+    A synoptic run is typically published ~3.5 to 4 hours after its synoptic hour.
+    """
+    if ref_time is None:
+        ref_time = datetime.utcnow()
+    effective = ref_time - timedelta(hours=3, minutes=45)
+    base_hour = (effective.hour // 6) * 6
+    return effective.replace(hour=base_hour, minute=0, second=0, microsecond=0)
+
+
+def get_forecast_lead_times(
+    dep_dt: datetime, duration_mins: int, base_dt: Optional[datetime] = None
+) -> List[str]:
+    """
+    Calculates the exact NOAA forecast lead times (F06, F12, F18, F24, F30, F36)
+    corresponding to the flight's departure and en-route/arrival stages from the model run.
+    """
+    if base_dt is None:
+        base_dt = get_noaa_model_base_time()
+
+    dep_lead = (dep_dt - base_dt).total_seconds() / 3600.0
+    arr_lead = dep_lead + (duration_mins / 60.0)
+
+    # If the flight date is historical or far future, map by time-of-day offset
+    if dep_lead < 0 or dep_lead > 48:
+        dep_lead = float((dep_dt.hour - base_dt.hour) % 24)
+        if dep_lead < 3:
+            dep_lead += 24.0
+        arr_lead = dep_lead + (duration_mins / 60.0)
+
+    def find_closest_fh(lead_hours: float) -> int:
+        clamped = max(6, min(36, round(lead_hours / 6.0) * 6))
+        return int(clamped)
+
+    dep_fh = find_closest_fh(dep_lead)
+    arr_fh = find_closest_fh(arr_lead)
+
+    fhs = [dep_fh]
+    if arr_fh != dep_fh and (duration_mins / 60.0) >= 5.0:
+        fhs.append(arr_fh)
+
+    return [f"{fh:02d}" for fh in fhs]
+
+
 def get_forecast_hours(duration_mins: int) -> List[str]:
-    """
-    Returns the required forecast validity lead times (F06, F12, F18, F24)
-    to cover the entire flight from departure to arrival.
-    - Up to 6 hours (Short/Medium-haul, e.g. WSSS, DEL): ['06']
-    - 6 to 12 hours (Long-haul, e.g. MEL, LHR): ['06', '12'] (covers en-route + arrival)
-    - 12 to 18 hours (Ultra long-haul): ['06', '12', '18']
-    - > 18 hours: ['06', '12', '18', '24']
-    """
-    hours = duration_mins / 60.0
-    if hours <= 6:
-        return ["06"]
-    elif hours <= 12:
-        return ["06", "12"]
-    elif hours <= 18:
-        return ["06", "12", "18"]
-    else:
-        return ["06", "12", "18", "24"]
+    return get_forecast_lead_times(datetime.utcnow(), duration_mins)
 
 
 def get_forecast_hour(duration_mins: int) -> str:
@@ -125,7 +156,7 @@ def get_live_map(
     area_code = area.split()[-1].lower() if "Area" in area else "d"
     fl_code = flight_level.replace("FL", "") if "FL" in flight_level else "340"
     if "SIGWX" in map_type.upper():
-        url = f"https://aviationweather.gov/data/products/fax/F24_sigwx_hi_e.gif"
+        url = f"https://aviationweather.gov/data/products/fax/F24_sigwx_hi_{area_code}.gif"
     else:
         url = f"https://aviationweather.gov/data/products/fax/F{forecast_hour}_wind_{fl_code}_{area_code}.gif"
 
@@ -133,7 +164,7 @@ def get_live_map(
     filepath = os.path.join(TEMP_MAP_DIR, filename)
 
     try:
-        time.sleep(1.0)
+        time.sleep(0.5)
         response = requests.get(url, timeout=10)
         if response.status_code == 200:
             with open(filepath, "wb") as f:
@@ -775,22 +806,48 @@ def generate_briefing_pdf(
     elements.append(taf_table)
     elements.append(PageBreak())
 
-    # --- MAPS ---
+    # --- MAPS SECTION ---
     dep_time_str = datetime.fromisoformat(req.departure_time).strftime(
         "%d-%b-%Y %H:%M Z"
     )
     arr_time_str = arrival_time.strftime("%d-%b-%Y %H:%M Z")
-    validity_str = f"VALID: {dep_time_str} TO {arr_time_str}"
+    flight_schedule_str = f"Flight Schedule: {dep_time_str} TO {arr_time_str}"
 
-    forecast_hours = get_forecast_hours(duration_mins)
+    base_dt = get_noaa_model_base_time()
+    dep_dt_val = datetime.fromisoformat(req.departure_time).replace(tzinfo=None)
+    forecast_hours = get_forecast_lead_times(dep_dt_val, duration_mins, base_dt)
 
-    for fl in req.flight_levels:
-        for map_type in req.maps:
-            if "SIGWX" in map_type.upper():
-                elements.append(Paragraph(f"Flight Level: {fl} — Significant Weather (SIGWX)", styles["Heading3"]))
+    has_wind_temp = any("WIND" in m.upper() for m in req.maps)
+    has_sigwx = any("SIGWX" in m.upper() for m in req.maps)
+
+    # 1. Upper Wind & Temperature Charts (Iterate through Flight Levels & Forecast Lead Times)
+    if has_wind_temp:
+        for fl in req.flight_levels:
+            for fh in forecast_hours:
+                chart_valid_dt = base_dt + timedelta(hours=int(fh))
+                valid_win_start = chart_valid_dt - timedelta(hours=3)
+                valid_win_end = chart_valid_dt + timedelta(hours=3)
+                chart_valid_str = f"VALID: {chart_valid_dt.strftime('%d-%b %H:%M Z')} (Window: {valid_win_start.strftime('%H:%MZ')} - {valid_win_end.strftime('%H:%MZ')})"
+
+                stage_suffix = f" (T+{fh}H Forecast)"
+                if len(forecast_hours) > 1:
+                    if fh == forecast_hours[0]:
+                        stage_suffix += " [Departure / En-route Stage]"
+                    elif fh == forecast_hours[-1]:
+                        stage_suffix += " [Descent / Arrival Stage]"
+                    else:
+                        stage_suffix += " [Mid En-route Stage]"
+
+                elements.append(
+                    Paragraph(
+                        f"Flight Level: {fl} — Upper Wind &amp; Temperature{stage_suffix}",
+                        styles["Heading3"],
+                    )
+                )
                 elements.append(Spacer(1, 10))
 
-                map_filepath = get_live_map(map_type, fl, req.area, "24")
+                map_filepath = get_live_map("WIND", fl, req.area, fh)
+                header_caption = f"Upper Wind &amp; Temp Chart{stage_suffix} - {fl} | {chart_valid_str} | {flight_schedule_str}"
 
                 if map_filepath and os.path.exists(map_filepath):
                     temp_maps_to_delete.append(map_filepath)
@@ -801,17 +858,30 @@ def generate_briefing_pdf(
                             height=7 * inch,
                             kind="proportional",
                         )
-                        box_data = [[f"{map_type} Chart - {fl} | {validity_str}"], [img]]
+                        box_data = [
+                            [
+                                Paragraph(
+                                    f"<b>{header_caption}</b>",
+                                    ParagraphStyle(
+                                        name="MH",
+                                        alignment=1,
+                                        fontSize=8,
+                                        leading=10,
+                                    ),
+                                )
+                            ],
+                            [img],
+                        ]
                     except:
                         box_data = [
                             [
-                                f"{map_type} Chart - {fl}\n\n{validity_str}\n\n[ ERROR LOADING MAP IMAGE ]"
+                                f"Upper Wind & Temp Chart{stage_suffix} - {fl}\n\n{chart_valid_str}\n\n[ ERROR LOADING MAP IMAGE ]"
                             ]
                         ]
                 else:
                     box_data = [
                         [
-                            f"{map_type} Chart - {fl}\n\n{validity_str}\n\n[ MAP FETCH TIMEOUT / NOT AVAILABLE ]"
+                            f"Upper Wind & Temp Chart{stage_suffix} - {fl}\n\n{chart_valid_str}\n\n[ MAP FETCH TIMEOUT / NOT AVAILABLE ]"
                         ]
                     ]
 
@@ -823,66 +893,78 @@ def generate_briefing_pdf(
                             ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
                             ("BACKGROUND", (0, 0), (-1, -1), colors.whitesmoke),
                             ("GRID", (0, 0), (-1, -1), 1, colors.grey),
-                            ("FONTNAME", (0, 0), (0, 0), "Helvetica-Bold"),
                         ]
                     )
                 )
                 elements.append(box_table)
                 elements.append(PageBreak())
 
-            else:
-                for fh in forecast_hours:
-                    stage_suffix = f" (T+{fh}H Forecast)"
-                    if len(forecast_hours) > 1:
-                        if fh == forecast_hours[0]:
-                            stage_suffix += " [Departure / En-route Stage]"
-                        elif fh == forecast_hours[-1]:
-                            stage_suffix += " [Descent / Arrival Stage]"
-                        else:
-                            stage_suffix += " [Mid En-route Stage]"
+    # 2. Significant Weather Chart (SIGWX High-Level FL250–FL630) — Generated ONCE for entire flight
+    if has_sigwx:
+        sigwx_valid_dt = base_dt + timedelta(hours=24)
+        sigwx_valid_str = f"T+24H Forecast Valid: {sigwx_valid_dt.strftime('%d-%b-%Y %H:%M Z')}"
+        area_name = req.area.upper() if req.area else "AREA D"
 
-                    elements.append(Paragraph(f"Flight Level: {fl} — Upper Wind & Temp{stage_suffix}", styles["Heading3"]))
-                    elements.append(Spacer(1, 10))
+        elements.append(
+            Paragraph(
+                f"Significant Weather (High-Level SIGWX: FL250 – FL630) — {area_name}",
+                styles["Heading3"],
+            )
+        )
+        elements.append(Spacer(1, 10))
 
-                    map_filepath = get_live_map(map_type, fl, req.area, fh)
+        map_filepath = get_live_map("SIGWX", "340", req.area, "24")
+        sigwx_caption = f"ICAO {area_name} SIGWX Chart (High-Level: FL250–FL630) | {sigwx_valid_str} | {flight_schedule_str}"
 
-                    if map_filepath and os.path.exists(map_filepath):
-                        temp_maps_to_delete.append(map_filepath)
-                        try:
-                            img = RLImage(
-                                map_filepath,
-                                width=7.2 * inch,
-                                height=7 * inch,
-                                kind="proportional",
-                            )
-                            box_data = [[f"{map_type} Chart{stage_suffix} - {fl} | {validity_str}"], [img]]
-                        except:
-                            box_data = [
-                                [
-                                    f"{map_type} Chart{stage_suffix} - {fl}\n\n{validity_str}\n\n[ ERROR LOADING MAP IMAGE ]"
-                                ]
-                            ]
-                    else:
-                        box_data = [
-                            [
-                                f"{map_type} Chart{stage_suffix} - {fl}\n\n{validity_str}\n\n[ MAP FETCH TIMEOUT / NOT AVAILABLE ]"
-                            ]
-                        ]
-
-                    box_table = Table(box_data, colWidths=[7.2 * inch])
-                    box_table.setStyle(
-                        TableStyle(
-                            [
-                                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
-                                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                                ("BACKGROUND", (0, 0), (-1, -1), colors.whitesmoke),
-                                ("GRID", (0, 0), (-1, -1), 1, colors.grey),
-                                ("FONTNAME", (0, 0), (0, 0), "Helvetica-Bold"),
-                            ]
+        if map_filepath and os.path.exists(map_filepath):
+            temp_maps_to_delete.append(map_filepath)
+            try:
+                img = RLImage(
+                    map_filepath,
+                    width=7.2 * inch,
+                    height=7 * inch,
+                    kind="proportional",
+                )
+                box_data = [
+                    [
+                        Paragraph(
+                            f"<b>{sigwx_caption}</b>",
+                            ParagraphStyle(
+                                name="SH",
+                                alignment=1,
+                                fontSize=8,
+                                leading=10,
+                            ),
                         )
-                    )
-                    elements.append(box_table)
-                    elements.append(PageBreak())
+                    ],
+                    [img],
+                ]
+            except:
+                box_data = [
+                    [
+                        f"ICAO {area_name} SIGWX Chart\n\n{sigwx_valid_str}\n\n[ ERROR LOADING MAP IMAGE ]"
+                    ]
+                ]
+        else:
+            box_data = [
+                [
+                    f"ICAO {area_name} SIGWX Chart\n\n{sigwx_valid_str}\n\n[ MAP FETCH TIMEOUT / NOT AVAILABLE ]"
+                ]
+            ]
+
+        box_table = Table(box_data, colWidths=[7.2 * inch])
+        box_table.setStyle(
+            TableStyle(
+                [
+                    ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("BACKGROUND", (0, 0), (-1, -1), colors.whitesmoke),
+                    ("GRID", (0, 0), (-1, -1), 1, colors.grey),
+                ]
+            )
+        )
+        elements.append(box_table)
+        elements.append(PageBreak())
 
     # --- BEFORE LAST PAGE (SIGNIFICANT WEATHER / CHART SYMBOLS) ---
     before_last_path = os.path.join(backend_dir, "assets", "images", "befor last page.png")
@@ -960,11 +1042,21 @@ def create_flight_plan(req: FlightPlanRequest, db: Session = Depends(get_db)):
             )
 
             if not fallback:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"No verified meteorological forecast data available for the requested timeframe ({dep_dt.strftime('%Y-%m-%d %H:%M Z')}).",
+                recent_fallback = (
+                    db.query(VerifiedForecast)
+                    .order_by(VerifiedForecast.target_time.desc())
+                    .limit(3)
+                    .all()
                 )
-            forecasts = fallback
+                if recent_fallback:
+                    forecasts = list(reversed(recent_fallback))
+                else:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"No verified meteorological forecast data available for the requested timeframe ({dep_dt.strftime('%Y-%m-%d %H:%M Z')}).",
+                    )
+            else:
+                forecasts = fallback
 
         dest_upper = req.destination.upper()
         flight_record = (
