@@ -36,6 +36,9 @@ wandb/
 *.png
 *.jpg
 *.jpeg
+!backend/assets/images/*.png
+!backend/assets/images/*.jpg
+!backend/assets/images/*.jpeg
 
 # --- Python & Environments ---
 __pycache__/
