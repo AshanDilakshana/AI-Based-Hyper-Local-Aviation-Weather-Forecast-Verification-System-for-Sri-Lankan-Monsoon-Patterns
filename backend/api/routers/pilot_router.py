@@ -480,18 +480,26 @@ def generate_briefing_pdf(
 
     elements.append(PageBreak())
 
-    # --- PAGE 2: STATIC LEGENDS FROM UPLOADED IMAGE ---
+    # --- STATIC LEGEND TABLES (PAGES 2 & 3) ---
     backend_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-    legend1 = os.path.join(backend_dir, "assets", "images", "legend.png")
+    legend_table1_path = os.path.join(backend_dir, "assets", "images", "legend_table1.png")
+    legend_table2_path = os.path.join(backend_dir, "assets", "images", "legend_table2.png")
 
-    if os.path.exists(legend1):
-        # 1024x677 aspect ratio ~ 1.51
-        # If width is 7.5 inches, height should be ~ 4.96 inches
-        elements.append(Spacer(1, 40))
-        elements.append(RLImage(legend1, width=7.5 * inch, height=4.96 * inch))
-        elements.append(PageBreak())
+    if os.path.exists(legend_table1_path):
+        try:
+            elements.append(RLImage(legend_table1_path, width=7.4 * inch, height=10.5 * inch, kind="proportional"))
+            elements.append(PageBreak())
+        except Exception as e:
+            print(f"Error loading legend_table1: {e}")
 
-    # --- PAGE 4: EXTENDED FORECAST & TAF ---
+    if os.path.exists(legend_table2_path):
+        try:
+            elements.append(RLImage(legend_table2_path, width=7.4 * inch, height=10.5 * inch, kind="proportional"))
+            elements.append(PageBreak())
+        except Exception as e:
+            print(f"Error loading legend_table2: {e}")
+
+    # --- EXTENDED FORECAST & TAF ---
     airport_name_full = "Bandaranaike International Airport - Katunayake"
     office_name = "METEOROLOGICAL OFFICE - KATUNAYAKE"
     contact_tp = "+94 11 2252721"
@@ -876,29 +884,37 @@ def generate_briefing_pdf(
                     elements.append(box_table)
                     elements.append(PageBreak())
 
-    # --- SECOND LEGEND (SIGNIFICANT WEATHER) ---
-    legend2_path = "/Users/Ashan/.gemini/antigravity-ide/brain/19078c78-6553-4706-8666-a7303377bb60/.user_uploaded/media_1787945542625.png"
-    if os.path.exists(legend2_path):
+    # --- BEFORE LAST PAGE (SIGNIFICANT WEATHER / CHART SYMBOLS) ---
+    before_last_path = os.path.join(backend_dir, "assets", "images", "befor last page.png")
+    if os.path.exists(before_last_path):
         try:
-            img = RLImage(
-                legend2_path, width=7.2 * inch, height=9.5 * inch, kind="proportional"
+            elements.append(
+                RLImage(
+                    before_last_path,
+                    width=7.4 * inch,
+                    height=10.5 * inch,
+                    kind="proportional",
+                )
             )
-            elements.append(img)
             elements.append(PageBreak())
-        except:
-            pass
+        except Exception as e:
+            print(f"Error loading before last page: {e}")
 
-    # --- THIRD LEGEND (LOCATION INDICATORS) ---
-    legend3_path = "/Users/Ashan/.gemini/antigravity-ide/brain/19078c78-6553-4706-8666-a7303377bb60/.user_uploaded/media_1787945596169.png"
-    if os.path.exists(legend3_path):
+    # --- LAST PAGE (LOCATION INDICATORS / DOC CLOSING) ---
+    last_page_path = os.path.join(backend_dir, "assets", "images", "lastpage.png")
+    if os.path.exists(last_page_path):
         try:
-            img = RLImage(
-                legend3_path, width=7.2 * inch, height=9.5 * inch, kind="proportional"
+            elements.append(
+                RLImage(
+                    last_page_path,
+                    width=7.4 * inch,
+                    height=10.5 * inch,
+                    kind="proportional",
+                )
             )
-            elements.append(img)
             # No need for PageBreak() on the absolute last page
-        except:
-            pass
+        except Exception as e:
+            print(f"Error loading last page: {e}")
 
     doc.build(elements, onFirstPage=draw_page_border)
 
