@@ -234,39 +234,51 @@ export function FlightSchedules() {
             {flights.length === 0 ? 'No flights found. Add some manually or bulk upload.' : 'No flights match your search.'}
           </p>
         ) : (
-          <div className="overflow-x-auto max-h-[65vh] overflow-y-auto">
-            <table className="w-full text-left text-sm text-slate-300">
-              <thead className="border-b border-line bg-slate-900/40 text-xs uppercase tracking-wider text-slate-400 sticky top-0 z-10">
+          <div className="overflow-x-auto max-h-[65vh] overflow-y-auto rounded-lg border border-line/50">
+            <table className="w-full border-separate border-spacing-0 text-left text-sm text-slate-300">
+              <thead>
                 <tr>
-                  <th className="px-4 py-3 font-semibold">ID</th>
-                  <th className="px-4 py-3 font-semibold">Flight No</th>
-                  <th className="px-4 py-3 font-semibold">Departure Time</th>
-                  <th className="px-4 py-3 font-semibold">Destination</th>
-                  <th className="px-4 py-3 font-semibold">Duration (Mins)</th>
-                  <th className="px-4 py-3 font-semibold text-right">Actions</th>
+                  <th className="sticky top-0 z-10 bg-panel border-b border-line px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                    ID
+                  </th>
+                  <th className="sticky top-0 z-10 bg-panel border-b border-line px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                    Flight No
+                  </th>
+                  <th className="sticky top-0 z-10 bg-panel border-b border-line px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                    Departure Time
+                  </th>
+                  <th className="sticky top-0 z-10 bg-panel border-b border-line px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                    Destination
+                  </th>
+                  <th className="sticky top-0 z-10 bg-panel border-b border-line px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400">
+                    Duration (Mins)
+                  </th>
+                  <th className="sticky top-0 z-10 bg-panel border-b border-line px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-400 text-right">
+                    Actions
+                  </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-line/60">
+              <tbody>
                 {sortedAndFiltered.map((flight) => (
                   <tr key={flight.id} className={`transition-colors hover:bg-slate-800/30 ${!flight.flight ? 'opacity-40' : ''}`}>
-                    <td className="whitespace-nowrap px-4 py-3.5 text-xs text-slate-500">{flight.id}</td>
-                    <td className="whitespace-nowrap px-4 py-3.5 font-mono text-sky-bright font-bold">
+                    <td className="whitespace-nowrap border-b border-line/40 px-4 py-3.5 text-xs text-slate-500">{flight.id}</td>
+                    <td className="whitespace-nowrap border-b border-line/40 px-4 py-3.5 font-mono text-sky-bright font-bold">
                       {flight.flight || <span className="text-slate-600 italic">empty</span>}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3.5 font-medium text-slate-200">
+                    <td className="whitespace-nowrap border-b border-line/40 px-4 py-3.5 font-medium text-slate-200">
                       {flight.departure_time_local ? `${flight.departure_time_local} Local` : <span className="text-slate-600">-</span>}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3.5">
+                    <td className="whitespace-nowrap border-b border-line/40 px-4 py-3.5">
                       {flight.destination ? (
                         <span className="rounded bg-slate-800 px-2 py-0.5 text-xs text-slate-300 border border-slate-700">
                           {flight.destination}
                         </span>
                       ) : <span className="text-slate-600">-</span>}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3.5 text-slate-300">
+                    <td className="whitespace-nowrap border-b border-line/40 px-4 py-3.5 text-slate-300">
                       {flight.time_period_mins != null ? `${flight.time_period_mins} mins` : '-'}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3.5 text-right space-x-2">
+                    <td className="whitespace-nowrap border-b border-line/40 px-4 py-3.5 text-right space-x-2">
                       <button
                         onClick={() => openModal(flight)}
                         className="rounded p-1.5 text-slate-400 hover:bg-slate-800 hover:text-sky-400 transition-colors"

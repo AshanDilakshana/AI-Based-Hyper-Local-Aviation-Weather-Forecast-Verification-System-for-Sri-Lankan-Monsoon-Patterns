@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { BellIcon, MenuIcon, RadioTowerIcon, ShieldCheckIcon, UserIcon } from 'lucide-react';
+import { MenuIcon, RadioTowerIcon, ShieldCheckIcon, UserIcon } from 'lucide-react';
 import { STATION } from '../../data/weather';
 import { useAuth } from '../../contexts/AuthContext';
 import { ThemeToggle } from '../ui/ThemeToggle';
@@ -23,31 +23,34 @@ export function TopBar({ onMenuClick }: TopBarProps) {
   const utcTime = 'UTC ' + time.toLocaleTimeString('en-US', { timeZone: 'UTC', hour12: false });
 
   return (
-    <header className="sticky top-0 z-20 flex h-[74px] w-full items-center justify-between gap-4 border-b border-line bg-topbar px-4 sm:px-6">
+    <header className="sticky top-0 z-20 flex h-[74px] w-full items-center justify-between gap-4 border-b border-line/60 bg-topbar/80 backdrop-blur-xl px-4 sm:px-6 shadow-sm">
       <div className="flex min-w-0 items-center gap-4">
         <button
           type="button"
           onClick={onMenuClick}
-          className="rounded-md p-2 text-slate-300 transition-colors hover:bg-slate-500/10 hover:text-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent lg:hidden"
+          className="rounded-lg p-2 text-slate-300 transition-colors hover:bg-slate-500/10 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-accent lg:hidden"
           aria-label="Open navigation">
-
           <MenuIcon className="h-5 w-5" />
         </button>
         <div className="min-w-0">
-          <p className="flex items-center gap-2 text-xs font-semibold tracking-[0.15em] text-accent-pale">
-            <RadioTowerIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
+          <p className="flex items-center gap-2 text-xs font-bold tracking-[0.15em] text-accent-pale">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
+            </span>
+            <RadioTowerIcon className="h-4 w-4 shrink-0 text-accent" aria-hidden="true" />
             <span className="truncate">{STATION.fir}</span>
           </p>
-          <p className="mt-1 truncate text-xs text-slate-400">
-            {STATION.airport} <span className="font-semibold text-slate-200">{STATION.codes}</span>
+          <p className="mt-1 truncate text-xs text-slate-400 font-medium">
+            {STATION.airport} <span className="font-bold text-white">{STATION.codes}</span>
           </p>
         </div>
       </div>
 
-      <div className="hidden md:flex items-center gap-2 text-[13px] font-mono text-slate-300  px-4 py-2 rounded-lg border border-line ">
-        <span className="font-semibold text-accent-pale tracking-wider">{slstTime}</span>
-        <span className="text-slate-500 px-1">/</span>
-        <span className="font-medium text-slate-400 tracking-wider">{utcTime}</span>
+      <div className="hidden md:flex items-center gap-3 text-xs font-mono text-slate-300 px-4 py-2 rounded-xl border border-line/70 bg-panel/60 backdrop-blur-md shadow-sm">
+        <span className="font-bold text-accent tracking-wider">{slstTime}</span>
+        <span className="text-slate-600 font-normal">|</span>
+        <span className="font-medium text-slate-300 tracking-wider">{utcTime}</span>
       </div>
 
       <div className="flex items-center gap-2 sm:gap-3">
@@ -55,16 +58,6 @@ export function TopBar({ onMenuClick }: TopBarProps) {
 
         {user ?
           <>
-            <button
-              type="button"
-              className="relative rounded-md p-2 text-slate-400 transition-colors hover:bg-slate-500/10 hover:text-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-              aria-label="Notifications, 2 unread">
-
-              <BellIcon className="h-[18px] w-[18px]" />
-              <span className="absolute right-0 top-0 flex h-4 w-4 items-center justify-center rounded-full bg-amber-400 text-[9px] font-bold text-slate-900">
-                2
-              </span>
-            </button>
 
             <button
               type="button"

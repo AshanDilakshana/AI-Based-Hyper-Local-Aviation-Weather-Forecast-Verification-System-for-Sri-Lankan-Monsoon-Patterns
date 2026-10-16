@@ -22,15 +22,13 @@ export function AuthShell({ eyebrow, title, description, children, footer }: Aut
         
         <div className="absolute inset-0 bg-rail/80" aria-hidden="true" />
         <div className="relative flex h-full flex-col justify-between p-10">
-          <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-lg border border-accent-soft bg-accent text-white">
-              <PlaneTakeoffIcon className="h-5 w-5" aria-hidden="true" />
-            </span>
-            <span className="flex flex-col">
-              <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-accent-pale">
+          <div className="flex flex-col items-start gap-0">
+            <img src="/bia_logo.jpg" alt="BIA Logo" className="h-48 md:h-64 object-contain scale-[1.5] origin-top-left -ml-2 -mt-4 bg-white rounded-xl" />
+            <span className="flex flex-col mt-2">
+              <span className="text-xs font-semibold uppercase tracking-[0.2em] text-accent-pale">
                 Sri Lanka
               </span>
-              <span className="text-sm font-bold tracking-wide text-white">MET AVIATION</span>
+              <span className="text-2xl font-black tracking-wide text-white">MET AVIATION</span>
             </span>
           </div>
 

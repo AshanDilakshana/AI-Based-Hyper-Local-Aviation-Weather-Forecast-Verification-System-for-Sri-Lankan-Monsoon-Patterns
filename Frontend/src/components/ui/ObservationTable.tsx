@@ -8,14 +8,16 @@ type ObservationTableProps = {
 };
 
 const columns = [
-'Temperature',
-'Pressure',
-'Humidity',
-'Wind speed',
-'Wind direction',
-'Visibility',
-'Cloud coverage',
-'Rainfall'];
+  'Temperature',
+  'Dew point',
+  'Pressure',
+  'Humidity',
+  'Wind speed',
+  'Wind direction',
+  'Visibility',
+  'Cloud coverage',
+  'Rainfall'
+];
 
 
 export function ObservationTable({ rows, timeLabel, caption }: ObservationTableProps) {
@@ -29,30 +31,31 @@ export function ObservationTable({ rows, timeLabel, caption }: ObservationTableP
               {timeLabel}
             </th>
             {columns.map((column) =>
-            <th key={column} scope="col" className="pb-3 text-xs font-medium tracking-wide text-slate-500">
+              <th key={column} scope="col" className="pb-3 text-xs font-medium tracking-wide text-slate-500">
                 {column}
               </th>
             )}
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) =>
-          <tr key={row.time} className="border-b border-line-soft last:border-b-0">
-              <th scope="row" className="py-3.5 text-xs font-semibold text-white">
-                {row.time}
-              </th>
-              <td className="py-3.5 text-xs text-slate-300">{row.temperature}</td>
-              <td className="py-3.5 text-xs text-slate-300">{row.pressure}</td>
-              <td className="py-3.5 text-xs text-slate-300">{row.humidity}</td>
-              <td className="py-3.5 text-xs text-slate-300">{row.windSpeed}</td>
-              <td className="py-3.5 text-xs text-slate-300">{row.windDirection}</td>
-              <td className="py-3.5 text-xs text-slate-300">{row.visibility}</td>
-              <td className="py-3.5 text-xs text-slate-300">{row.cloudCoverage}</td>
-              <td className="py-3.5 text-xs text-slate-300">{row.rainfall}</td>
-            </tr>
+          {rows.map((row, index) =>
+            <tr key={index} className="border-b border-line-soft last:border-b-0">
+          <th scope="row" className="py-3.5 text-xs font-semibold text-white">
+            {row.time}
+          </th>
+          <td className="py-3.5 text-xs text-slate-300">{row.temperature}</td>
+          <td className="py-3.5 text-xs text-slate-300">{row.dewPoint ?? '--'}</td>
+          <td className="py-3.5 text-xs text-slate-300">{row.pressure}</td>
+          <td className="py-3.5 text-xs text-slate-300">{row.humidity}</td>
+          <td className="py-3.5 text-xs text-slate-300">{row.windSpeed}</td>
+          <td className="py-3.5 text-xs text-slate-300">{row.windDirection}</td>
+          <td className="py-3.5 text-xs text-slate-300">{row.visibility}</td>
+          <td className="py-3.5 text-xs text-slate-300">{row.cloudCoverage}</td>
+          <td className="py-3.5 text-xs text-slate-300">{row.rainfall}</td>
+        </tr>
           )}
-        </tbody>
-      </table>
-    </div>);
+      </tbody>
+    </table>
+    </div >);
 
 }

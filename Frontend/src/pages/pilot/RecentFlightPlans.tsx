@@ -56,7 +56,7 @@ export function RecentFlightPlans() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm text-slate-300">
-              <thead className="border-b border-line bg-slate-900/40 text-xs uppercase tracking-wider text-slate-400">
+              <thead className="border-b border-line bg-panel text-xs uppercase tracking-wider text-slate-400">
                 <tr>
                   <th className="px-4 py-3 font-semibold">Created At</th>
                   <th className="px-4 py-3 font-semibold">Route</th>

@@ -1,6 +1,7 @@
 export type Observation = {
   time: string;
   temperature: string;
+  dewPoint?: string;
   pressure: string;
   humidity: string;
   windSpeed: string;

@@ -43,11 +43,11 @@ export default {
           900: '#0F172A',
         },
         accent: {
-          DEFAULT: '#0EA5E9',
+          DEFAULT: '#EAB308',
           soft: withAlpha('--accent-soft'),
           pale: withAlpha('--accent-pale'),
           ice: withAlpha('--accent-ice'),
-          deep: '#0369A1',
+          deep: '#CA8A04',
         },
         sky: {
           soft: withAlpha('--accent-pale'),

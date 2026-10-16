@@ -213,7 +213,7 @@ export function ActivityLogs() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm text-slate-300">
-              <thead className="border-b border-line text-xs uppercase tracking-wider text-slate-400 bg-slate-900/40">
+              <thead className="border-b border-line text-xs uppercase tracking-wider text-slate-400 bg-panel">
                 <tr>
                   <th className="px-4 py-3 font-semibold">Time (UTC)</th>
                   <th className="px-4 py-3 font-semibold">Level</th>
