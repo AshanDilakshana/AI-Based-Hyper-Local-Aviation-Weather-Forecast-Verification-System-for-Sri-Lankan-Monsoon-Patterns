@@ -33,7 +33,7 @@ export function MetricCard({ label, value, unit, footnote, tone }: Metric) {
         <span className="text-2xl sm:text-3xl font-black tracking-tight text-white tabular-nums drop-shadow-sm">
           {value}
         </span>
-        {unit ? (
+        {unit && value !== '--' ? (
           <span className="text-xs sm:text-sm font-semibold text-slate-400 shrink-0 ml-1">
             {unit}
           </span>

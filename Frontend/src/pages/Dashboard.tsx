@@ -99,7 +99,7 @@ export function Dashboard() {
           { label: 'Pressure', value: `${currPressure} hPa`, color: '#38BDF8', points: pressures, xLabels: times, unit: '' },
           { label: 'Humidity', value: `${currHumidity}% RH`, color: '#10B981', points: humidities, xLabels: times, unit: '%' }
         ];
-        
+
         const historicals: Series[] = [
           { label: 'Temperature', value: `${currTemp}°C`, color: '#FBBF24', points: temps },
           { label: 'Pressure', value: `${currPressure} hPa`, color: '#38BDF8', points: pressures },
@@ -115,12 +115,12 @@ export function Dashboard() {
         setLoading(false);
       }
     };
-    
+
     fetchData();
   }, []);
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
@@ -150,7 +150,7 @@ export function Dashboard() {
           >
             Generate Weather Forecast
           </motion.button> :
-        null}
+          null}
       </header>
 
       {loading ? (
@@ -162,7 +162,7 @@ export function Dashboard() {
           <p className="text-sm text-slate-400">Last updated: {lastUpdated}</p>
 
           {currentMetarData && (
-            <MetarCard 
+            <MetarCard
               timeUtc={currentMetarData.time_utc}
               date={new Date(currentMetarData.year, currentMetarData.month - 1, currentMetarData.date)}
               windDir={currentMetarData.wind_dir}
@@ -171,7 +171,7 @@ export function Dashboard() {
               qnh={currentMetarData.qnh_hpa}
               temp={currentMetarData.dry_temp_c}
               dew={currentMetarData.dew_point_c}
-              clouds={currentMetarData.clouds || currentMetarData.recentClouds || 'N/A'} 
+              clouds={currentMetarData.clouds || currentMetarData.recentClouds || 'N/A'}
               rawMetar={currentMetarData.raw_metar || currentMetarData.metar_string || currentMetarData.metar}
               lastUpdatedText={lastUpdated.split('·')[0]}
             />
@@ -183,20 +183,20 @@ export function Dashboard() {
             title="Recent METAR weather observations"
             subtitle={`last refreshed ${lastUpdated}`}
             action={
-            <SegmentedControl
-              label="Observation window"
-              options={['06h - records', '12h - records']}
-              value={range}
-              onChange={setRange} />
+              <SegmentedControl
+                label="Observation window"
+                options={['06h - records', '12h - records']}
+                value={range}
+                onChange={setRange} />
             }>
-            
+
             <div className="max-h-[400px] overflow-y-auto">
               <ObservationTable
                 rows={recentObservations}
                 timeLabel="Timestamp (UTC)"
                 caption={`Recent METAR observations, ${range}`} />
             </div>
-            
+
           </Panel>
 
           <div className="grid gap-6 xl:grid-cols-3">
@@ -207,19 +207,19 @@ export function Dashboard() {
               <Panel title="Historical METAR observation trends" subtitle="Recent History · Automatic station VCBI" className="h-full flex flex-col">
                 <div className="flex-1 flex flex-col gap-8 overflow-y-auto pr-2 pt-2 pb-4">
                   {trendSeries.map((series, index) =>
-                  <div key={series.label} className={index !== trendSeries.length - 1 ? "border-b border-line pb-6" : ""}>
+                    <div key={series.label} className={index !== trendSeries.length - 1 ? "border-b border-line pb-6" : ""}>
                       <div className="flex items-center justify-between">
                         <span className="text-xs text-slate-400">{series.label}</span>
                         <span className="text-xs font-semibold text-slate-100">{series.value}</span>
                       </div>
                       <div className="mt-4">
                         <Sparkline
-                        points={series.points}
-                        color={series.color}
-                        showAxes={true}
-                        xLabels={series.xLabels}
-                        yFormatter={(v) => `${v}${series.unit}`}
-                        ariaLabel={`${series.label} trend, currently ${series.value}`} />
+                          points={series.points}
+                          color={series.color}
+                          showAxes={true}
+                          xLabels={series.xLabels}
+                          yFormatter={(v) => `${v}${series.unit}`}
+                          ariaLabel={`${series.label} trend, currently ${series.value}`} />
                       </div>
                     </div>
                   )}
