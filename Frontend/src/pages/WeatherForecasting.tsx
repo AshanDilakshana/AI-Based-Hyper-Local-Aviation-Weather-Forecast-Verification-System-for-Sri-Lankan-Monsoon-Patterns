@@ -141,37 +141,37 @@ export function WeatherForecasting() {
 
   // Mapped Current Metrics
   const mappedCurrentMetrics = [
-    { label: 'Temperature', value: liveData ? `${liveData.dry_temp_c}` : '--', unit: '°C', tone: 'amber' as const },
-    { label: 'Pressure', value: liveData ? `${liveData.qnh_hpa}` : '--', unit: 'hPa', tone: 'sky' as const },
-    { label: 'Visibility', value: liveData ? `${liveData.visibility}` : '--', unit: 'm', tone: 'green' as const },
-    { label: 'Humidity', value: liveData ? `${liveData.rh_percent}` : '--', unit: '% RH', tone: 'cyan' as const },
-    { label: 'Wind speed', value: liveData ? `${liveData.wind_speed_kts}` : '--', unit: 'kt', tone: 'emerald' as const },
-    { label: 'Wind direction', value: liveData ? `${liveData.wind_dir}` : '--', unit: '°', tone: 'emerald' as const },
+    { label: 'Temperature', value: liveData?.dry_temp_c != null ? `${liveData.dry_temp_c}` : '--', unit: '°C', tone: 'amber' as const },
+    { label: 'Pressure', value: liveData?.qnh_hpa != null ? `${liveData.qnh_hpa}` : '--', unit: 'hPa', tone: 'sky' as const },
+    { label: 'Visibility', value: liveData?.visibility != null ? `${liveData.visibility}` : '--', unit: 'm', tone: 'green' as const },
+    { label: 'Humidity', value: liveData?.rh_percent != null ? `${liveData.rh_percent}` : '--', unit: '% RH', tone: 'cyan' as const },
+    { label: 'Wind speed', value: liveData?.wind_speed_kts != null ? `${liveData.wind_speed_kts}` : '--', unit: 'kt', tone: 'emerald' as const },
+    { label: 'Wind direction', value: liveData?.wind_dir != null ? `${liveData.wind_dir}` : '--', unit: '°', tone: 'emerald' as const },
     { label: 'Cloud base', value: liveData?.clouds ? liveData.clouds.split(' ')[0] : '--', unit: '', tone: 'slate' as const },
     { label: 'Dew Point', value: liveData?.dew_point_c != null ? `${liveData.dew_point_c}` : '--', unit: '°C', tone: 'emerald' as const }
   ];
 
   // Mapped Forecast Metrics (For the Generate 3H section)
   const mappedForecastMetrics = [
-    { label: 'Temperature', value: forecastData?.temperature_pressure_forecast?.prediction?.temperature_C !== undefined ? `${forecastData.temperature_pressure_forecast.prediction.temperature_C}` : '--', unit: '°C', tone: 'amber' as const },
-    { label: 'Pressure', value: forecastData?.qnh_dewpoint_forecast?.predicted_qnh_3h !== undefined ? `${forecastData.qnh_dewpoint_forecast.predicted_qnh_3h}` : (forecastData?.temperature_pressure_forecast?.prediction?.pressure_hPa !== undefined ? `${forecastData.temperature_pressure_forecast.prediction.pressure_hPa}` : '--'), unit: 'hPa', tone: 'sky' as const },
-    { label: 'Visibility', value: forecastData?.cloud_visibility_forecast?.visibility_prediction !== undefined ? `${forecastData.cloud_visibility_forecast.visibility_prediction}` : '--', unit: 'm', tone: 'green' as const },
-    { label: 'Humidity', value: forecastData?.qnh_dewpoint_forecast?.derived_rh_3h !== undefined ? `${forecastData.qnh_dewpoint_forecast.derived_rh_3h}` : '--', unit: '% RH', tone: 'cyan' as const },
-    { label: 'Wind speed', value: forecastData?.wind_forecast?.predicted_wind_speed_kts !== undefined ? `${forecastData.wind_forecast.predicted_wind_speed_kts}` : '--', unit: 'kt', tone: 'emerald' as const },
-    { label: 'Wind direction', value: forecastData?.wind_forecast?.wind_dir !== undefined ? `${forecastData.wind_forecast.wind_dir}` : '--', unit: '°', tone: 'emerald' as const },
+    { label: 'Temperature', value: forecastData?.temperature_pressure_forecast?.prediction?.temperature_C !== undefined && forecastData?.temperature_pressure_forecast?.prediction?.temperature_C !== null ? `${forecastData.temperature_pressure_forecast.prediction.temperature_C}` : '--', unit: '°C', tone: 'amber' as const },
+    { label: 'Pressure', value: forecastData?.qnh_dewpoint_forecast?.predicted_qnh_3h !== undefined && forecastData?.qnh_dewpoint_forecast?.predicted_qnh_3h !== null ? `${forecastData.qnh_dewpoint_forecast.predicted_qnh_3h}` : (forecastData?.temperature_pressure_forecast?.prediction?.pressure_hPa !== undefined && forecastData?.temperature_pressure_forecast?.prediction?.pressure_hPa !== null ? `${forecastData.temperature_pressure_forecast.prediction.pressure_hPa}` : '--'), unit: 'hPa', tone: 'sky' as const },
+    { label: 'Visibility', value: forecastData?.cloud_visibility_forecast?.visibility_prediction !== undefined && forecastData?.cloud_visibility_forecast?.visibility_prediction !== null ? `${forecastData.cloud_visibility_forecast.visibility_prediction}` : '--', unit: 'm', tone: 'green' as const },
+    { label: 'Humidity', value: forecastData?.qnh_dewpoint_forecast?.derived_rh_3h !== undefined && forecastData?.qnh_dewpoint_forecast?.derived_rh_3h !== null ? `${forecastData.qnh_dewpoint_forecast.derived_rh_3h}` : '--', unit: '% RH', tone: 'cyan' as const },
+    { label: 'Wind speed', value: forecastData?.wind_forecast?.predicted_wind_speed_kts !== undefined && forecastData?.wind_forecast?.predicted_wind_speed_kts !== null ? `${forecastData.wind_forecast.predicted_wind_speed_kts}` : '--', unit: 'kt', tone: 'emerald' as const },
+    { label: 'Wind direction', value: forecastData?.wind_forecast?.wind_dir !== undefined && forecastData?.wind_forecast?.wind_dir !== null ? `${forecastData.wind_forecast.wind_dir}` : '--', unit: '°', tone: 'emerald' as const },
     { label: 'Cloud base', value: forecastData?.cloud_visibility_forecast?.cloud_status ? forecastData.cloud_visibility_forecast.cloud_status.replace('_', ' ') : '--', unit: '', tone: 'slate' as const },
     { label: 'Dew Point', value: forecastData?.qnh_dewpoint_forecast?.predicted_dewpoint_3h !== undefined && forecastData?.qnh_dewpoint_forecast?.predicted_dewpoint_3h !== null ? `${forecastData.qnh_dewpoint_forecast.predicted_dewpoint_3h}` : '--', unit: '°C', tone: 'emerald' as const }
   ];
 
   // Mapped Verified Metrics (For Last Forecast Details section)
   const verifiedMetrics = [
-    { label: 'Temperature', value: lastVerified?.dry_temp_c ? `${lastVerified.dry_temp_c}` : '--', unit: '°C' },
-    { label: 'Pressure', value: lastVerified?.qnh_hpa ? `${lastVerified.qnh_hpa}` : '--', unit: 'hPa' },
-    { label: 'Wind speed', value: lastVerified?.wind_speed_kts ? `${lastVerified.wind_speed_kts}` : '--', unit: 'kt' },
-    { label: 'Wind direction', value: lastVerified?.wind_dir ? `${lastVerified.wind_dir}` : '--', unit: '°' },
-    { label: 'Humidity', value: lastVerified?.rh_percent ? `${lastVerified.rh_percent}` : '--', unit: '% RH' },
+    { label: 'Temperature', value: lastVerified?.dry_temp_c != null ? `${lastVerified.dry_temp_c}` : '--', unit: '°C' },
+    { label: 'Pressure', value: lastVerified?.qnh_hpa != null ? `${lastVerified.qnh_hpa}` : '--', unit: 'hPa' },
+    { label: 'Wind speed', value: lastVerified?.wind_speed_kts != null ? `${lastVerified.wind_speed_kts}` : '--', unit: 'kt' },
+    { label: 'Wind direction', value: lastVerified?.wind_dir != null ? `${lastVerified.wind_dir}` : '--', unit: '°' },
+    { label: 'Humidity', value: lastVerified?.rh_percent != null ? `${lastVerified.rh_percent}` : '--', unit: '% RH' },
     { label: 'Cloud base', value: lastVerified?.clouds ? lastVerified.clouds : '--', unit: '' },
-    { label: 'Visibility', value: lastVerified?.visibility ? `${lastVerified.visibility / 1000}` : '--', unit: 'km' }
+    { label: 'Visibility', value: lastVerified?.visibility != null ? `${lastVerified.visibility / 1000}` : '--', unit: 'km' }
   ];
 
   const mappedVerifiedDetails = [
@@ -183,13 +183,13 @@ export function WeatherForecasting() {
 
   const mappedRecentObservations = recentData.map(obs => ({
     time: formatAviationTime(obs.date, obs.time_utc),
-    temperature: `${obs.dry_temp_c} °C`,
+    temperature: obs.dry_temp_c != null ? `${obs.dry_temp_c} °C` : '--',
     dewPoint: obs.dew_point_c != null ? `${obs.dew_point_c} °C` : '--',
-    pressure: `${obs.qnh_hpa} hPa`,
-    humidity: `${obs.rh_percent}%`,
-    windSpeed: `${obs.wind_speed_kts} kt`,
-    windDirection: `${obs.wind_dir}°`,
-    visibility: `${obs.visibility} m`,
+    pressure: obs.qnh_hpa != null ? `${obs.qnh_hpa} hPa` : '--',
+    humidity: obs.rh_percent != null ? `${obs.rh_percent}%` : '--',
+    windSpeed: obs.wind_speed_kts != null ? `${obs.wind_speed_kts} kt` : '--',
+    windDirection: obs.wind_dir != null ? `${obs.wind_dir}°` : '--',
+    visibility: obs.visibility != null ? `${obs.visibility} m` : '--',
     cloudCoverage: `${obs.clouds || 'N/A'}`,
     rainfall: 'N/A'
   }));

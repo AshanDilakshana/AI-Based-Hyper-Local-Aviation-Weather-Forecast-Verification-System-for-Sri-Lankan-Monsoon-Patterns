@@ -29,27 +29,35 @@ export function MetarCard({
 }: MetarCardProps) {
   // Basic Flight Category Logic (simplified)
   // VFR: Visibility >= 8000m, Ceiling >= 3000ft (simplified to just check visibility here if ceiling isn't easily parsed)
-  const isVfr = visibility >= 8000;
+  const isVfr = (visibility ?? 0) >= 8000;
   const flightCategory = isVfr ? 'VFR' : 'IFR';
   const flightCategoryColor = isVfr ? 'text-green-700' : 'text-red-700';
   const flightCategoryIndicator = isVfr ? 'bg-green-700' : 'bg-red-700';
 
   const formatVisibility = (vis: number) => {
+    if (vis == null) return '--';
     if (vis >= 9999) return '≥10 km';
     return `${(vis / 1000).toFixed(1)} km`;
   };
 
-  const padTime = (time: string) => time.padStart(4, '0');
+  const padTime = (time?: string) => (time ? String(time).padStart(4, '0') : '0000');
   const formattedTime = padTime(timeUtc);
   
-  // Format dates: "Thu 1 Oct"
-  const dateStr = date.toLocaleDateString('en-GB', {
+  // Format dates safely
+  const safeDate = date instanceof Date && !isNaN(date.getTime()) ? date : new Date();
+  const dateStr = safeDate.toLocaleDateString('en-GB', {
     weekday: 'short',
     day: 'numeric',
     month: 'short'
   });
 
-  const generatedMetar = rawMetar || `VCBI ${date.getDate().toString().padStart(2, '0')}${formattedTime}Z ${windDir.toString().padStart(3, '0')}${windSpeed.toString().padStart(2, '0')}KT ${visibility >= 9999 ? '9999' : visibility} ${clouds !== 'N/A' && clouds !== 'None' ? clouds : 'CAVOK'} ${Math.round(temp)}/${Math.round(dew)} Q${qnh} NOSIG`;
+  const formattedWindDir = windDir != null ? String(windDir).padStart(3, '0') : 'VRB';
+  const formattedWindSpeed = windSpeed != null ? String(windSpeed).padStart(2, '0') : '00';
+  const formattedTemp = temp != null ? Math.round(Number(temp)) : '--';
+  const formattedDew = dew != null ? Math.round(Number(dew)) : '--';
+  const formattedQnh = qnh != null ? qnh : '----';
+
+  const generatedMetar = rawMetar || `VCBI ${safeDate.getDate().toString().padStart(2, '0')}${formattedTime}Z ${formattedWindDir}${formattedWindSpeed}KT ${(visibility ?? 0) >= 9999 ? '9999' : (visibility ?? 'CAVOK')} ${clouds !== 'N/A' && clouds !== 'None' && clouds ? clouds : 'CAVOK'} ${formattedTemp}/${formattedDew} Q${formattedQnh} NOSIG`;
 
   return (
     <div className="relative overflow-hidden rounded-2xl bg-slate-800 text-white shadow-lg border border-slate-700">
@@ -88,7 +96,7 @@ export function MetarCard({
           <div className="grid grid-cols-2 md:grid-cols-5 gap-6 mb-6">
             <div>
               <p className="text-slate-500 text-sm font-medium mb-1">Wind</p>
-              <p className="text-xl font-bold">{windDir}° {windSpeed} kt</p>
+              <p className="text-xl font-bold">{windDir != null ? `${windDir}°` : 'VRB'} {windSpeed != null ? `${windSpeed} kt` : '--'}</p>
             </div>
             <div>
               <p className="text-slate-500 text-sm font-medium mb-1">Visibility</p>
@@ -103,11 +111,11 @@ export function MetarCard({
             </div>
             <div>
               <p className="text-slate-500 text-sm font-medium mb-1">QNH</p>
-              <p className="text-xl font-bold">{qnh} hPa</p>
+              <p className="text-xl font-bold">{qnh != null ? `${qnh} hPa` : '--'}</p>
             </div>
             <div>
               <p className="text-slate-500 text-sm font-medium mb-1">Temp / Dew</p>
-              <p className="text-xl font-bold">{temp}° / {dew}°</p>
+              <p className="text-xl font-bold">{temp != null ? `${temp}°` : '--'} / {dew != null ? `${dew}°` : '--'}</p>
             </div>
           </div>
 
