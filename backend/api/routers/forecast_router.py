@@ -199,7 +199,7 @@ def update_verified_forecast(
 @router.get("/verified/latest")
 def get_latest_verified_forecast(db: Session = Depends(get_db)):
     record = (
-        db.query(VerifiedForecast).order_by(VerifiedForecast.target_time.desc()).first()
+        db.query(VerifiedForecast).order_by(VerifiedForecast.id.desc()).first()
     )
     if not record:
         raise HTTPException(status_code=404, detail="No verified forecasts found")
@@ -210,7 +210,7 @@ def get_latest_verified_forecast(db: Session = Depends(get_db)):
 def get_recent_verified_forecasts(limit: int = 12, db: Session = Depends(get_db)):
     records = (
         db.query(VerifiedForecast)
-        .order_by(VerifiedForecast.target_time.desc())
+        .order_by(VerifiedForecast.id.desc())
         .limit(limit)
         .all()
     )
