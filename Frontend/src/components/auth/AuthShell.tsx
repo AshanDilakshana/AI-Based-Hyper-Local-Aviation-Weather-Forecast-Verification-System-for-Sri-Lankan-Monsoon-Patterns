@@ -22,13 +22,25 @@ export function AuthShell({ eyebrow, title, description, children, footer }: Aut
         
         <div className="absolute inset-0 bg-rail/80" aria-hidden="true" />
         <div className="relative flex h-full flex-col justify-between p-10">
-          <div className="flex flex-col items-start gap-0">
-            <img src="/bia_logo.jpg" alt="BIA Logo" className="h-48 md:h-64 object-contain scale-[1.5] origin-top-left -ml-2 -mt-4 bg-white rounded-xl" />
+          <div className="flex flex-col items-start gap-1">
+            <div className="flex items-center justify-center rounded-2xl border border-line/70 bg-panel/40 p-3.5 backdrop-blur-md shadow-lg shadow-black/10 transition-all hover:border-line">
+              {/* Logo with dark and light mode dynamic source */}
+              <img 
+                src="/bia_logo_transparent.png" 
+                alt="BIA Logo" 
+                className="h-24 w-auto object-contain dark:hidden drop-shadow-sm" 
+              />
+              <img 
+                src="/bia_logo_dark.png" 
+                alt="BIA Logo" 
+                className="h-24 w-auto object-contain hidden dark:block drop-shadow-[0_2px_12px_rgba(56,189,248,0.2)]" 
+              />
+            </div>
             <span className="flex flex-col mt-2">
               <span className="text-xs font-semibold uppercase tracking-[0.2em] text-accent-pale">
                 Sri Lanka
               </span>
-              <span className="text-2xl font-black tracking-wide text-white">MET AVIATION</span>
+              <span className="text-2xl font-black tracking-wide text-white drop-shadow-sm">MET AVIATION</span>
             </span>
           </div>
 
@@ -66,6 +78,26 @@ export function AuthShell({ eyebrow, title, description, children, footer }: Aut
           <ThemeToggle />
         </div>
         <div className="w-full max-w-md">
+          {/* Logo on small screens where aside is hidden */}
+          <div className="mb-6 flex items-center gap-3 lg:hidden">
+            <div className="flex items-center justify-center rounded-xl border border-line/70 bg-panel/50 p-2 backdrop-blur-md shadow-sm">
+              <img 
+                src="/bia_logo_transparent.png" 
+                alt="BIA Logo" 
+                className="h-12 w-auto object-contain dark:hidden" 
+              />
+              <img 
+                src="/bia_logo_dark.png" 
+                alt="BIA Logo" 
+                className="h-12 w-auto object-contain hidden dark:block" 
+              />
+            </div>
+            <div>
+              <span className="block text-[10px] font-bold uppercase tracking-[0.2em] text-accent-soft">Sri Lanka</span>
+              <span className="block text-lg font-black tracking-wide text-white">MET AVIATION</span>
+            </div>
+          </div>
+
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent-soft">{eyebrow}</p>
           <h1 className="mt-2 text-3xl font-bold tracking-tight text-white">{title}</h1>
           <p className="mt-2 text-sm text-slate-400">{description}</p>
