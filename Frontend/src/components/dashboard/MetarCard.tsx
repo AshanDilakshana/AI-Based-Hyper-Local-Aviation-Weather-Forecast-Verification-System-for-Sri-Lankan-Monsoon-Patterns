@@ -30,7 +30,6 @@ export function MetarCard({
 }: MetarCardProps) {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
-
   // Basic Flight Category Logic (simplified)
   // VFR: Visibility >= 8000m, Ceiling >= 3000ft (simplified to just check visibility here if ceiling isn't easily parsed)
   const isVfr = (visibility ?? 0) >= 8000;
@@ -64,13 +63,19 @@ export function MetarCard({
   const generatedMetar = rawMetar || `VCBI ${safeDate.getDate().toString().padStart(2, '0')}${formattedTime}Z ${formattedWindDir}${formattedWindSpeed}KT ${(visibility ?? 0) >= 9999 ? '9999' : (visibility ?? 'CAVOK')} ${clouds !== 'N/A' && clouds !== 'None' && clouds ? clouds : 'CAVOK'} ${formattedTemp}/${formattedDew} Q${formattedQnh} NOSIG`;
 
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-slate-800 text-white shadow-lg border border-slate-700">
+    <div className={`relative overflow-hidden rounded-2xl shadow-lg border transition-colors ${
+      isDark ? 'bg-panel-deep text-white border-line/60' : 'bg-slate-100 text-slate-900 border-line'
+    }`}>
       {/* Background Image with Overlay */}
       <div 
         className="absolute inset-0 z-0 bg-cover bg-center opacity-60"
         style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1436491865332-7a61a109cc05?q=80&w=2074&auto=format&fit=crop)' }}
       />
-      <div className="absolute inset-0 z-0 bg-gradient-to-t from-slate-900/90 via-slate-800/60 to-slate-800/40" />
+      <div className={`absolute inset-0 z-0 transition-opacity duration-300 ${
+        isDark 
+          ? 'bg-gradient-to-t from-canvas/95 via-canvas/70 to-canvas/30' 
+          : 'bg-gradient-to-t from-slate-900/15 via-transparent to-transparent'
+      }`} />
 
       <div className="relative z-10 p-6">
         {/* Top Section */}
@@ -96,54 +101,40 @@ export function MetarCard({
         </div>
 
         {/* Bottom Data Section */}
-        <div className={`mt-8 rounded-xl p-5 backdrop-blur-md transition-all duration-200 ${
-          isDark 
-            ? 'bg-slate-900/85 border border-slate-700/60 text-slate-100 shadow-inner' 
-            : 'bg-white/95 border border-slate-200 text-slate-900 shadow-sm'
+        <div className={`mt-8 rounded-xl p-5 backdrop-blur-md transition-colors duration-200 border shadow-sm ${
+          isDark
+            ? 'bg-panel/85 border-line text-white shadow-black/20'
+            : 'bg-[#ffffff]/90 border-line text-slate-900 shadow-slate-200/50'
         }`}>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-6 mb-6">
             <div>
               <p className={`text-sm font-medium mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Wind</p>
-              <p className={`text-xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                {windDir != null ? `${windDir}°` : 'VRB'} {windSpeed != null ? `${windSpeed} kt` : '--'}
-              </p>
+              <p className={`text-xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{windDir != null ? `${windDir}°` : 'VRB'} {windSpeed != null ? `${windSpeed} kt` : '--'}</p>
             </div>
             <div>
               <p className={`text-sm font-medium mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Visibility</p>
-              <p className={`text-xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                {formatVisibility(visibility)}
-              </p>
+              <p className={`text-xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{formatVisibility(visibility)}</p>
             </div>
             <div>
               <p className={`text-sm font-medium mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Ceiling</p>
-              <p className={`text-xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                {clouds === 'N/A' || !clouds ? 'None' : clouds.split(' ')[0]}
-              </p>
+              <p className={`text-xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{clouds === 'N/A' || !clouds ? 'None' : clouds.split(' ')[0]}</p>
               {clouds && clouds !== 'N/A' && clouds.split(' ').length > 1 && (
-                <p className={`text-xs font-mono mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                  {clouds.split(' ').slice(1).join(' ')}
-                </p>
+                <p className={`text-xs font-mono mt-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{clouds.split(' ').slice(1).join(' ')}</p>
               )}
             </div>
             <div>
               <p className={`text-sm font-medium mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>QNH</p>
-              <p className={`text-xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                {qnh != null ? `${qnh} hPa` : '--'}
-              </p>
+              <p className={`text-xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{qnh != null ? `${qnh} hPa` : '--'}</p>
             </div>
             <div>
               <p className={`text-sm font-medium mb-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>Temp / Dew</p>
-              <p className={`text-xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                {temp != null ? `${temp}°` : '--'} / {dew != null ? `${dew}°` : '--'}
-              </p>
+              <p className={`text-xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{temp != null ? `${temp}°` : '--'} / {dew != null ? `${dew}°` : '--'}</p>
             </div>
           </div>
 
           {/* METAR String */}
-          <div className={`pt-3 border-t ${isDark ? 'border-slate-700/60' : 'border-slate-200'}`}>
-            <p className={`font-mono text-sm font-semibold tracking-wide overflow-x-auto whitespace-nowrap ${
-              isDark ? 'text-slate-100' : 'text-black'
-            }`}>
+          <div className="pt-3 border-t border-line">
+            <p className={`font-mono text-sm font-semibold tracking-wide overflow-x-auto whitespace-nowrap ${isDark ? 'text-white' : 'text-slate-900'}`}>
               {generatedMetar}
             </p>
           </div>
