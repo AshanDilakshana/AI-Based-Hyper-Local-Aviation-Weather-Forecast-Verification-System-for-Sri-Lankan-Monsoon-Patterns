@@ -46,7 +46,14 @@ export function Dashboard() {
           { label: 'Pressure (QNH)', value: curr.qnh_hpa != null ? curr.qnh_hpa.toString() : '--', unit: 'hPa', tone: 'sky' as MetricTone },
           { label: 'Dew Point', value: curr.dew_point_c != null ? curr.dew_point_c.toString() : '--', unit: '°C', tone: 'emerald' as MetricTone },
           { label: 'Humidity', value: curr.rh_percent != null ? curr.rh_percent.toString() : '--', unit: '% RH', tone: 'cyan' as MetricTone },
-          { label: 'Wind', value: curr.wind_speed_kts != null ? curr.wind_speed_kts.toString() : '--', footnote: `${curr.wind_dir}°`, tone: 'sky' as MetricTone },
+          { 
+            label: 'Wind', 
+            value: curr.wind_speed_kts != null ? curr.wind_speed_kts.toString() : '--', 
+            footnote: curr.wind_dir != null 
+              ? (curr.wind_dir === 'VRB' ? 'VRB' : `${curr.wind_dir}°`) 
+              : (curr.wind_speed_kts != null ? (curr.wind_speed_kts > 0 ? 'VRB' : 'CALM') : '--'), 
+            tone: 'sky' as MetricTone 
+          },
           { label: 'Visibility', value: (curr.visibility != null ? (curr.visibility >= 9999 ? '+10' : (curr.visibility / 1000).toString()) : '--'), unit: 'km', tone: 'green' as MetricTone }
         ];
         setCurrentMetrics(metrics);
@@ -67,7 +74,9 @@ export function Dashboard() {
             pressure: `${r.qnh_hpa} hPa`,
             humidity: `${r.rh_percent}%`,
             windSpeed: `${r.wind_speed_kts} kt`,
-            windDirection: `${r.wind_dir}°`,
+            windDirection: r.wind_dir != null 
+              ? (r.wind_dir === 'VRB' ? 'VRB' : `${r.wind_dir}°`) 
+              : (r.wind_speed_kts != null ? (r.wind_speed_kts > 0 ? 'VRB' : 'CALM') : '--'),
             visibility: r.visibility >= 9999 ? '10+ km' : `${r.visibility / 1000} km`,
             cloudCoverage: r.clouds || 'N/A',
             rainfall: 'N/A' // Not present in metar data directly yet
