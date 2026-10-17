@@ -67,6 +67,7 @@ class VerifiedForecastRequest(BaseModel):
     target_time: str
     created_at: Optional[str] = None
     dry_temp_c: float | None = None
+    dew_point_c: Optional[float] = None
     wind_speed_kts: float | None = None
     wind_dir: float | None = None
     rh_percent: float | None = None
