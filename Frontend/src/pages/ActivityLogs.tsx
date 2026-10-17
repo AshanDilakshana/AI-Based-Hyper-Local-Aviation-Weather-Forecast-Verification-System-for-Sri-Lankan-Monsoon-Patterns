@@ -205,47 +205,53 @@ export function ActivityLogs() {
         subtitle={`Showing ${filteredLogs.length} of ${logs.length} logged events`}>
         
         {filteredLogs.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-center text-slate-400">
-            <ActivityIcon className="h-10 w-10 text-slate-600 mb-3" />
-            <p className="text-base font-semibold text-slate-300">No logs found matching your criteria</p>
-            <p className="mt-1 text-xs text-slate-500">Try adjusting your search query or level filters.</p>
+          <div className="flex flex-col items-center justify-center py-16 text-center text-slate-400">
+            <ActivityIcon className="h-10 w-10 text-slate-500 mb-3 opacity-60" />
+            <p className="text-base font-semibold text-white">No logs found matching your criteria</p>
+            <p className="mt-1 text-xs text-slate-400">Try adjusting your search query or level filters.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm text-slate-300">
-              <thead className="border-b border-line text-xs uppercase tracking-wider text-slate-400 bg-panel">
+          <div className="overflow-x-auto rounded-xl border border-line/60">
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-line bg-panel text-[11px] font-bold uppercase tracking-wider text-slate-400">
                 <tr>
-                  <th className="px-4 py-3 font-semibold">Time (UTC)</th>
-                  <th className="px-4 py-3 font-semibold">Level</th>
-                  <th className="px-4 py-3 font-semibold">Component</th>
-                  <th className="px-4 py-3 font-semibold">Message</th>
-                  <th className="px-4 py-3 font-semibold">Details</th>
+                  <th scope="col" className="w-36 px-4 py-3.5 whitespace-nowrap">Time (UTC)</th>
+                  <th scope="col" className="w-28 px-4 py-3.5 whitespace-nowrap">Level</th>
+                  <th scope="col" className="w-48 px-4 py-3.5 whitespace-nowrap">Component</th>
+                  <th scope="col" className="px-4 py-3.5">Event / Message</th>
+                  <th scope="col" className="w-56 px-4 py-3.5 whitespace-nowrap">Details</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-line/60">
+              <tbody className="divide-y divide-line/60 bg-panel/30">
                 {filteredLogs.map(log => (
-                  <tr key={log.id} className="transition-colors hover:bg-slate-800/30">
-                    <td className="px-4 py-3.5 font-mono text-xs text-slate-400 whitespace-nowrap">
-                      {formatLogTime(log.timestamp_utc)}
+                  <tr key={log.id} className="transition-colors hover:bg-panel/70">
+                    <td className="px-4 py-3.5 whitespace-nowrap align-top">
+                      <span className="font-mono text-xs font-semibold text-sky-bright">
+                        {formatLogTime(log.timestamp_utc)}
+                      </span>
                     </td>
-                    <td className="px-4 py-3.5 whitespace-nowrap">
+                    <td className="px-4 py-3.5 whitespace-nowrap align-top">
                       {getLevelBadge(log.level)}
                     </td>
-                    <td className="px-4 py-3.5 font-medium text-slate-200 whitespace-nowrap">
-                      <span className="rounded bg-slate-800 px-2 py-0.5 text-xs text-slate-300 border border-slate-700">
+                    <td className="px-4 py-3.5 whitespace-nowrap align-top">
+                      <span className="inline-block rounded-md bg-slate-800/80 px-2 py-0.5 font-mono text-xs font-medium text-slate-200 border border-slate-700/80">
                         {log.component}
                       </span>
                     </td>
-                    <td className="px-4 py-3.5 text-slate-200">
-                      {log.message}
+                    <td className="px-4 py-3.5 align-top">
+                      <p className="text-sm font-medium text-white leading-relaxed">
+                        {log.message}
+                      </p>
                     </td>
-                    <td className="px-4 py-3.5 text-xs text-slate-400 whitespace-nowrap">
+                    <td className="px-4 py-3.5 align-top">
                       {log.details ? (
-                        <span className="font-mono bg-ink/80 px-2 py-1 rounded text-[11px] text-slate-300 border border-line inline-block max-w-4xl overflow-x-auto">
-                          {log.details}
-                        </span>
+                        <div className="max-w-xs xl:max-w-md">
+                          <code className="block rounded bg-ink px-2 py-1 text-[11px] font-mono text-slate-300 border border-line/70 overflow-x-auto whitespace-pre-wrap break-all">
+                            {log.details}
+                          </code>
+                        </div>
                       ) : (
-                        <span className="text-slate-600">--</span>
+                        <span className="text-xs text-slate-500 font-mono">--</span>
                       )}
                     </td>
                   </tr>

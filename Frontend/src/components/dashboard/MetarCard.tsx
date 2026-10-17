@@ -64,7 +64,7 @@ export function MetarCard({
 
   return (
     <div className={`relative overflow-hidden rounded-2xl shadow-lg border transition-colors ${
-      isDark ? 'bg-panel-deep text-white border-line/60' : 'bg-slate-100 text-slate-900 border-line'
+      isDark ? 'bg-panel-deep text-white border-line/60' : 'bg-slate-900 text-white border-line'
     }`}>
       {/* Background Image with Overlay */}
       <div 
@@ -74,18 +74,18 @@ export function MetarCard({
       <div className={`absolute inset-0 z-0 transition-opacity duration-300 ${
         isDark 
           ? 'bg-gradient-to-t from-canvas/95 via-canvas/70 to-canvas/30' 
-          : 'bg-gradient-to-t from-slate-900/15 via-transparent to-transparent'
+          : 'bg-gradient-to-t from-slate-950/70 via-slate-900/40 to-slate-900/20'
       }`} />
 
       <div className="relative z-10 p-6">
         {/* Top Section */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <p className="text-yellow-500 font-semibold text-sm mb-1 tracking-wide">
+            <p className="text-yellow-500 font-semibold text-sm mb-1 tracking-wide drop-shadow-sm">
               VCBI · Katunayake · RWY 04/22
             </p>
-            <h2 className="text-3xl md:text-4xl font-bold mb-2">Bandaranaike International</h2>
-            <p className="text-slate-300 text-sm">
+            <h2 className="text-3xl md:text-4xl font-bold mb-2 text-[#ffffff] drop-shadow-sm">Bandaranaike International</h2>
+            <p className="text-[#ffffff] text-sm drop-shadow-sm opacity-90">
               {dateStr} · {formattedTime.slice(0, 2)}:{formattedTime.slice(2, 4)} Sri Lanka time · METAR {formattedTime}Z, received {lastUpdatedText}
             </p>
           </div>
@@ -94,7 +94,7 @@ export function MetarCard({
           <div className="flex items-center gap-3">
             <div className={`w-1.5 h-12 rounded-full ${flightCategoryIndicator}`} />
             <div>
-              <p className="text-slate-300 text-xs font-medium uppercase tracking-wider mb-0.5">Flight category now</p>
+              <p className="text-[#ffffff] text-xs font-medium uppercase tracking-wider mb-0.5 drop-shadow-sm opacity-90">Flight category now</p>
               <p className={`text-2xl font-bold ${flightCategoryColor}`}>{flightCategory}</p>
             </div>
           </div>
