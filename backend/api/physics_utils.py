@@ -4,17 +4,17 @@ import math
 def calculate_pressure_altitude(qnh_hpa: float) -> float:
     """
     Calculates Pressure Altitude (PA) in feet.
-    Formula: PA = 145366.45 * [1 - (QNH / 1013.25)^0.190284]
+    Formula: PA = 145366.45(constant of converstion ft) * [1 - (QNH / 1013.25 stand sea level)^0.190284]
     """
     if qnh_hpa <= 0:
-        return 0.0
+        return 0.0      
     return 145366.45 * (1 - math.pow(qnh_hpa / 1013.25, 0.190284))
 
 
 def calculate_isa_temperature(pa_ft: float) -> float:
     """
     Calculates International Standard Atmosphere (ISA) Temperature in Celsius at a given Pressure Altitude.
-    Formula: T_ISA = 15 - 1.98 * (PA / 1000)
+    Formula: T_ISA = 15(stand sea level ) - 1.98 * (PA / 1000)
     """
     return 15.0 - 1.98 * (pa_ft / 1000.0)
 
