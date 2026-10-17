@@ -25,6 +25,13 @@ def get_current_live_weather():
                 status_code=500, detail="No weather data available in the database."
             )
 
+        wind_dir = latest_record.wind_dir
+        if wind_dir is None and latest_record.wind_speed_kts is not None:
+            if latest_record.wind_speed_kts > 0:
+                wind_dir = "VRB"
+            elif latest_record.wind_speed_kts == 0:
+                wind_dir = 0
+
         return {
             "timestamp_simulated": "live",
             "year": latest_record.year,
@@ -32,7 +39,7 @@ def get_current_live_weather():
             "date": latest_record.date,
             "time_utc": str(latest_record.time_utc),
             "metar_speci": "METAR",
-            "wind_dir": latest_record.wind_dir,
+            "wind_dir": wind_dir,
             "wind_speed_kts": latest_record.wind_speed_kts,
             "visibility": latest_record.visibility,
             "weather": latest_record.weather,
@@ -58,6 +65,12 @@ def get_recent_live_weather(limit: int = 10):
         )
         result = []
         for r in records:
+            wind_dir = r.wind_dir
+            if wind_dir is None and r.wind_speed_kts is not None:
+                if r.wind_speed_kts > 0:
+                    wind_dir = "VRB"
+                elif r.wind_speed_kts == 0:
+                    wind_dir = 0
             result.append(
                 {
                     "year": r.year,
@@ -65,7 +78,7 @@ def get_recent_live_weather(limit: int = 10):
                     "date": r.date,
                     "time_utc": str(r.time_utc),
                     "metar_speci": "METAR",
-                    "wind_dir": r.wind_dir,
+                    "wind_dir": wind_dir,
                     "wind_speed_kts": r.wind_speed_kts,
                     "visibility": r.visibility,
                     "weather": r.weather,
