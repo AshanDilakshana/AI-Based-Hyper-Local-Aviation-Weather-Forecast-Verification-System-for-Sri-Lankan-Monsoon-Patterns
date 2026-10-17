@@ -50,10 +50,30 @@ export function SystemLogs() {
 
   const levelColor = (level: string) => {
     switch (level.toLowerCase()) {
-      case 'error': return { bg: 'bg-rose-900/30', text: 'text-rose-400', border: 'border-rose-800/50' };
-      case 'warning': return { bg: 'bg-amber-900/30', text: 'text-amber-400', border: 'border-amber-800/50' };
-      case 'success': return { bg: 'bg-emerald-900/30', text: 'text-emerald-400', border: 'border-emerald-800/50' };
-      default: return { bg: 'bg-sky-900/30', text: 'text-sky-400', border: 'border-sky-800/50' };
+      case 'error':
+        return {
+          bg: 'bg-rose-500/15 dark:bg-rose-950/40',
+          text: 'text-rose-600 dark:text-rose-400',
+          border: 'border-rose-400/40 dark:border-rose-800/60'
+        };
+      case 'warning':
+        return {
+          bg: 'bg-amber-500/15 dark:bg-amber-950/40',
+          text: 'text-amber-700 dark:text-amber-400',
+          border: 'border-amber-400/40 dark:border-amber-800/60'
+        };
+      case 'success':
+        return {
+          bg: 'bg-emerald-500/15 dark:bg-emerald-950/40',
+          text: 'text-emerald-700 dark:text-emerald-400',
+          border: 'border-emerald-400/40 dark:border-emerald-800/60'
+        };
+      default: // INFO
+        return {
+          bg: 'bg-sky-500/15 dark:bg-sky-950/40',
+          text: 'text-sky-700 dark:text-sky-400',
+          border: 'border-sky-400/40 dark:border-sky-800/60'
+        };
     }
   };
 
@@ -109,14 +129,14 @@ export function SystemLogs() {
             {filtered.map((log) => {
               const lc = levelColor(log.level);
               return (
-                <div key={log.id} className="flex items-start gap-3 rounded-lg border border-line/50 bg-ink/30 px-4 py-3 transition-colors hover:bg-slate-800/20">
-                  <span className={`mt-0.5 shrink-0 rounded px-2 py-0.5 text-[10px] font-bold uppercase ${lc.bg} ${lc.text} border ${lc.border}`}>
+                <div key={log.id} className="flex items-start gap-3 rounded-lg border border-line/60 bg-ink/30 px-4 py-3 transition-colors hover:bg-panel/60">
+                  <span className={`mt-0.5 shrink-0 rounded-md px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider ${lc.bg} ${lc.text} border ${lc.border}`}>
                     {log.level}
                   </span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-slate-200">{log.message}</p>
-                    <div className="mt-1 flex items-center gap-3 text-[11px] text-slate-500">
-                      <span className="font-mono">{log.component}</span>
+                    <p className="text-sm font-medium text-white">{log.message}</p>
+                    <div className="mt-1 flex items-center gap-3 text-[11px] text-slate-400">
+                      <span className="font-mono text-xs font-semibold text-sky-bright">{log.component}</span>
                       <span>•</span>
                       <span>{new Date(log.timestamp_utc).toLocaleString()}</span>
                     </div>

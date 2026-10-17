@@ -154,7 +154,7 @@ export function RouteAlternatives() {
                     <p className="text-sm font-bold text-white">{route.region_name}</p>
                     <div className="mt-1.5 flex flex-wrap gap-1.5">
                       {route.airports.split(',').map((a) => a.trim()).filter(Boolean).map((airport) => (
-                        <span key={airport} className="rounded bg-slate-800 px-2 py-0.5 text-xs font-mono text-sky-300 border border-slate-700">
+                        <span key={airport} className="text-xs font-mono font-medium text-slate-300">
                           {airport}
                         </span>
                       ))}
