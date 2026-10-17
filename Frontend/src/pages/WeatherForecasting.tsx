@@ -29,6 +29,19 @@ const formatIsoToAviationTime = (isoString: string) => {
   return `${dd}${hh}${mm}Z`;
 };
 
+// Calculate dew point from temperature (°C) and relative humidity (%) using Magnus formula
+const calculateDewPoint = (tempC: number | string | null | undefined, rhPercent: number | string | null | undefined): string | null => {
+  if (tempC == null || rhPercent == null) return null;
+  const t = Number(tempC);
+  const rh = Number(rhPercent);
+  if (isNaN(t) || isNaN(rh) || rh <= 0 || rh > 100) return null;
+  const a = 17.27;
+  const b = 237.7;
+  const alpha = ((a * t) / (b + t)) + Math.log(rh / 100.0);
+  const dew = (b * alpha) / (a - alpha);
+  return isNaN(dew) ? null : dew.toFixed(1);
+};
+
 
 export function WeatherForecasting() {
   const [liveData, setLiveData] = useState<any>(null);
@@ -165,7 +178,8 @@ export function WeatherForecasting() {
 
   // Mapped Verified Metrics (For Last Forecast Details section)
   const verifiedMetrics = [
-    { label: 'Temperature', value: lastVerified?.dry_temp_c != null ? `${lastVerified.dry_temp_c}` : '--', unit: '°C' },
+    { label: 'Temperature', value: lastVerified?.dry_temp_c != null ? `${Number(lastVerified.dry_temp_c).toFixed(1)}` : '--', unit: '°C' },
+    { label: 'Dew Point', value: lastVerified?.dew_point_c != null ? `${Number(lastVerified.dew_point_c).toFixed(1)}` : '--', unit: '°C' },
     { label: 'Pressure', value: lastVerified?.qnh_hpa != null ? `${lastVerified.qnh_hpa}` : '--', unit: 'hPa' },
     { label: 'Wind speed', value: lastVerified?.wind_speed_kts != null ? `${lastVerified.wind_speed_kts}` : '--', unit: 'kt' },
     { label: 'Wind direction', value: lastVerified?.wind_dir != null ? `${lastVerified.wind_dir}` : '--', unit: '°' },
@@ -183,8 +197,8 @@ export function WeatherForecasting() {
 
   const mappedRecentObservations = recentData.map(obs => ({
     time: formatAviationTime(obs.date, obs.time_utc),
-    temperature: obs.dry_temp_c != null ? `${obs.dry_temp_c} °C` : '--',
-    dewPoint: obs.dew_point_c != null ? `${obs.dew_point_c} °C` : '--',
+    temperature: obs.dry_temp_c != null ? `${Number(obs.dry_temp_c).toFixed(1)} °C` : '--',
+    dewPoint: obs.dew_point_c != null ? `${Number(obs.dew_point_c).toFixed(1)} °C` : '--',
     pressure: obs.qnh_hpa != null ? `${obs.qnh_hpa} hPa` : '--',
     humidity: obs.rh_percent != null ? `${obs.rh_percent}%` : '--',
     windSpeed: obs.wind_speed_kts != null ? `${obs.wind_speed_kts} kt` : '--',
@@ -196,8 +210,8 @@ export function WeatherForecasting() {
 
   const mappedRecentModels = recentModels.map(model => ({
     time: formatIsoToAviationTime(model.target_time),
-    temperature: model.dry_temp_c != null ? `${model.dry_temp_c} °C` : '--',
-    dewPoint: model.dew_point_c != null ? `${model.dew_point_c} °C` : '--',
+    temperature: model.dry_temp_c != null ? `${Number(model.dry_temp_c).toFixed(1)} °C` : '--',
+    dewPoint: model.dew_point_c != null ? `${Number(model.dew_point_c).toFixed(1)} °C` : '--',
     pressure: model.qnh_hpa != null ? `${model.qnh_hpa} hPa` : '--',
     humidity: model.rh_percent != null ? `${model.rh_percent}%` : '--',
     windSpeed: model.wind_speed_kts != null ? `${model.wind_speed_kts} kt` : '--',

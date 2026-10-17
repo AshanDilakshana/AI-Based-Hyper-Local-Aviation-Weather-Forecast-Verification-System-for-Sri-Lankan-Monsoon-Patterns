@@ -34,6 +34,7 @@ export function UploadPreviewModal({ records: initialRecords, onClose, onSuccess
       const payload = records.map(r => {
           const req: any = { target_time: r.target_time };
           if (r.dry_temp_c !== null && r.dry_temp_c !== '') req.dry_temp_c = r.dry_temp_c;
+          if (r.dew_point_c !== null && r.dew_point_c !== '') req.dew_point_c = r.dew_point_c;
           if (r.qnh_hpa !== null && r.qnh_hpa !== '') req.qnh_hpa = r.qnh_hpa;
           if (r.wind_dir !== null && r.wind_dir !== '') req.wind_dir = r.wind_dir;
           if (r.wind_speed_kts !== null && r.wind_speed_kts !== '') req.wind_speed_kts = r.wind_speed_kts;
@@ -100,6 +101,7 @@ export function UploadPreviewModal({ records: initialRecords, onClose, onSuccess
                 <th className="pb-3 pr-4 font-medium">Wind Dir (°)</th>
                 <th className="pb-3 pr-4 font-medium">Wind Spd (kt)</th>
                 <th className="pb-3 pr-4 font-medium">Temp (°C)</th>
+                <th className="pb-3 pr-4 font-medium">Dew Point (°C)</th>
                 <th className="pb-3 pr-4 font-medium">QNH (hPa)</th>
                 <th className="pb-3 pr-4 font-medium">Remarks</th>
               </tr>
@@ -131,6 +133,14 @@ export function UploadPreviewModal({ records: initialRecords, onClose, onSuccess
                       type="number" 
                       value={r.dry_temp_c ?? ''} 
                       onChange={e => handleUpdate(i, 'dry_temp_c', e.target.value)}
+                      className="w-16 bg-ink border border-line-strong rounded px-2 py-1 text-sm outline-none focus:border-accent"
+                    />
+                  </td>
+                  <td className="py-2 pr-4">
+                    <input 
+                      type="number" 
+                      value={r.dew_point_c ?? ''} 
+                      onChange={e => handleUpdate(i, 'dew_point_c', e.target.value)}
                       className="w-16 bg-ink border border-line-strong rounded px-2 py-1 text-sm outline-none focus:border-accent"
                     />
                   </td>

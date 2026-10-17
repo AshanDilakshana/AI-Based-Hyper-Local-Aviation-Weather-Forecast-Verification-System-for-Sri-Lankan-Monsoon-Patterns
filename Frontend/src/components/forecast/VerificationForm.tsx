@@ -7,6 +7,7 @@ const API_BASE = 'http://localhost:8000';
 
 type FieldState = {
   temperature: string;
+  dewPoint: string;
   windSpeed: string;
   windDirection: string;
   humidity: string;
@@ -28,6 +29,7 @@ initialTarget.setHours(now.getHours() + 3);
 
 const initialState: FieldState = {
   temperature: '--',
+  dewPoint: '--',
   windSpeed: '--',
   windDirection: '--',
   humidity: '--',
@@ -39,13 +41,15 @@ const initialState: FieldState = {
 };
 
 const numericFields: {key: keyof FieldState;label: string;suffix: string;}[] = [
-{ key: 'temperature', label: 'Temperature', suffix: '°C' },
-{ key: 'windSpeed', label: 'Wind speed', suffix: 'kt' },
-{ key: 'windDirection', label: 'Wind direction', suffix: '°' },
-{ key: 'humidity', label: 'Humidity', suffix: '% RH' },
-{ key: 'cloudBase', label: 'Clouds', suffix: '' },
-{ key: 'visibility', label: 'Visibility', suffix: 'km' },
-{ key: 'pressure', label: 'Pressure', suffix: 'hPa' }];
+  { key: 'temperature', label: 'Temperature', suffix: '°C' },
+  { key: 'dewPoint', label: 'Dew point', suffix: '°C' },
+  { key: 'windSpeed', label: 'Wind speed', suffix: 'kt' },
+  { key: 'windDirection', label: 'Wind direction', suffix: '°' },
+  { key: 'humidity', label: 'Humidity', suffix: '% RH' },
+  { key: 'cloudBase', label: 'Clouds', suffix: '' },
+  { key: 'visibility', label: 'Visibility', suffix: 'km' },
+  { key: 'pressure', label: 'Pressure', suffix: 'hPa' }
+];
 
 
 export function VerificationForm({ onSaveSuccess, editData, prefillData }: { onSaveSuccess?: () => void, editData?: any, prefillData?: any }) {
@@ -98,6 +102,7 @@ export function VerificationForm({ onSaveSuccess, editData, prefillData }: { onS
         ...initialState,
         targetTime: editData.target_time.substring(0, 16),
         temperature: editData.dry_temp_c?.toString() || '',
+        dewPoint: editData.dew_point_c?.toString() || '',
         windSpeed: editData.wind_speed_kts?.toString() || '',
         windDirection: editData.wind_dir?.toString() || '',
         humidity: editData.rh_percent?.toString() || '',
@@ -106,9 +111,11 @@ export function VerificationForm({ onSaveSuccess, editData, prefillData }: { onS
         pressure: editData.qnh_hpa?.toString() || ''
       });
     } else if (prefillData) {
+      const dewVal = prefillData.qnh_dewpoint_forecast?.predicted_dewpoint_3h;
       setFields({
         ...initialState,
         temperature: prefillData.temperature_pressure_forecast?.prediction?.temperature_C?.toString() || '',
+        dewPoint: dewVal !== undefined && dewVal !== null ? dewVal.toString() : '',
         windSpeed: prefillData.wind_forecast?.predicted_wind_speed_kts?.toString() || '',
         windDirection: prefillData.wind_forecast?.wind_dir?.toString() || '',
         humidity: prefillData.qnh_dewpoint_forecast?.derived_rh_3h?.toString() || '',
@@ -147,6 +154,7 @@ export function VerificationForm({ onSaveSuccess, editData, prefillData }: { onS
         target_time: new Date(fields.targetTime + 'Z').toISOString(),
         created_at: new Date(fields.observedTime + 'Z').toISOString(),
         dry_temp_c: parseField(fields.temperature),
+        dew_point_c: parseField(fields.dewPoint),
         wind_speed_kts: windSpeed,
         wind_dir: parseField(fields.windDirection) !== null ? parseField(fields.windDirection) : 0,
         rh_percent: parseField(fields.humidity),
@@ -186,7 +194,7 @@ export function VerificationForm({ onSaveSuccess, editData, prefillData }: { onS
 
   return (
     <form className="flex flex-col gap-6" onSubmit={handleSave}>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-4">
         {numericFields.map(({ key, label, suffix }) =>
         <div key={key}>
             <label htmlFor={key} className="block text-xs text-slate-400">
