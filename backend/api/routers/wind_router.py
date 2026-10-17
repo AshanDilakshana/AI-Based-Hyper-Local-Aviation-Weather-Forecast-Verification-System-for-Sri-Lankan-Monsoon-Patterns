@@ -106,6 +106,13 @@ def load_Wind_models():
         print(f"CRITICAL: Failed to load TFT 3H model. Error: {e}")
         model_tft_3h = None
 
+    for m in [model_1h, model_3h]:
+        if m is not None and hasattr(m, "set_params"):
+            try:
+                m.set_params(device="cpu")
+            except Exception:
+                pass
+
 
 load_Wind_models()
 
