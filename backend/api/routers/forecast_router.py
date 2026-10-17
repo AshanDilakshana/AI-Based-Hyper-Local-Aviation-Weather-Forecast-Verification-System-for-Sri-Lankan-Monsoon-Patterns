@@ -153,6 +153,7 @@ def create_verified_forecast(
         target_time=target_dt,
         created_at=created_dt,
         dry_temp_c=req.dry_temp_c,
+        dew_point_c=req.dew_point_c,
         wind_speed_kts=req.wind_speed_kts,
         wind_dir=req.wind_dir if req.wind_dir is not None else 0.0,
         rh_percent=req.rh_percent,
@@ -183,6 +184,7 @@ def update_verified_forecast(
         req.created_at.replace("Z", "+00:00")
     ).replace(tzinfo=None)
     vf.dry_temp_c = req.dry_temp_c
+    vf.dew_point_c = req.dew_point_c
     vf.wind_speed_kts = req.wind_speed_kts
     vf.wind_dir = req.wind_dir if req.wind_dir is not None else 0.0
     vf.rh_percent = req.rh_percent
@@ -354,6 +356,8 @@ def bulk_verify_forecasts(
 
         if existing:
             # Update existing
+            if forecast.dew_point_c is not None:
+                existing.dew_point_c = forecast.dew_point_c
             if forecast.dry_temp_c is not None:
                 existing.dry_temp_c = forecast.dry_temp_c
             if forecast.wind_speed_kts is not None:
@@ -379,6 +383,7 @@ def bulk_verify_forecasts(
             new_vf = VerifiedForecast(
                 target_time=target_dt,
                 dry_temp_c=forecast.dry_temp_c,
+                dew_point_c=forecast.dew_point_c,
                 wind_speed_kts=forecast.wind_speed_kts,
                 wind_dir=forecast.wind_dir,
                 rh_percent=forecast.rh_percent,
