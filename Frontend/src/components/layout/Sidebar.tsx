@@ -17,6 +17,7 @@ import {
 } from
   'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import { roleMeta } from '../../types/auth';
 
 type SidebarProps = {
@@ -57,6 +58,8 @@ const linkClass = ({ isActive }: { isActive: boolean; }) =>
 
 export function Sidebar({ open, onClose }: SidebarProps) {
   const { user, signOut } = useAuth();
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
   const navigate = useNavigate();
   const visibleItems = user?.role === 'pilot' ? pilotNav : (user?.role === 'admin' ? adminNav : forecasterNav);
 
@@ -77,9 +80,15 @@ export function Sidebar({ open, onClose }: SidebarProps) {
         className={`fixed inset-y-0 left-0 z-40 flex w-72 flex-col overflow-y-auto border-r border-line bg-rail transition-transform duration-200 lg:translate-x-0 ${open ? 'translate-x-0' : '-translate-x-full'}`}
         aria-label="Primary">
 
-        <div className="flex items-center justify-between px-6 py-5">
-          <div className="w-full relative h-32 rounded-xl overflow-hidden bg-white shadow-sm flex items-center justify-center">
-            <img src="/bia_logo.jpg" alt="BIA Logo" className="scale-[1.98] origin-center object-contain h-full" />
+        <div className="flex items-center justify-between px-6 py-4">
+          <div className="w-full relative h-24 flex items-center justify-center bg-transparent">
+            <img 
+              src={isDark ? '/bia_logo_dark.png' : '/bia_logo_transparent.png'} 
+              alt="BIA Logo" 
+              className={`h-full w-full object-contain transition-all duration-200 ${
+                isDark ? 'drop-shadow-[0_2px_10px_rgba(56,189,248,0.15)]' : 'drop-shadow-sm'
+              }`} 
+            />
           </div>
           <button
             type="button"
