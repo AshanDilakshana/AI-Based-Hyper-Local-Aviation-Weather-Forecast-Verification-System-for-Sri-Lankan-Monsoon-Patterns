@@ -81,6 +81,8 @@ yarn-error.log*
 # --- OS & Editor ---
 .DS_Store
 .idea/
+.vscode/
+.kilo/
 Thumbs.db
 *.swp
 *.swo
