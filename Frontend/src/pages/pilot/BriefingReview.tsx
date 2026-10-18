@@ -8,13 +8,32 @@ import { MetricTile } from '../../components/pilot/MetricTile';
 import { StatusPill } from '../../components/pilot/StatusPill';
 import { DocumentsTable } from '../../components/pilot/DocumentsTable';
 import { forecastStats } from '../../data/flight';
-import { documents } from '../../data/documents';
-import type { BriefingRow, WeatherMetric } from '../../types/aviation';
+import { useAuth } from '../../contexts/AuthContext';
+import type { BriefingDocument, BriefingRow, WeatherMetric } from '../../types/aviation';
 
 export function BriefingReview() {
+  const { user } = useAuth();
   const [metrics, setMetrics] = useState<WeatherMetric[]>([]);
   const [briefing, setBriefing] = useState<BriefingRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pilotDocuments, setPilotDocuments] = useState<BriefingDocument[]>([]);
+  const [docsLoading, setDocsLoading] = useState(true);
+
+  useEffect(() => {
+    const pilotRef = user?.reference || 'ATPL-000';
+    axios.get(`http://localhost:8000/pilot/my-documents?pilot_reference=${pilotRef}`)
+      .then(res => {
+        if (Array.isArray(res.data)) {
+          setPilotDocuments(res.data);
+        }
+      })
+      .catch(err => {
+        console.error('Error fetching pilot documents:', err);
+      })
+      .finally(() => {
+        setDocsLoading(false);
+      });
+  }, [user]);
 
   useEffect(() => {
     const fetchVerifiedData = async () => {
@@ -111,7 +130,13 @@ export function BriefingReview() {
           </Link>
         </div>
         <div className="mt-4">
-          <DocumentsTable documents={documents.slice(0, 2)} showStatus={false} />
+          {docsLoading ? (
+            <p className="py-6 text-center text-sm text-muted">Loading recent documents...</p>
+          ) : pilotDocuments.length > 0 ? (
+            <DocumentsTable documents={pilotDocuments.slice(0, 2)} showStatus={false} />
+          ) : (
+            <p className="py-6 text-center text-sm text-muted">No recent documents found.</p>
+          )}
         </div>
       </section>
     </div>);
