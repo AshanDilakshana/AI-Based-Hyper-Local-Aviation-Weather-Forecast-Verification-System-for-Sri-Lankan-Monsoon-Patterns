@@ -159,13 +159,13 @@ export function WeatherForecasting() {
     { label: 'Visibility', value: liveData?.visibility != null ? `${liveData.visibility}` : '--', unit: 'm', tone: 'green' as const },
     { label: 'Humidity', value: liveData?.rh_percent != null ? `${liveData.rh_percent}` : '--', unit: '% RH', tone: 'cyan' as const },
     { label: 'Wind speed', value: liveData?.wind_speed_kts != null ? `${liveData.wind_speed_kts}` : '--', unit: 'kt', tone: 'emerald' as const },
-    { 
-      label: 'Wind direction', 
-      value: liveData?.wind_dir != null 
-        ? (liveData.wind_dir === 'VRB' ? 'VRB' : `${liveData.wind_dir}`) 
-        : (liveData?.wind_speed_kts != null ? (liveData.wind_speed_kts > 0 ? 'VRB' : 'CALM') : '--'), 
-      unit: (liveData?.wind_dir != null && liveData.wind_dir !== 'VRB' && liveData.wind_dir !== 'CALM') || (!liveData?.wind_dir && liveData?.wind_speed_kts === 0) ? '°' : '', 
-      tone: 'emerald' as const 
+    {
+      label: 'Wind direction',
+      value: liveData?.wind_dir != null
+        ? (liveData.wind_dir === 'VRB' ? 'VRB' : `${liveData.wind_dir}`)
+        : (liveData?.wind_speed_kts != null ? (liveData.wind_speed_kts > 0 ? 'VRB' : 'CALM') : '--'),
+      unit: (liveData?.wind_dir != null && liveData.wind_dir !== 'VRB' && liveData.wind_dir !== 'CALM') || (!liveData?.wind_dir && liveData?.wind_speed_kts === 0) ? '°' : '',
+      tone: 'emerald' as const
     },
     { label: 'Cloud base', value: liveData?.clouds ? liveData.clouds.split(' ')[0] : '--', unit: '', tone: 'slate' as const },
     { label: 'Dew Point', value: liveData?.dew_point_c != null ? `${liveData.dew_point_c}` : '--', unit: '°C', tone: 'emerald' as const }
@@ -273,7 +273,7 @@ export function WeatherForecasting() {
               style={{ color: '#ffffff' }}
               className="text-white font-semibold text-sm md:text-base leading-relaxed drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]"
             >
-              Live observation context and AI-supported aviation forecast guidance. Review real-time metrics and run predictive models.
+              Live observation context and AI-supported aviation forecast guidance.
             </p>
           </div>
 
@@ -344,7 +344,7 @@ export function WeatherForecasting() {
             disabled={generating}
             className="group relative inline-flex items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-r from-accent via-amber-400 to-amber-500 px-8 py-4 text-sm font-extrabold text-slate-900 shadow-[0_0_20px_rgba(234,179,8,0.3)] transition-all disabled:pointer-events-none disabled:opacity-70 focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
           >
-            {generating ? 'Processing Models...' : 'Generate 3H Forecast'}
+            {generating ? 'Processing Models...' : 'Generate 3Hr Forecast'}
           </motion.button>
         </div>
 
