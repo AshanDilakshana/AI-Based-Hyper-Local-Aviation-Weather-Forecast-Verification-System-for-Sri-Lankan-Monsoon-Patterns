@@ -29,7 +29,7 @@ export function FlightPlanning() {
   const navigate = useNavigate();
   const [levels, setLevels] = useState<string[]>(['FL390', 'FL340']);
   const [maps, setMaps] = useState<string[]>(requestMaps);
-  
+
   // Form State
   const [departure, setDeparture] = useState("VCBI");
   const [destination, setDestination] = useState("WSSS");
@@ -37,7 +37,7 @@ export function FlightPlanning() {
   const [departureTime, setDepartureTime] = useState(getInitialUTCTime());
   const [flightNo, setFlightNo] = useState("UL604");
   const [area, setArea] = useState("Area D");
-  
+
   // Modal & API State
   const [showModal, setShowModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -47,6 +47,27 @@ export function FlightPlanning() {
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const { user } = useAuth();
+  const [recentForecast, setRecentForecast] = useState<any>(null);
+
+  React.useEffect(() => {
+    axios.get('http://localhost:8000/forecasts/verified/latest')
+      .then(res => {
+        if (res.data) {
+          setRecentForecast(res.data);
+        }
+      })
+      .catch(err => console.error("Could not fetch latest verified forecast:", err));
+  }, []);
+
+  const formatForecastTime = (isoString?: string) => {
+    if (!isoString) return '--';
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return '--';
+    const dd = String(d.getUTCDate()).padStart(2, '0');
+    const hh = String(d.getUTCHours()).padStart(2, '0');
+    const mm = String(d.getUTCMinutes()).padStart(2, '0');
+    return `${dd}${hh}${mm}Z (${hh}:${mm} UTC)`;
+  };
 
   React.useEffect(() => {
     // Fetch next flight based on local time
@@ -55,11 +76,11 @@ export function FlightPlanning() {
         if (res.data && res.data.flight_no) {
           setFlightNo(res.data.flight_no);
           setDestination(res.data.destination);
-          
+
           if (res.data.departure_time_local) {
             setDepartureTime(res.data.departure_time_local);
           }
-          
+
           if (res.data.duration_mins) {
             const h = Math.floor(res.data.duration_mins / 60);
             const m = res.data.duration_mins % 60;
@@ -73,13 +94,13 @@ export function FlightPlanning() {
   // Fetch real-time flight data when destination changes manually
   React.useEffect(() => {
     if (destination && destination.length >= 3) {
-      
+
       // Auto-assign Area based on common destination ICAO codes
       const dest = destination.toUpperCase();
       const eastDestinations = ['WSSS', 'WMKK', 'VTBS', 'VHHH', 'YSSY', 'YMML'];
       const westDestinations = ['OMDB', 'OTHH', 'EGLL', 'VABB', 'VIDP', 'OKBK', 'OAKB'];
       const southDestinations = ['VRMM', 'FIMP', 'FAOR'];
-      
+
       if (eastDestinations.includes(dest)) {
         setArea('Area E');
       } else if (southDestinations.includes(dest)) {
@@ -164,7 +185,7 @@ export function FlightPlanning() {
       }, {
         signal: abortControllerRef.current.signal
       });
-      
+
       if (response.data && response.data.document_url) {
         setPreviewUrl(response.data.document_url);
         setShowModal(true);
@@ -205,25 +226,25 @@ export function FlightPlanning() {
       }, {
         signal: abortControllerRef.current.signal
       });
-      
+
       if (response.data && response.data.document_url) {
         // Fetch the PDF as a blob to force a download prompt across origins
-        const pdfResponse = await axios.get(response.data.document_url, { 
+        const pdfResponse = await axios.get(response.data.document_url, {
           responseType: 'blob',
           signal: abortControllerRef.current.signal
         });
         const blobUrl = window.URL.createObjectURL(new Blob([pdfResponse.data]));
-        
+
         const link = document.createElement('a');
         link.href = blobUrl;
         link.download = `Flight_Briefing_${departure}_to_${destination}.pdf`;
         document.body.appendChild(link);
         link.click();
-        
+
         // Cleanup
         document.body.removeChild(link);
         window.URL.revokeObjectURL(blobUrl);
-        
+
         setShowModal(false);
         setPreviewUrl(null);
       }
@@ -255,6 +276,20 @@ export function FlightPlanning() {
         eyebrow="Pilot operations"
         title="Flight Planning Request"
         description="Create an ICAO-aligned aviation weather briefing request for meteorological review."
+        aside={
+          recentForecast?.target_time ? (
+            <div className="inline-flex items-center gap-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2.5 shadow-sm backdrop-blur-md">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
+              </span>
+              <span className="text-xs text-slate-300 font-medium">Recent Forecast:</span>
+              <span className="text-xs font-bold font-mono text-emerald-400 tabular-nums">
+                {formatForecastTime(recentForecast.target_time)}
+              </span>
+            </div>
+          ) : undefined
+        }
       />
 
       {error && !showModal && (
@@ -273,10 +308,18 @@ export function FlightPlanning() {
         <section className="rounded-xl border border-line bg-panel p-6">
           <div className="flex flex-col gap-4 border-b border-line pb-5 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <h2 className="text-lg font-bold text-white">Flight planning request</h2>
+              <div className="flex flex-wrap items-center gap-3">
+                <h2 className="text-lg font-bold text-white">Flight planning request</h2>
+                {/* {recentForecast?.target_time && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 text-xs font-semibold text-emerald-400 font-mono shadow-sm">
+                    <ClockIcon className="h-3.5 w-3.5 text-emerald-400" />
+                    Recent Forecast: {formatForecastTime(recentForecast.target_time)}
+                  </span>
+                )} */}
+              </div>
               <p className="mt-1 text-xs text-subtle">MET briefing criteria · ICAO compliant</p>
             </div>
-            <span className="inline-flex items-center gap-2 rounded-lg border border-accent/60 bg-accent/15 px-3 py-2 text-xs font-semibold text-sky-pale">
+            <span className="inline-flex items-center gap-2 rounded-lg border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-xs font-semibold text-sky-700 dark:text-sky-300 dark:bg-sky-500/15">
               <PlaneTakeoffIcon className="h-[15px] w-[15px]" aria-hidden="true" />
               VCBI departure
             </span>
@@ -285,22 +328,22 @@ export function FlightPlanning() {
           <div className="grid gap-5 pt-6 lg:grid-cols-3">
             <label className="block sm:max-w-xs">
               <span className="text-xs font-medium text-subtle">Departure airport code</span>
-              <input 
-                className={`${fieldClass} mt-1.5`} 
+              <input
+                className={`${fieldClass} mt-1.5`}
                 value={departure}
                 onChange={(e) => setDeparture(e.target.value.toUpperCase())}
-                placeholder="VCBI" 
+                placeholder="VCBI"
                 required
               />
             </label>
 
             <label className="block sm:max-w-xs">
               <span className="text-xs font-medium text-subtle">Flight Number</span>
-              <input 
-                className={`${fieldClass} mt-1.5`} 
+              <input
+                className={`${fieldClass} mt-1.5`}
                 value={flightNo}
                 onChange={(e) => setFlightNo(e.target.value.toUpperCase())}
-                placeholder="e.g., UL604" 
+                placeholder="e.g., UL604"
                 required
               />
             </label>
@@ -336,8 +379,8 @@ export function FlightPlanning() {
                   />
                 </div>
               </div>
-              <p className="mt-1 text-[11px] text-sky-pale/60">
-                Aviation format: <span className="font-mono text-sky-pale">{getAviationTime(departureDate, departureTime)}</span>
+              <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                Aviation format: <span className="font-mono text-sky-700 dark:text-sky-300 font-semibold">{getAviationTime(departureDate, departureTime)}</span>
               </p>
             </label>
 
@@ -345,25 +388,25 @@ export function FlightPlanning() {
               <span className="flex items-center justify-between text-xs font-medium text-subtle">
                 <span>Destination airport code</span>
                 {flightDuration && (
-                  <span className="flex items-center gap-1 text-sky-pale">
+                  <span className="flex items-center gap-1 text-sky-700 dark:text-sky-300 font-medium">
                     <InfoIcon className="h-3 w-3" />
                     Est. Duration: {flightDuration}
                   </span>
                 )}
               </span>
-              <input 
-                className={`${fieldClass} mt-1.5`} 
+              <input
+                className={`${fieldClass} mt-1.5`}
                 value={destination}
                 onChange={(e) => setDestination(e.target.value.toUpperCase())}
-                placeholder="WSSS" 
+                placeholder="WSSS"
                 required
               />
             </label>
 
             <label className="block sm:max-w-xs">
               <span className="text-xs font-medium text-subtle">Area</span>
-              <select 
-                className={`${fieldClass} mt-1.5`} 
+              <select
+                className={`${fieldClass} mt-1.5`}
                 value={area}
                 onChange={(e) => setArea(e.target.value)}
               >
@@ -451,14 +494,14 @@ export function FlightPlanning() {
           <div className="w-full max-w-4xl rounded-xl border border-line bg-panel shadow-2xl overflow-hidden">
             <div className="flex items-center justify-between border-b border-line bg-ink/50 px-6 py-4">
               <h3 className="text-lg font-bold text-white">Confirm Request Details</h3>
-              <button 
+              <button
                 onClick={() => setShowModal(false)}
                 className="text-muted hover:text-white transition-colors"
               >
                 <XIcon className="h-5 w-5" />
               </button>
             </div>
-            
+
             <div className="p-6 space-y-4">
               {previewUrl ? (
                 <iframe src={previewUrl} className="w-full h-[65vh] rounded-md border border-line" title="PDF Preview" />
@@ -473,7 +516,7 @@ export function FlightPlanning() {
                 </div>
               )}
             </div>
-            
+
             <div className="flex items-center justify-end gap-3 border-t border-line bg-ink/50 px-6 py-4">
               <button
                 onClick={() => {
@@ -513,7 +556,7 @@ export function FlightPlanning() {
           <PlaneTakeoffIcon className="h-16 w-16 animate-bounce text-sky-400" />
           <h2 className="mt-6 text-xl font-bold text-white">Generating Flight Briefing</h2>
           <p className="mt-2 text-sm text-sky-pale animate-pulse">Fetching meteorological data and rendering PDF...</p>
-          <button 
+          <button
             onClick={handleCancel}
             className="mt-8 rounded-lg border border-red-500/50 bg-red-500/20 px-6 py-2.5 text-sm font-bold text-red-400 transition-colors hover:bg-red-500/30"
           >
