@@ -1,0 +1,245 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { ActivityIcon, RadioTowerIcon, Loader2Icon } from 'lucide-react';
+import axios from 'axios';
+import { useAuth } from '../contexts/AuthContext';
+import { MetricCard } from '../components/ui/MetricCard';
+import { ObservationTable } from '../components/ui/ObservationTable';
+import { Panel } from '../components/ui/Panel';
+import { SegmentedControl } from '../components/ui/SegmentedControl';
+import { Sparkline } from '../components/ui/Sparkline';
+import { ForecastMap } from '../components/dashboard/ForecastMap';
+import { MetarCard } from '../components/dashboard/MetarCard';
+import type { Metric, Observation, Series, MetricTone } from '../types/weather';
+
+const API_BASE = 'http://localhost:8000';
+
+export function Dashboard() {
+  const [range, setRange] = useState('06h - records');
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  const [currentMetrics, setCurrentMetrics] = useState<Metric[]>([]);
+  const [recentObservations, setRecentObservations] = useState<Observation[]>([]);
+  const [trendSeries, setTrendSeries] = useState<Series[]>([]);
+  const [historicalSeries, setHistoricalSeries] = useState<Series[]>([]);
+  const [lastUpdated, setLastUpdated] = useState<string>('--');
+  const [loading, setLoading] = useState<boolean>(true);
+  const [currentMetarData, setCurrentMetarData] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const [currentRes, recentRes] = await Promise.all([
+          axios.get(`${API_BASE}/live-metrology/current`),
+          axios.get(`${API_BASE}/live-metrology/recent`)
+        ]);
+
+        const curr = currentRes.data;
+        const recent = recentRes.data;
+
+        // Map current data to MetricCards
+        const metrics: Metric[] = [
+          { label: 'Temperature', value: curr.dry_temp_c != null ? curr.dry_temp_c.toString() : '--', unit: '°C', tone: 'amber' as MetricTone },
+          { label: 'Pressure (QNH)', value: curr.qnh_hpa != null ? curr.qnh_hpa.toString() : '--', unit: 'hPa', tone: 'sky' as MetricTone },
+          { label: 'Dew Point', value: curr.dew_point_c != null ? curr.dew_point_c.toString() : '--', unit: '°C', tone: 'emerald' as MetricTone },
+          { label: 'Humidity', value: curr.rh_percent != null ? curr.rh_percent.toString() : '--', unit: '% RH', tone: 'cyan' as MetricTone },
+          { 
+            label: 'Wind', 
+            value: curr.wind_speed_kts != null ? curr.wind_speed_kts.toString() : '--', 
+            footnote: curr.wind_dir != null 
+              ? (curr.wind_dir === 'VRB' ? 'VRB' : `${curr.wind_dir}°`) 
+              : (curr.wind_speed_kts != null ? (curr.wind_speed_kts > 0 ? 'VRB' : 'CALM') : '--'), 
+            tone: 'sky' as MetricTone 
+          },
+          { label: 'Visibility', value: (curr.visibility != null ? (curr.visibility >= 9999 ? '+10' : (curr.visibility / 1000).toString()) : '--'), unit: 'km', tone: 'green' as MetricTone }
+        ];
+        setCurrentMetrics(metrics);
+        setCurrentMetarData({ ...curr, recentClouds: recent[0]?.clouds });
+
+        // Formulate last updated string
+        const formattedDate = new Date(curr.year, curr.month - 1, curr.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+        const timeStr = curr.time_utc.padStart(4, '0');
+        setLastUpdated(`${timeStr} UTC · ${formattedDate}`);
+
+        // Map recent data to Observations table
+        const obs: Observation[] = recent.map((r: any) => {
+          const time = r.time_utc.padStart(4, '0');
+          return {
+            time: `${time.slice(0, 2)}:${time.slice(2, 4)} UTC`,
+            temperature: `${r.dry_temp_c} °C`,
+            dewPoint: r.dew_point_c != null ? `${r.dew_point_c} °C` : '--',
+            pressure: `${r.qnh_hpa} hPa`,
+            humidity: `${r.rh_percent}%`,
+            windSpeed: `${r.wind_speed_kts} kt`,
+            windDirection: r.wind_dir != null 
+              ? (r.wind_dir === 'VRB' ? 'VRB' : `${r.wind_dir}°`) 
+              : (r.wind_speed_kts != null ? (r.wind_speed_kts > 0 ? 'VRB' : 'CALM') : '--'),
+            visibility: r.visibility >= 9999 ? '10+ km' : `${r.visibility / 1000} km`,
+            cloudCoverage: r.clouds || 'N/A',
+            rainfall: 'N/A' // Not present in metar data directly yet
+          };
+        });
+        setRecentObservations(obs);
+
+        // Map recent data to Sparklines
+        // Reverse recent so it goes from oldest to newest
+        const recentAsc = [...recent].reverse();
+        const temps = recentAsc.map((r: any) => r.dry_temp_c);
+        const pressures = recentAsc.map((r: any) => r.qnh_hpa);
+        const humidities = recentAsc.map((r: any) => r.rh_percent);
+        const winds = recentAsc.map((r: any) => r.wind_speed_kts);
+
+        const currTemp = curr.dry_temp_c;
+        const currPressure = curr.qnh_hpa;
+        const currHumidity = curr.rh_percent;
+        const currWind = curr.wind_speed_kts;
+
+        const times = recentAsc.map((r: any) => {
+          const t = r.time_utc.padStart(4, '0');
+          return `${t.slice(0, 2)}:${t.slice(2, 4)}`;
+        });
+
+        const trends: Series[] = [
+          { label: 'Temperature', value: `${currTemp}°C`, color: '#FBBF24', points: temps, xLabels: times, unit: '°' },
+          { label: 'Wind Speed', value: `${currWind} kt`, color: '#22D3EE', points: winds, xLabels: times, unit: 'kt' },
+          { label: 'Pressure', value: `${currPressure} hPa`, color: '#38BDF8', points: pressures, xLabels: times, unit: '' },
+          { label: 'Humidity', value: `${currHumidity}% RH`, color: '#10B981', points: humidities, xLabels: times, unit: '%' }
+        ];
+
+        const historicals: Series[] = [
+          { label: 'Temperature', value: `${currTemp}°C`, color: '#FBBF24', points: temps },
+          { label: 'Pressure', value: `${currPressure} hPa`, color: '#38BDF8', points: pressures },
+          { label: 'Humidity', value: `${currHumidity}% RH`, color: '#22D3EE', points: humidities }
+        ];
+
+        setTrendSeries(trends);
+        setHistoricalSeries(historicals);
+
+      } catch (err) {
+        console.error("Failed to load dashboard data", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5 }}
+      className="flex flex-col gap-8"
+    >
+      <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <div className="inline-flex items-center gap-2 rounded-full bg-accent/10 px-3.5 py-1 mb-3 border border-accent/20 backdrop-blur-sm">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-accent"></span>
+            </span>
+            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-accent">Meteorological Operations</span>
+          </div>
+          <h1 className="text-3xl md:text-4xl font-black tracking-tight text-white">METAR Dashboard</h1>
+          <p className="mt-1 text-sm text-slate-400 font-medium">
+            VCBI hyper-local weather intelligence · <span className="text-slate-300 font-bold tabular-nums">{lastUpdated}</span>
+          </p>
+        </div>
+        {user?.role === 'forecaster' ?
+          <motion.button
+            whileHover={{ scale: 1.03, boxShadow: "0 0 25px rgba(234,179,8,0.4)" }}
+            whileTap={{ scale: 0.98 }}
+            type="button"
+            onClick={() => navigate('/forecasting')}
+            className="inline-flex items-center justify-center gap-2.5 rounded-xl bg-gradient-to-r from-accent to-amber-500 px-6 py-3.5 text-xs font-extrabold text-slate-900 shadow-lg shadow-accent/20 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+          >
+            Generate Weather Forecast
+          </motion.button> :
+          null}
+      </header>
+
+      {loading ? (
+        <div className="flex h-64 items-center justify-center rounded-xl border border-line bg-panel">
+          <Loader2Icon className="h-8 w-8 animate-spin text-accent-soft" />
+        </div>
+      ) : (
+        <>
+          <p className="text-sm text-slate-400">Last updated: {lastUpdated}</p>
+
+          {currentMetarData && (
+            <MetarCard
+              timeUtc={currentMetarData.time_utc}
+              date={new Date(currentMetarData.year, currentMetarData.month - 1, currentMetarData.date)}
+              windDir={currentMetarData.wind_dir}
+              windSpeed={currentMetarData.wind_speed_kts}
+              visibility={currentMetarData.visibility}
+              qnh={currentMetarData.qnh_hpa}
+              temp={currentMetarData.dry_temp_c}
+              dew={currentMetarData.dew_point_c}
+              clouds={currentMetarData.clouds || currentMetarData.recentClouds || 'N/A'}
+              rawMetar={currentMetarData.raw_metar || currentMetarData.metar_string || currentMetarData.metar}
+              lastUpdatedText={lastUpdated.split('·')[0]}
+            />
+          )}
+
+
+
+          <Panel
+            title="Recent METAR weather observations"
+            subtitle={`last refreshed ${lastUpdated}`}
+            action={
+              <SegmentedControl
+                label="Observation window"
+                options={['06h - records', '12h - records']}
+                value={range}
+                onChange={setRange} />
+            }>
+
+            <div className="max-h-[400px] overflow-y-auto">
+              <ObservationTable
+                rows={recentObservations}
+                timeLabel="Timestamp (UTC)"
+                caption={`Recent METAR observations, ${range}`} />
+            </div>
+
+          </Panel>
+
+          <div className="grid gap-6 xl:grid-cols-3">
+            <div className="xl:col-span-2">
+              <ForecastMap />
+            </div>
+            <div className="xl:col-span-1 flex flex-col">
+              <Panel title="Historical METAR observation trends" subtitle="Recent History · Automatic station VCBI" className="h-full flex flex-col">
+                <div className="flex-1 flex flex-col gap-8 overflow-y-auto pr-2 pt-2 pb-4">
+                  {trendSeries.map((series, index) =>
+                    <div key={series.label} className={index !== trendSeries.length - 1 ? "border-b border-line pb-6" : ""}>
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-slate-400">{series.label}</span>
+                        <span className="text-xs font-semibold text-slate-100">{series.value}</span>
+                      </div>
+                      <div className="mt-4">
+                        <Sparkline
+                          points={series.points}
+                          color={series.color}
+                          showAxes={true}
+                          xLabels={series.xLabels}
+                          yFormatter={(v) => `${v}${series.unit}`}
+                          ariaLabel={`${series.label} trend, currently ${series.value}`} />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </Panel>
+            </div>
+          </div>
+
+
+        </>
+      )}
+    </motion.div>
+  );
+}
