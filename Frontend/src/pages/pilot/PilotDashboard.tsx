@@ -37,6 +37,17 @@ function getAirportInfo(code: string) {
   return AIRPORT_DATA[upperCode] || { city: upperCode || 'Unknown', country: '', lat: 7.18, lon: 79.88 };
 }
 
+function getTimeBasedGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 12) {
+    return 'Good morning';
+  } else if (hour >= 12 && hour < 17) {
+    return 'Good afternoon';
+  } else {
+    return 'Good evening';
+  }
+}
+
 export function PilotDashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -83,7 +94,7 @@ export function PilotDashboard() {
     <div className="w-full space-y-6">
       <PageHeading
         eyebrow="Flight operations"
-        title={`Good morning, ${user?.name ?? 'Captain'}.`}
+        title={`${getTimeBasedGreeting()}, ${user?.name ?? 'Captain'}.`}
         description="Build a verified aviation weather briefing for your next flight."
         aside={<LiveFeedBadge />} />
       

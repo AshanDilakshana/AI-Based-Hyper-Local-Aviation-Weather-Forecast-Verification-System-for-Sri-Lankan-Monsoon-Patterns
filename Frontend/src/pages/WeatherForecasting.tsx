@@ -273,7 +273,7 @@ export function WeatherForecasting() {
               style={{ color: '#ffffff' }}
               className="text-white font-semibold text-sm md:text-base leading-relaxed drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]"
             >
-              Live observation context and AI-supported aviation forecast guidance.
+              Live observation context and aviation forecast guidance.
             </p>
           </div>
 
@@ -332,7 +332,7 @@ export function WeatherForecasting() {
               style={{ color: '#ffffff' }}
               className="!text-sm mt-2 font-medium flex items-center gap-2 text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]"
             >
-              <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]"></span> Target Horizon: +3 Hours Ahead
+              <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]"></span> Target Horizon: +3 Hr
             </p>
           </div>
 
