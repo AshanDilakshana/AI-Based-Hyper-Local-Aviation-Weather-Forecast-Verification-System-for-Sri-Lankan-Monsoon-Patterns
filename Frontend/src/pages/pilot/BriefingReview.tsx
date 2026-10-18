@@ -111,7 +111,7 @@ export function BriefingReview() {
           </Link>
         </div>
         <div className="mt-4">
-          <DocumentsTable documents={documents.slice(0, 2)} />
+          <DocumentsTable documents={documents.slice(0, 2)} showStatus={false} />
         </div>
       </section>
     </div>);

@@ -17,9 +17,10 @@ export function DocumentsTable({ documents, showStatus = true }: DocumentsTableP
             <th className="pb-2 text-xs font-medium tracking-wide text-muted">Reference</th>
             <th className="pb-2 text-xs font-medium tracking-wide text-muted">Flight</th>
             <th className="pb-2 text-xs font-medium tracking-wide text-muted">Forecast date</th>
-            {showStatus &&
+            {/* Status column commented out */}
+            {/* {showStatus &&
             <th className="pb-2 text-xs font-medium tracking-wide text-muted">Status</th>
-            }
+            } */}
             <th className="pb-2 text-right text-xs font-medium tracking-wide text-muted">
               <span className="sr-only">Download</span>
             </th>
@@ -31,11 +32,12 @@ export function DocumentsTable({ documents, showStatus = true }: DocumentsTableP
               <td className="py-5 text-sm font-medium text-white">{doc.reference}</td>
               <td className="py-5 text-sm text-faint">{doc.route}</td>
               <td className="py-5 text-sm text-subtle">{doc.forecastDate}</td>
-              {showStatus &&
+              {/* Status column commented out */}
+              {/* {showStatus &&
             <td className="py-5">
                   <StatusPill status={doc.status} />
                 </td>
-            }
+            } */}
               <td className="py-5 text-right">
                 {doc.url ? (
                   <a
