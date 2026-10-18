@@ -106,6 +106,13 @@ def load_Wind_models():
         print(f"CRITICAL: Failed to load TFT 3H model. Error: {e}")
         model_tft_3h = None
 
+    for m in [model_1h, model_3h]:
+        if m is not None and hasattr(m, "set_params"):
+            try:
+                m.set_params(device="cpu")
+            except Exception:
+                pass
+
 
 load_Wind_models()
 
@@ -453,17 +460,20 @@ def predict_wind_hybrid_3h(request: WindPredictionRequest):
         df_window = get_historical_dataframe(db)
     finally:
         db.close()
-
+    
+    # XGBoost Feature Engineering
     pipeline = UnifiedWeatherPipeline(forecast_hours=3)
     features = pipeline.process_inference_data(df_window)
     expected_cols = pipeline.required_features
     features_ordered = features[expected_cols]
 
+    # Extract Predicted Values from XGBoost Model
     xgb_predictions = model_3h.predict(features_ordered)[0]
     xgb_pred_value = float(xgb_predictions[0])
     pred_sin = float(xgb_predictions[1])
     pred_cos = float(xgb_predictions[2])
 
+    # Convert Sin/Cos to Degrees
     pred_dir_rad = math.atan2(pred_sin, pred_cos)
     pred_dir_deg = math.degrees(pred_dir_rad)
     if pred_dir_deg < 0:

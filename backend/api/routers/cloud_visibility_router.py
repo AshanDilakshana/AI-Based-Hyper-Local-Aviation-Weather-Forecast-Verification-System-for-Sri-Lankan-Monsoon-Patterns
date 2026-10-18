@@ -147,6 +147,14 @@ def load_models():
         except Exception as backup_e:
             print(f"[ERROR] Failed to load backup Visibility model: {backup_e}")
 
+    # Ensure all loaded XGBoost models run inference safely on CPU to prevent CUDA memory corruption/crashes on Windows
+    for m in [cloud_type_model, cloud_height_model, cloud_model, vis_model]:
+        if m is not None and hasattr(m, "set_params"):
+            try:
+                m.set_params(device="cpu")
+            except Exception:
+                pass
+
 
 # Initial load on module import
 load_models()

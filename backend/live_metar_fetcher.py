@@ -6,13 +6,22 @@ import re
 from datetime import datetime
 from sqlalchemy.orm import Session
 
-# Ensure we can import backend modules
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../")))
+# Ensure we can import backend modules and load environment variables
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if BASE_DIR not in sys.path:
+    sys.path.append(BASE_DIR)
+
+from dotenv import load_dotenv
+
+load_dotenv(os.path.join(BASE_DIR, ".env"))
 
 from backend.data.database import SessionLocal, engine, Base
 from backend.data.models import WeatherData, SystemLogs
 
-API_URL = "https://aviationweather.gov/api/data/metar?ids=VCBI&format=json"
+API_URL = os.getenv("METAR_API_URL")
+if not API_URL:
+    raise ValueError("METAR_API_URL is missing in .env file!")
+
 
 
 def log_event(db_session, level, component, message, details=None):
@@ -136,9 +145,8 @@ def fetch_and_store_live_metar(hours=None):
             hours = 24
 
     print(f"[{datetime.now()}] Fetching METAR data for VCBI (Last {hours} hours)...")
-    url = (
-        f"https://aviationweather.gov/api/data/metar?ids=VCBI&format=json&hours={hours}"
-    )
+    separator = "&" if "?" in API_URL else "?"
+    url = f"{API_URL}{separator}hours={hours}"
     try:
         response = requests.get(url, timeout=15)
         response.raise_for_status()

@@ -22,6 +22,15 @@ BASE_DIR = os.path.dirname(
 )
 MODEL_DIR = os.path.join(BASE_DIR, "Models", "Temperature", "random_forest")
 
+from dotenv import load_dotenv
+
+load_dotenv(os.path.join(BASE_DIR, ".env"))
+
+METAR_API_URL = os.getenv("METAR_API_URL")
+if not METAR_API_URL:
+    raise ValueError("METAR_API_URL is missing in .env file!")
+
+
 import sys
 
 sys.path.append(BASE_DIR)
@@ -404,7 +413,7 @@ def predict_live_weather(db: Session = Depends(get_db)):
         # Fetch live data
         headers = {"User-Agent": "Mozilla/5.0"}
         response = requests.get(
-            "https://aviationweather.gov/api/data/metar?ids=VCBI&format=json",
+            METAR_API_URL,
             headers=headers,
             timeout=10,
         )
