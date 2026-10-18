@@ -5,7 +5,7 @@ class QNHFeatureEngineer:
     def __init__(self, data: pd.DataFrame):
         self.data = data.copy()
 
-    def engineer_features(self) -> pd.DataFrame:
+    def engineer_features(self, is_training: bool = True) -> pd.DataFrame:
         """
         Creates new features from existing meteorological data.
         """
@@ -36,12 +36,16 @@ class QNHFeatureEngineer:
             # Rolling means for QNH
             df['qnh_rolling_3'] = df['qnh_hpa'].rolling(window=3).mean()
             df['qnh_rolling_6'] = df['qnh_hpa'].rolling(window=6).mean()
-            
-        # Target variable (predicting QNH 3 hours ahead)
-        if 'qnh_hpa' in df.columns:
-            df['target_qnh_3h'] = df['qnh_hpa'].shift(-3)
-            
-        # Drop rows with NaN values resulting from shift/rolling operations
-        df.dropna(inplace=True)
+        if is_training:
+            # Target variable (predicting QNH 3 hours ahead)
+            if 'qnh_hpa' in df.columns:
+                df['target_qnh_3h'] = df['qnh_hpa'].shift(-3)
+                
+            # Drop rows with NaN values resulting from shift/rolling operations
+            df.dropna(inplace=True)
+        else:
+            # For inference, only drop NaNs in the features, not the non-existent target
+            subset = [c for c in df.columns if 'target' not in c]
+            df.dropna(subset=subset, inplace=True)
         
         return df

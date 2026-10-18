@@ -1,15 +1,19 @@
-<<<<<<< HEAD
-*.pkl
-*.png
-data/processed_features.csv
-models/XGBoost/importance_xgb.csv
-*.csv
-=======
+# ==========================================
+# Aviation Weather Forecast System - .gitignore
+# ==========================================
+
 # --- Data Files ---
 BIA_METAR_DATA_(2019_2024).xlsx
+data/BIA_METAR_DATA_(2019_2024).xlsx
 backend/data/*.csv
 backend/data/*.parquet
+/backend/data/documents
+data/
 *.csv
+*.xls
+*.xlsx
+*.jsonl
+*.parquet
 
 # --- Machine Learning Models ---
 backend/models/*.pkl
@@ -17,6 +21,16 @@ backend/models/*.json
 backend/models/*.joblib
 *.pkl
 *.joblib
+*.h5
+*.keras
+*.model
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.safetensors
+tb_logs/
+wandb/
 
 # --- Plots & Visualizations ---
 *.png
@@ -26,12 +40,24 @@ backend/models/*.joblib
 # --- Python & Environments ---
 __pycache__/
 *.py[cod]
+*.pyc
 *$py.class
 *.so
 venv/
 env/
 .venv/
+.venv
+ENV/
 .env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
 
 # --- Jupyter Notebooks ---
 .ipynb_checkpoints/
@@ -41,20 +67,63 @@ node_modules/
 frontend/node_modules/
 dist/
 build/
-.env.local
+public/fonts/
+.npm
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.eslintcache
+.vite/
 
 # --- OS & Editor ---
 .DS_Store
-.vscode/
 .idea/
+Thumbs.db
+*.swp
+*.swo
 
 # --- Logs ---
 *.log
+lightning_logs/
 
+# --- Database ---
+*.db
+*.sqlite3
+
+# --- Specific Files & Scripts ---
 predict_demo.py
 *.json
 branch_structure.json
 temp_auto_push.bat
 temp_interactive_push.bat
->>>>>>> 3be37e4eef8a8656bb1ad5a0122e31932d8890a2
-/frontend
+config.bat
+backend/static/
+check_db.py
+pyrightconfig.json
+
+# --- Ignored Folders (Kept Locally Only) ---
+TEmpory/
+frontend/
+frontend 2/
+Reletion analysis/
+
+*.pyc
+
+
+
+backend/tests/
+
+
+#ims
+# Local model test scripts
+Models/Temperature/evaluate_model.py
+Models/Temperature/predict_model.py
+
+# Unused model folders
+Models/Temperature/Lstm_model/
+Models/Temperature/autoencoder_model/
+Models/Temperature/gru_model/
+
+# Unused Random Forest scripts
+Models/Temperature/random_forest/eval_configs.py
+Models/Temperature/random_forest/train_Random_Forestl.py

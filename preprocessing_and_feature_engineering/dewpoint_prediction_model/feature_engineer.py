@@ -5,7 +5,7 @@ class DewpointFeatureEngineer:
     def __init__(self, data: pd.DataFrame):
         self.data = data.copy()
 
-    def engineer_features(self) -> pd.DataFrame:
+    def engineer_features(self, is_training: bool = True) -> pd.DataFrame:
         """
         Creates new features from existing meteorological data for Dewpoint prediction.
         """
@@ -39,11 +39,17 @@ class DewpointFeatureEngineer:
         if 'dry_temp_c' in df.columns:
             df['dry_temp_lag_1'] = df['dry_temp_c'].shift(1)
             
-        # Target variable (predicting Dewpoint 3 hours ahead)
-        if 'dew_point_c' in df.columns:
-            df['target_dewpoint_3h'] = df['dew_point_c'].shift(-3)
+        if is_training:
+            # Target variable (predicting Dewpoint 3 hours ahead)
+            if 'dew_point_c' in df.columns:
+                df['target_dewpoint_3h'] = df['dew_point_c'].shift(-3)
             
-        # Drop rows with NaN values resulting from shift/rolling operations
-        df.dropna(inplace=True)
+            # Drop rows with NaN values resulting from shift/rolling operations
+            df.dropna(inplace=True)
+        else:
+            # For inference, only drop NaNs in the features (first few rows), not the non-existent target
+            subset = [c for c in df.columns if 'target' not in c]
+            df.dropna(subset=subset, inplace=True)
+        
         
         return df

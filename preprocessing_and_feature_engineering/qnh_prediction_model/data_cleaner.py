@@ -25,3 +25,8 @@ class QNHDataCleaner:
         self.data[numeric_cols] = self.data[numeric_cols].ffill().bfill()
         
         return self.data
+
+
+
+
+
