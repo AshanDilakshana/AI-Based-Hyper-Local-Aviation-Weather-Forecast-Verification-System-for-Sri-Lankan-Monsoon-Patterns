@@ -22,7 +22,9 @@ const formatAviationTime = (dateNum: number, timeStr: string) => {
 // Format ISO date to DDHHMMZ
 const formatIsoToAviationTime = (isoString: string) => {
   if (!isoString) return '--';
-  const d = new Date(isoString);
+  const utcString = isoString.endsWith('Z') || isoString.includes('+') ? isoString : `${isoString}Z`;
+  const d = new Date(utcString);
+  if (isNaN(d.getTime())) return '--';
   const dd = d.getUTCDate().toString().padStart(2, '0');
   const hh = d.getUTCHours().toString().padStart(2, '0');
   const mm = d.getUTCMinutes().toString().padStart(2, '0');
