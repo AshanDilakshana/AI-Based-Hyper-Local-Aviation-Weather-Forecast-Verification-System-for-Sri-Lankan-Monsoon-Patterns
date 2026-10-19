@@ -1029,7 +1029,7 @@ def create_flight_plan(req: FlightPlanRequest, db: Session = Depends(get_db)):
         )
 
         if not forecasts:
-            # Fallback
+            # Fallback: check within allowable operational window (±6 hours of departure)
             fallback = (
                 db.query(VerifiedForecast)
                 .filter(
@@ -1041,22 +1041,31 @@ def create_flight_plan(req: FlightPlanRequest, db: Session = Depends(get_db)):
                 .all()
             )
 
-            if not fallback:
-                recent_fallback = (
+            if fallback:
+                forecasts = fallback
+            else:
+                # If even the latest/recent forecast in the database is not valid for the requested time range,
+                # reject and raise an error rather than generating an invalid flight briefing.
+                latest_forecast = (
                     db.query(VerifiedForecast)
                     .order_by(VerifiedForecast.target_time.desc())
-                    .limit(3)
-                    .all()
+                    .first()
                 )
-                if recent_fallback:
-                    forecasts = list(reversed(recent_fallback))
+
+                if latest_forecast:
+                    latest_str = latest_forecast.target_time.strftime('%Y-%m-%d %H:%M Z')
+                    raise HTTPException(
+                        status_code=400,
+                        detail=(
+                            f"No valid meteorological forecast available for the requested departure time ({dep_dt.strftime('%Y-%m-%d %H:%M Z')}). "
+                            f"The latest forecast in the system is for {latest_str}, which is outside the acceptable validity window (±6 hours)."
+                        ),
+                    )
                 else:
                     raise HTTPException(
                         status_code=400,
-                        detail=f"No verified meteorological forecast data available for the requested timeframe ({dep_dt.strftime('%Y-%m-%d %H:%M Z')}).",
+                        detail="No verified meteorological forecast data available in the system.",
                     )
-            else:
-                forecasts = fallback
 
         dest_upper = req.destination.upper()
         flight_record = (
