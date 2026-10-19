@@ -50,18 +50,25 @@ export function FlightPlanning() {
   const [recentForecast, setRecentForecast] = useState<any>(null);
 
   React.useEffect(() => {
-    axios.get('http://localhost:8000/forecasts/verified/latest')
-      .then(res => {
-        if (res.data) {
-          setRecentForecast(res.data);
-        }
-      })
-      .catch(err => console.error("Could not fetch latest verified forecast:", err));
+    const fetchLatestForecast = () => {
+      axios.get('http://localhost:8000/forecasts/verified/latest')
+        .then(res => {
+          if (res.data) {
+            setRecentForecast(res.data);
+          }
+        })
+        .catch(err => console.error("Could not fetch latest verified forecast:", err));
+    };
+
+    fetchLatestForecast();
+    const interval = setInterval(fetchLatestForecast, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const formatForecastTime = (isoString?: string) => {
     if (!isoString) return '--';
-    const d = new Date(isoString);
+    const utcString = isoString.endsWith('Z') || isoString.includes('+') ? isoString : `${isoString}Z`;
+    const d = new Date(utcString);
     if (isNaN(d.getTime())) return '--';
     const dd = String(d.getUTCDate()).padStart(2, '0');
     const hh = String(d.getUTCHours()).padStart(2, '0');
