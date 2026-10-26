@@ -62,6 +62,7 @@ except Exception as e:
     traceback.print_exc()
 
 
+# Draws a decorative border around the outer margins of the first PDF cover page
 def draw_page_border(canvas, doc):
     canvas.saveState()
     canvas.setStrokeColor(colors.black)
@@ -95,10 +96,11 @@ class FlightPlanRequest(BaseModel):
     preview_url: Optional[str] = None
 
 
+# Calculates the latest synoptic weather model base run time (00, 06, 12, or 18 UTC) via API
 def get_noaa_model_base_time(ref_time: Optional[datetime] = None) -> datetime:
     """
     Returns the estimated base run time (00, 06, 12, or 18 UTC) of the latest
-    numerical weather prediction model cycle published on NOAA fax.
+    numerical weather prediction model cycle published on weather fax via API.
     A synoptic run is typically published ~3.5 to 4 hours after its synoptic hour.
     """
     if ref_time is None:
@@ -108,12 +110,13 @@ def get_noaa_model_base_time(ref_time: Optional[datetime] = None) -> datetime:
     return effective.replace(hour=base_hour, minute=0, second=0, microsecond=0)
 
 
+# Determines corresponding forecast lead times (e.g., F06, F12, F18) based on flight schedule via API
 def get_forecast_lead_times(
     dep_dt: datetime, duration_mins: int, base_dt: Optional[datetime] = None
 ) -> List[str]:
     """
-    Calculates the exact NOAA forecast lead times (F06, F12, F18, F24, F30, F36)
-    corresponding to the flight's departure and en-route/arrival stages from the model run.
+    Calculates the exact forecast lead times (F06, F12, F18, F24, F30, F36)
+    corresponding to the flight's departure and en-route/arrival stages from the model run via API.
     """
     if base_dt is None:
         base_dt = get_noaa_model_base_time()
@@ -150,6 +153,7 @@ def get_forecast_hour(duration_mins: int) -> str:
     return get_forecast_hours(duration_mins)[-1]
 
 
+# Downloads live Upper Wind or SIGWX facsimile weather charts (.gif) via API
 def get_live_map(
     map_type: str, flight_level: str, area: str, forecast_hour: str
 ) -> str:
@@ -175,6 +179,7 @@ def get_live_map(
         return None
 
 
+# Fetches real-time raw ICAO TAF (Terminal Aerodrome Forecast) data via API
 def fetch_tafs(airports: List[str]) -> str:
     if not airports:
         return "No alternative airports found."
@@ -190,6 +195,7 @@ def fetch_tafs(airports: List[str]) -> str:
         return "Failed to fetch TAF data."
 
 
+# Fetches upper atmosphere (FL185 / 500 hPa) wind and temperature observations via API
 def fetch_hire_ascent() -> tuple:
     wind_str = "VRB05"
     temp_str = "-05"
@@ -216,6 +222,7 @@ def fetch_hire_ascent() -> tuple:
     return wind_str, temp_str
 
 
+# Compiles and generates the official multi-page flight briefing PDF document using ReportLab
 def generate_briefing_pdf(
     filepath: str,
     req: FlightPlanRequest,
@@ -1009,6 +1016,7 @@ def generate_briefing_pdf(
             pass
 
 
+# Main Endpoint: Validates verified weather forecasts, pulls data via API, and creates/confirms the flight briefing PDF
 @router.post("/flight-plan")
 def create_flight_plan(req: FlightPlanRequest, db: Session = Depends(get_db)):
     try:
@@ -1029,7 +1037,7 @@ def create_flight_plan(req: FlightPlanRequest, db: Session = Depends(get_db)):
         )
 
         if not forecasts:
-            # Fallback
+            # Fallback: check within allowable operational window (±6 hours of departure)
             fallback = (
                 db.query(VerifiedForecast)
                 .filter(
@@ -1041,22 +1049,31 @@ def create_flight_plan(req: FlightPlanRequest, db: Session = Depends(get_db)):
                 .all()
             )
 
-            if not fallback:
-                recent_fallback = (
+            if fallback:
+                forecasts = fallback
+            else:
+                # If even the latest/recent forecast in the database is not valid for the requested time range,
+                # reject and raise an error rather than generating an invalid flight briefing.
+                latest_forecast = (
                     db.query(VerifiedForecast)
                     .order_by(VerifiedForecast.target_time.desc())
-                    .limit(3)
-                    .all()
+                    .first()
                 )
-                if recent_fallback:
-                    forecasts = list(reversed(recent_fallback))
+
+                if latest_forecast:
+                    latest_str = latest_forecast.target_time.strftime('%Y-%m-%d %H:%M Z')
+                    raise HTTPException(
+                        status_code=400,
+                        detail=(
+                            f"No valid meteorological forecast available for the requested departure time ({dep_dt.strftime('%Y-%m-%d %H:%M Z')}). "
+                            f"The latest forecast in the system is for {latest_str}, which is outside the acceptable validity window (±6 hours)."
+                        ),
+                    )
                 else:
                     raise HTTPException(
                         status_code=400,
-                        detail=f"No verified meteorological forecast data available for the requested timeframe ({dep_dt.strftime('%Y-%m-%d %H:%M Z')}).",
+                        detail="No verified meteorological forecast data available in the system.",
                     )
-            else:
-                forecasts = fallback
 
         dest_upper = req.destination.upper()
         flight_record = (
@@ -1170,6 +1187,7 @@ def create_flight_plan(req: FlightPlanRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# Endpoint: Retrieves the most recent flight plan created by a specific pilot
 @router.get("/last-flight-plan")
 def get_last_flight_plan(pilot_reference: str, db: Session = Depends(get_db)):
     plan = (
@@ -1183,6 +1201,7 @@ def get_last_flight_plan(pilot_reference: str, db: Session = Depends(get_db)):
     return {}
 
 
+# Endpoint: Retrieves flight plan history (up to 50 records) for a given pilot
 @router.get("/flight-plans")
 def get_flight_plans(pilot_reference: str, db: Session = Depends(get_db)):
     plans = (
@@ -1195,6 +1214,7 @@ def get_flight_plans(pilot_reference: str, db: Session = Depends(get_db)):
     return plans
 
 
+# Endpoint: Finds the next scheduled flight departing after current local time
 @router.get("/next-flight")
 def get_next_flight(db: Session = Depends(get_db)):
     now_local = datetime.utcnow() + timedelta(hours=5, minutes=30)
@@ -1235,6 +1255,7 @@ def get_next_flight(db: Session = Depends(get_db)):
     }
 
 
+# Endpoint: Fetches flight number, departure time, and duration for a given destination
 @router.get("/flight-info")
 def get_flight_info_by_dest(destination: str, db: Session = Depends(get_db)):
     if not destination or len(destination) < 3:
@@ -1256,6 +1277,7 @@ def get_flight_info_by_dest(destination: str, db: Session = Depends(get_db)):
     return {}
 
 
+# Endpoint: Fetches flight details matching a specific local departure time
 @router.get("/flight-info-by-time")
 def get_flight_info_by_time(time_local: str, db: Session = Depends(get_db)):
     if not time_local:
@@ -1276,6 +1298,7 @@ def get_flight_info_by_time(time_local: str, db: Session = Depends(get_db)):
         }
     return {}
 
+# Endpoint: Lists all generated PDF briefing documents for a pilot with 12-hour validity status
 @router.get("/my-documents")
 def get_my_documents(pilot_reference: str):
     if not pilot_reference:
