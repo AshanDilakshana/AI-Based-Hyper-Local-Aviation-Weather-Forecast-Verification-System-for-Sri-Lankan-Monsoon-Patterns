@@ -49,7 +49,7 @@ def get_all_ai_predictions(db: Session = Depends(get_db)):
     from backend.data.database import SessionLocal
     from backend.data.models import ModelsForecast
 
-    # Pre-create the unified forecast row to prevent concurrent insert race conditions
+    # Pre-create the unified forecast 
     if latest_weather and latest_weather.timestamp_utc:
         target_time = (latest_weather.timestamp_utc + timedelta(hours=3)).replace(minute=0, second=0, microsecond=0)
         existing_record = db.query(ModelsForecast).filter(ModelsForecast.target_time_utc == target_time).first()
