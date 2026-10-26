@@ -190,7 +190,7 @@ def get_verification_history(db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/thermodynamic-hazard-alert")
+# @router.get("/thermodynamic-hazard-alert")
 def get_thermodynamic_hazard_alert(db: Session = Depends(get_db)):
     """Check for Radiation Fog Precursors based on Temperature & Pressure coupled anomalies."""
     try:
