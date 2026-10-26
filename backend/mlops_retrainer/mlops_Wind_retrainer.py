@@ -45,7 +45,7 @@ def log_event(db_session, level, component, message, details=None):
         print(f"Failed to write log to DB: {e}")
     print(f"[{level}] {component}: {message}")
 
-
+#Retraining the model pipeline
 def retrain_model_pipeline(forecast_hours, target_cols, model_dir, model_filename):
     db = SessionLocal()
     component = f"MLOps_{forecast_hours}H"
@@ -100,7 +100,7 @@ def retrain_model_pipeline(forecast_hours, target_cols, model_dir, model_filenam
         details = f'{{"old_mae": {old_mae:.2f}, "new_mae": {new_mae:.2f}}}'
 
         # Accept new model if its MAE is better, equal, or up to 0.50 worse than the old model
-        # AND it MUST be less than the absolute limit of 2.3
+        # and it MUST be less than the absolute limit of 2.3 (standerd MAE 2.5)
         if new_mae <= old_mae + 0.50 and new_mae < 2.3:
             if new_mae <= old_mae:
                 log_msg = f"New Model is better or equal! (Old MAE: {old_mae:.2f}, New MAE: {new_mae:.2f})"
